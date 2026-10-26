@@ -9,6 +9,7 @@ List checks actually run and their results. Separate mocked checks from real Git
 ## Repository consistency
 
 - [ ] Updated `AGENTS.md` current map for added, moved or removed folders/entrypoints, or no structure changed.
+- [ ] Updated the relevant `docs/phases/NN.md` task/status/evidence for implementation work, or this is documentation-only.
 - [ ] Updated affected README links, setup steps and the implementation plan, or none changed.
 - [ ] Updated `.env.example` and validation for configuration changes, or none changed.
 - [ ] Recorded changed product/financial policy in a decision record, or policy is unchanged.

@@ -2,7 +2,7 @@
 
 ## Start with the requested work
 
-Read `README.md` for the current product status. For implementation, bug fixes, financial logic or architecture changes, read the relevant sections of `IMPLEMENTATION_PLAN.md` before editing. For participation, award selection or refunds, also read `docs/decisions/0001-open-participation-and-cancellation.md`.
+Read `README.md` for the current product status. For implementation, bug fixes, financial logic or architecture changes, read the relevant sections of `IMPLEMENTATION_PLAN.md` and `docs/phases/README.md`, then the numbered phase file before editing. The phase plan is a review draft until the user approves it; proposed refinements must be reconciled with the architecture before execution. For participation, award selection or refunds, also read `docs/decisions/0001-open-participation-and-cancellation.md`.
 
 The user's current request defines scope. The plan is a reference, not permission to execute all phases, publish changes or operate accounts. Implement authorized work without repeatedly seeking approval for routine choices within the agreed design. Discuss material changes to product policy or financial guarantees before implementing them.
 
@@ -23,6 +23,9 @@ GitPay/
 ├── .editorconfig                   # Shared whitespace conventions
 ├── .github/pull_request_template.md
 ├── docs/decisions/0001-open-participation-and-cancellation.md
+├── docs/phases/README.md           # MVP scope, review decisions and phase index
+├── docs/phases/review-todo.md      # Pre-build plan remediation checklist
+├── docs/phases/00.md … 12.md        # Detailed tasks and gates; review draft
 ├── packages/server/README.md        # Ownership placeholder; no runtime yet
 ├── packages/web/README.md           # Ownership placeholder; no runtime yet
 └── postman/README.md                # Collection placeholder; no collection yet
@@ -61,4 +64,4 @@ Use TypeScript strict and boundary validation as specified in the plan. Keep bus
 
 Once Phase 0 creates scripts, run relevant tests and the phase checks (`pnpm typecheck`, `pnpm lint`, `pnpm test`). Money/authorization changes need meaningful negative, concurrency and idempotency cases. Report actual command results, mocked versus real integrations, and any unavailable sandbox verification. Documentation-only work needs path/link/consistency checks, not invented product tests.
 
-Mark a phase complete only when its definition of done is evidenced. Update phase status in the plan. Commit, push, create PRs or deploy only within the user's requested scope.
+Mark a phase complete only when its definition of done is evidenced. Update task/phase status in the numbered phase file and keep the phase index accurate; do not duplicate progress in the architecture document. Evidence goes under `docs/evidence/` during implementation; update this map when that directory is created. Commit, push, create PRs or deploy only within the user's requested scope.

@@ -85,7 +85,7 @@ git clone https://github.com/Me-cha/GitPay.git
 cd GitPay
 ```
 
-Read [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the implementation sequence and [AGENTS.md](AGENTS.md) for repository instructions. Phase 0 creates the executable workspace, dependencies, database setup and checks. There is currently no `package.json`, install command, dev server or test suite to run.
+Start with [the phased MVP review plan](docs/phases/README.md) and [Phase 00](docs/phases/00.md). Read [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the architecture and [AGENTS.md](AGENTS.md) for repository instructions. Phase 0 creates the executable workspace, dependencies, database setup and checks. There is currently no `package.json`, install command, dev server or test suite to run.
 
 The tracked [.env.example](.env.example) lists planned configuration. When implementing Phase 0, copy it to `.env`, fill in credentials locally, and implement validation before using it. Empty credentials and the model field are intentional. Do not paste secrets into issues, PRs or agent instructions.
 
@@ -100,6 +100,8 @@ External setup will require a GitHub App and demo repository, PayPal sandbox acc
 | [AGENTS.md](AGENTS.md) | Codex instructions and current folder map |
 | [Agent.md](Agent.md) | Pointer to `AGENTS.md` |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution and verification expectations |
+| [docs/phases/](docs/phases/) | Detailed MVP review plan: phases 00–12, task contracts and exit gates |
+| [docs/phases/review-todo.md](docs/phases/review-todo.md) | Pre-build remediation checklist for the reviewed plan |
 | [docs/decisions/](docs/decisions/) | Product and architecture decisions with reasoning |
 | [packages/server/](packages/server/) | Planned API, workers and payment domain; documentation placeholder |
 | [packages/web/](packages/web/) | Planned optional dashboard; documentation placeholder |

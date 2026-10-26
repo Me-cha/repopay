@@ -9,7 +9,7 @@ Hackathon target: PayPal "Build What's Next with PayPal and AI". The inherited s
 
 Development uses **Codex** and [AGENTS.md](AGENTS.md). The runtime verifier remains Claude via the Anthropic API as selected in v3. Changing the coding assistant does not change the application's model provider.
 
-Revision v4 incorporates open participation, exceptional cancellation review, persistent contributor awards and the GitPay name. See [the cancellation decision](docs/decisions/0001-open-participation-and-cancellation.md) for reasons and tradeoffs.
+Revision v4 incorporates open participation, exceptional cancellation review, persistent contributor awards and the GitPay name. The pre-build review remediation recorded in [the phase review TODO](docs/phases/review-todo.md) is now part of this canonical plan: the master architecture, schema sketch, state machines and phase contracts must agree before Phase 00 starts. See [the cancellation decision](docs/decisions/0001-open-participation-and-cancellation.md) for reasons and tradeoffs.
 
 ---
 
@@ -27,7 +27,7 @@ Revision v4 incorporates open participation, exceptional cancellation review, pe
   - let LLM output trigger a payout without passing `policy.decide()` or an explicit maintainer confirmation
   - let a label, a comment or a link alone move money (money moves only after an authenticated, permission-checked confirmation or the deterministic policy path)
 - For PayPal SDK and API questions use the **APIMatic Context Plugin** MCP server if installed, otherwise developer.paypal.com. Do not guess endpoint shapes or enum values. Where this plan names provider enums, verify them against current docs and adjust the mapping tables, not the state machine.
-- Validate configuration with zod. Required variables are listed in section 7 and `.env.example`; there are no hidden runtime defaults. Document conditional requirements, including cancellation reviewers and the optional AG Grid license.
+- Validate configuration with zod. Required variables are listed in section 7 and `.env.example`; there are no hidden runtime defaults. Document conditional requirements, including cancellation reviewers.
 - TypeScript `strict: true`. No `any`. Validate every external payload with zod at the boundary.
 
 ---
@@ -92,9 +92,9 @@ The only web pages built: **confirm pages** for money actions, the **funding ret
 
 ### 1.5 Scope
 
-In scope: create draft, fund, freely competing submissions, unfunded cancellation, exceptional funded cancellation requests and operator review, verify, auto-pay on qualifying merge, NEEDS_REVIEW approve/reject, link PR, retry verification, AWAITING_CLAIM with persistent awards, status reconciliation, read-only dashboard. Funded refunds remain disabled until the complete exception flow passes Phase 7.
+In scope: create draft, fund, freely competing submissions, unfunded cancellation, exceptional funded cancellation requests and operator review, verify, auto-pay on qualifying merge, NEEDS_REVIEW approve/reject, link PR, retry verification, AWAITING_CLAIM with persistent awards, status reconciliation, read-only dashboard. Funded refunds remain disabled until the complete exception flow passes Phase 08.
 
-Deferred to stretch (section 11, Phase 11): partial awards and remainder refunds, a generic recover endpoint, multiple concurrent funding attempts, editing a funded amount.
+Deferred to stretch (section 11, post-MVP): partial awards and remainder refunds, a generic recover endpoint, multiple concurrent funding attempts, editing a funded amount.
 
 Non-goals: live money, KYC, tax forms, currencies other than USD, GitLab/Bitbucket, non-code deliverables, third-party funders.
 
@@ -107,7 +107,7 @@ Non-goals: live money, KYC, tax forms, currencies other than USD, GitLab/Bitbuck
 - A credible qualifying submission blocks ordinary cancellation while its claim is unresolved, including before merge. This protects the reward without making that contributor the winner. Closing/rejecting a PR, removing labels or editing comments does not erase saved evidence.
 - The operator may dismiss empty, irrelevant or abusive submissions with recorded reasons; merely opening a PR does not create an unlimited veto. AI error, uncertainty or a negative score alone does not justify a refund.
 - AI collects evidence; an independent operator approves/denies exceptions. The operator must be authorized, have access to the evidence and be neither requester, funder nor claimant. This is a real operational responsibility, not a capability supplied by the model.
-- The proposed MVP notice duration is **72 hours**, explicitly configured and published before funding. Silence never approves a refund. During review, submissions and merge processing continue; new material evidence invalidates any unexecuted approval.
+- The MVP notice duration is **72 hours**, explicitly configured and published before funding. Silence never approves a refund. During review, submissions and merge processing continue; new material evidence invalidates any unexecuted approval.
 - A committed award survives missing payment details, failed/returned payouts and missing contributor response. AWAITING_CLAIM, PAYING and PAID cannot be cancelled by the maintainer.
 - Loss of GitHub visibility freezes refund authorization. Reconcile open/closed PRs and payment operations before refunding. The app cannot force merges, prevent off-platform copying, or atomically lock GitHub and PayPal together.
 - An unresolved dispute remains held with a named reviewer and next update date. There is no timeout that automatically awards a refund. If no independent operator is available, funded cancellations are unavailable.
@@ -183,7 +183,7 @@ Design rules:
 - Confirm **Payouts** is enabled in app features. #1 blocker. `pnpm preflight` verifies it.
 - Sandbox accounts: 1 Business (platform: receives funding, sends payouts and refunds; large balance), 1 Personal `maintainer` (funds), 1 Personal `contributor` (receives).
 - Sandbox webhook to `${PUBLIC_URL}/webhooks/paypal`, events:
-  `CHECKOUT.ORDER.APPROVED`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED`, `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.REFUNDED`,
+  `CHECKOUT.ORDER.APPROVED`, `CHECKOUT.PAYMENT-APPROVAL.REVERSED`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED`, `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.REFUNDED`,
   `PAYMENT.PAYOUTSBATCH.SUCCESS`, `PAYMENT.PAYOUTSBATCH.DENIED`, `PAYMENT.PAYOUTSBATCH.PROCESSING`,
   `PAYMENT.PAYOUTS-ITEM.SUCCEEDED`, `PAYMENT.PAYOUTS-ITEM.UNCLAIMED`, `PAYMENT.PAYOUTS-ITEM.FAILED`, `PAYMENT.PAYOUTS-ITEM.RETURNED`, `PAYMENT.PAYOUTS-ITEM.BLOCKED`, `PAYMENT.PAYOUTS-ITEM.HELD`, `PAYMENT.PAYOUTS-ITEM.DENIED`, `PAYMENT.PAYOUTS-ITEM.CANCELED`, `PAYMENT.PAYOUTS-ITEM.REFUNDED`.
   Copy the webhook id. Webhook payloads are triggers only; state is always re-read from the API (section 9.2).
@@ -191,7 +191,6 @@ Design rules:
 ### 3.3 Other
 - Anthropic API key.
 - smee.io for local GitHub webhooks. PayPal cannot reach localhost: dev uses polling fallbacks.
-- Optional AG Grid Enterprise license (watermark without).
 - Optional APIMatic Context Plugin/MCP in Codex if available; otherwise use official PayPal documentation. Do not assume any integration is installed.
 
 ---
@@ -210,7 +209,7 @@ Hidden marker `<!-- gitpay:bounty:{id} -->`. Always shows amount, state, linked 
 | NEEDS_REVIEW | reason + AI summary · `/bounty approve` · `/bounty reject <reason>` · `/bounty cancel <reason>` (request only; unresolved claims block refund) |
 | AWAITING_CLAIM | "Award committed: @alice connect PayPal to receive $50.00: **[Connect]**" · `/bounty status`; no cancellation |
 | PAYING | per-recipient status · `/bounty status` |
-| PAID | receipt: recipients and amounts |
+| PAID | receipt: recipients and amounts; a later verified return/reversal shows attention and delivery history without erasing the award |
 | REFUNDING | refund status · `/bounty status` |
 | CANCELLED | "Cancelled" (+ "refunded $50.00" if captured) |
 
@@ -255,13 +254,13 @@ Unauthorized or invalid-state commands get a short reply explaining why and what
 | HTTP | Express 5 |
 | GitHub | `@octokit/app`, `octokit.graphql` |
 | PayPal | `@paypal/paypal-server-sdk` for Orders/Payments if it fits; plain `fetch` client for Payouts, webhook verification and gaps |
-| LLM | `@anthropic-ai/sdk`, forced tool use, temperature 0 |
+| LLM | `@anthropic-ai/sdk`, forced tool use with a Phase-00-verified capability profile; model parameters are not assumed universally |
 | DB | Postgres 16, `drizzle-orm` + `drizzle-kit`, `pg` |
 | Validation | `zod` |
 | Crypto | Node `crypto` (AES-256-GCM for stored OAuth tokens, HMAC for state, SHA-256 for token hashes) |
 | Logging | `pino` with redaction |
 | Tests | `vitest`, `nock` or `msw`, `fast-check` for property tests |
-| Web | Vite + React + `ag-grid-react` + `ag-grid-enterprise` (dashboard only); confirm/connect/fund pages are server-rendered HTML |
+| Web | Vite + React + `ag-grid-react` Community (read-only dashboard only); confirm/connect/fund pages are server-rendered HTML |
 | Local infra | `docker compose` (Postgres), `smee-client` |
 | Deploy | Render (web service + Postgres; worker inline or separate) |
 
@@ -277,8 +276,9 @@ GitPay/
 ├─ CONTRIBUTING.md  LICENSE (MIT)  .gitignore  .gitattributes  .editorconfig  .env.example
 ├─ .github/pull_request_template.md
 ├─ docs/decisions/0001-open-participation-and-cancellation.md
+├─ docs/phases/{README.md,review-todo.md,00.md,...,12.md} (review draft; task source of truth)
 ├─ render.yaml  docker-compose.yml (Phase 0/deployment, not present yet)
-├─ postman/README.md  gitpay.postman_collection.json (Phase 10)
+├─ postman/README.md  gitpay.postman_collection.json (Phase 12)
 ├─ packages/
 │  ├─ server/src/
 │  │  ├─ main.ts  worker.ts  env.ts  log.ts
@@ -290,7 +290,7 @@ GitPay/
 │  │  ├─ verifier/{collect.ts,prompt.ts,schema.ts,verify.ts}
 │  │  ├─ policy/{decide.ts,allocate.ts}
 │  │  ├─ settlement/{settle.ts,payout.ts,claims.ts,refund.ts}
-│  │  ├─ http/{routes.ts,confirm.ts,fund.ts,connect.ts,auth.ts,session.ts,api.ts,sse.ts,ask.ts}
+│  │  ├─ http/{routes.ts,confirm.ts,fund.ts,connect.ts,auth.ts,session.ts,api.ts,sse.ts}
 │  │  └─ util/{money.ts,crypto.ts,parse.ts}
 │  ├─ server/test/{unit/,integration/,fixtures/}
 │  ├─ server/scripts/{preflight.ts,demo-seed.ts,eval-verifier.ts}
@@ -304,14 +304,15 @@ All business actions live in `actions/`. Comment commands, confirm POSTs and pol
 
 ## 7. Environment
 
-Boot fails clearly on missing/invalid required values. `.env.example` is the configuration template, not working credentials. `VITE_AG_GRID_LICENSE` is optional; `CANCELLATION_OPERATOR_GH_IDS` may be empty only when funded cancellation is disabled. Validate the notice period as positive and record it with funded terms. Runtime config validation is a Phase 0 deliverable.
+Boot fails clearly on missing/invalid required values. `.env.example` is the configuration template, not working credentials. `CANCELLATION_OPERATOR_GH_IDS` may be empty only when funded cancellation is disabled. Validate the notice period as positive and record it with funded terms. Runtime config validation is a Phase 0 deliverable.
 
 | Var | Notes |
 |---|---|
-| `NODE_ENV`, `PORT`, `PUBLIC_URL`, `DATABASE_URL` | |
+| `NODE_ENV`, `PORT`, `PUBLIC_URL`, `DATABASE_URL`, `TEST_DATABASE_URL` | Separate test database is mandatory for destructive fixture resets |
 | `WORKER_MODE` | `inline` or `separate` |
 | `SESSION_SECRET` | 32+ bytes; HMAC for OAuth state and CSRF |
 | `TOKEN_ENC_KEY` | 32 bytes base64; AES-256-GCM key for stored GitHub user tokens |
+| `PAYMENT_DATA_ENC_KEY` | 32 bytes base64; AES-256-GCM key for contributor destinations and payout snapshots |
 | `ACTION_TOKEN_TTL_SEC` | e.g. `900` |
 | `GH_APP_ID`, `GH_APP_SLUG`, `GH_PRIVATE_KEY`, `GH_WEBHOOK_SECRET`, `GH_CLIENT_ID`, `GH_CLIENT_SECRET` | |
 | `PP_BASE` | must equal `https://api-m.sandbox.paypal.com` |
@@ -324,10 +325,16 @@ Boot fails clearly on missing/invalid required values. `.env.example` is the con
 | `MAX_DIFF_CHARS` | e.g. `160000` |
 | `POLL_INTERVAL_MS` | e.g. `5000`; orders, payouts, refunds |
 | `JOB_LEASE_SEC` | e.g. `120` |
-| `FUNDED_CANCELLATION_ENABLED` | `false` until Phase 7 passes; false means no funded cancellation/refund authorization |
+| `PROVIDER_TIMEOUT_MS` | e.g. `10000`; bounded GitHub/PayPal/Anthropic request timeout |
+| `WEBHOOK_BODY_MAX_BYTES` | e.g. `1048576`; reject oversized raw webhook bodies before parsing |
+| `RECONCILIATION_INTERVAL_SEC` | e.g. `60`; scheduler interval |
+| `RECONCILIATION_PAGE_LIMIT` | e.g. `100`; bounded GitHub/provider pages per scan |
+| `RECONCILIATION_RATE_PER_MIN` | e.g. `30`; scan/action rate limit |
+| `RECONCILIATION_MAX_ATTEMPTS` | e.g. `10`; scan retry ceiling before attention |
+| `SSE_HEARTBEAT_SEC` | e.g. `30`; connection keepalive |
+| `FUNDED_CANCELLATION_ENABLED` | `false` until Phase 08 passes; false means no funded cancellation/refund authorization |
 | `CANCELLATION_OPERATOR_GH_IDS` | comma-separated stable GitHub IDs; nonempty when enabled; conflict checks still required |
-| `CANCELLATION_NOTICE_HOURS` | proposed `72`; snapshot per funded bounty |
-| `VITE_AG_GRID_LICENSE` | optional |
+| `CANCELLATION_NOTICE_HOURS` | `72`; snapshot per funded bounty |
 
 ---
 
@@ -355,13 +362,14 @@ create table bounties (
   version int not null default 0,
   created_by_gh_id bigint not null,
   created_via text not null,                   -- 'label' | 'command'
-  order_id text unique,                        -- current PayPal order (one attempt at a time)
-  order_request_key text unique,
-  capture_request_key text unique,
-  capture_id text unique,
+  current_funding_attempt_id bigint,           -- FK to funding_attempts; current projection only
+  order_id text unique,                        -- current PayPal order projection
+  order_request_key text unique,               -- current attempt projection
+  capture_request_key text unique,              -- current attempt projection
+  capture_id text unique,                      -- current attempt projection
   payer_email_masked text,                     -- e.g. m***@example.com, for confirm pages only
   funded_at timestamptz,
-  funded_terms jsonb,                          -- immutable criteria, amount, policy version, notice hours
+  funded_terms jsonb,                          -- immutable criteria, amount, full policy config snapshot, notice hours
   evidence_version int not null default 0,     -- increment on new material PR/evidence
   consideration_pr_number int,                -- persisted selection under assessment
   consideration_head_sha text,
@@ -407,7 +415,8 @@ create table verifications (
 create table contributors (
   gh_id bigint primary key,
   gh_login text not null,
-  paypal_email text not null,                  -- sandbox: plaintext; production note: encrypt at rest
+  paypal_email_enc bytea not null,             -- AES-256-GCM payload; never plaintext
+  paypal_email_key_version text not null,
   connected_at timestamptz not null default now()
 );
 
@@ -433,22 +442,38 @@ create table submission_evidence (
   pr_id bigint not null,
   pr_number int not null,
   head_sha text not null,
+  evidence_version int not null,
   merged_at timestamptz,
   observed_at timestamptz not null default now(),
   snapshot jsonb not null,                    -- criteria/patch/check/link evidence; access scoped, redacted
+  snapshot_sha256 text not null,
   assessment text not null,                  -- pending | qualifying | disputed | dismissed
   assessment_reason text,
   assessed_by_gh_id bigint,
-  unique (bounty_id, pr_id, head_sha)
+  unique (bounty_id, pr_id, head_sha, evidence_version)
+);
+
+create table submission_assessment_history (
+  id bigserial primary key,
+  submission_evidence_id bigint not null references submission_evidence(id),
+  assessment text not null,
+  reason text not null,
+  assessed_by_gh_id bigint,
+  created_at timestamptz not null default now()
 );
 
 create table cancellation_requests (
   id bigserial primary key,
   bounty_id bigint not null references bounties(id),
   requested_by_gh_id bigint not null,
+  funder_gh_id bigint not null,
+  claimant_gh_ids jsonb not null default '[]',
+  base_status text not null,
+  base_version int not null,
   reason_category text not null,
   reason text not null,
   evidence jsonb not null,
+  evidence_bundle_sha256 text not null,
   evidence_version int not null,
   status text not null,                       -- NOTICE | REVIEW | APPROVED | DENIED | SUPERSEDED | EXECUTING | COMPLETED
   notice_ends_at timestamptz not null,
@@ -468,6 +493,9 @@ create table payouts (
   decision_id bigint not null references decisions(id),
   gh_id bigint not null,
   amount_cents int not null check (amount_cents > 0),
+  destination_enc bytea not null,              -- encrypted immutable destination snapshot
+  destination_key_version text not null,
+  destination_snapshot_at timestamptz not null,
   sender_batch_id text not null,
   sender_item_id text not null unique,
   payout_batch_id text,
@@ -482,18 +510,22 @@ create table payouts (
 
 create table refunds (
   id bigserial primary key,
-  cancellation_request_id bigint not null unique references cancellation_requests(id),
+  cancellation_request_id bigint not null references cancellation_requests(id),
   bounty_id bigint not null references bounties(id),
   capture_id text not null,
   amount_cents int not null check (amount_cents > 0),
   request_key text not null unique,
   provider_refund_id text unique,
-  local_status text not null,                  -- CREATED | SUBMITTED | SETTLED_OK | SETTLED_FAIL | IN_FLIGHT
+  local_status text not null,                  -- RESERVED | ABORTED_UNSENT | MAY_HAVE_SUBMITTED | IN_FLIGHT | SETTLED_OK | SETTLED_FAIL
+  submission_boundary_at timestamptz,
   provider_status text,
   last_error text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+create unique index one_active_refund_intent
+  on refunds (cancellation_request_id)
+  where local_status in ('RESERVED', 'MAY_HAVE_SUBMITTED', 'IN_FLIGHT');
 
 create table bounty_activity (
   id bigserial primary key,
@@ -552,12 +584,35 @@ create table jobs (
   attempts int not null default 0,
   max_attempts int not null,
   run_after timestamptz not null default now(),
+  lease_owner text,
+  lease_token text,
+  lease_heartbeat_at timestamptz,
   locked_until timestamptz,
   last_error text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 create index on jobs (status, run_after);
+
+create table funding_attempts (
+  id bigserial primary key,
+  bounty_id bigint not null references bounties(id),
+  attempt_number int not null check (attempt_number > 0),
+  actor_gh_id bigint not null,
+  terms_hash text not null,
+  amount_cents int not null check (amount_cents > 0),
+  currency text not null,
+  terms jsonb not null,
+  order_request_key text not null unique,
+  capture_request_key text unique,
+  order_id text unique,
+  capture_id text unique,
+  payer_email_masked text,
+  local_status text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (bounty_id, attempt_number)
+);
 
 create table deliveries (
   source text not null,                        -- 'github' | 'paypal'
@@ -571,13 +626,16 @@ Rules:
 - Identity is `gh_id` and `repo_id`, never login or repo name.
 - Lock the bounty row (`select ... for update`) before creating any order, capture, refund, decision or payout.
 - One active bounty per issue (partial unique index). A cancelled bounty can be recreated as a new row.
-- Snapshot funded terms at funding confirmation and bind them to the order/capture. Use these terms during verification and cancellation review; store later clarifications separately.
-- Persist funder identity with the funding action/activity; conflict checks include requester, funding actor, bounty creator and all claimant identities. All reviewers need explicit operator authorization and access to this repository's evidence.
+- Snapshot funded terms at funding confirmation and bind them to the order/capture. The snapshot includes CI requirement semantics, confidence/share thresholds, evidence limits, selection rule, cancellation terms and notice duration. Use these terms during verification and cancellation review; store later clarifications separately.
+- Persist funder identity with the funding action/activity and snapshot it on a cancellation request; conflict checks include requester, funding actor, bounty creator and all claimant identities. All reviewers need explicit operator authorization and access to this repository's evidence.
 - A `pay` decision reserves the full award once. Enforce `paid principal + unpaid committed award + reserved/confirmed refunds <= confirmed captured principal` in shared transactional guards under the bounty lock. Count in-flight payouts inside the unpaid award, and an in-flight refund inside its refund reservation, exactly once. No `void` decision or payout failure frees a committed award for refund.
 - Submission evidence is retained when a PR/comment/label changes or disappears. Keep assessment history in activity; maintainer rejection does not dismiss evidence for cancellation review.
 - Increment evidence and bounty versions when new material evidence arrives; invalidate pending refund approvals and reviewer tokens. An approved cancellation with no submitted refund can be superseded by a valid claim/award.
-- The initial SQL is a design sketch: Phase 0 migrations must add constrained status enums/checks, relevant indexes and validate all allocation invariants. Partial remainder refunds are outside this MVP schema.
-- One funding attempt at a time: `/bounty fund` on an OPEN bounty whose order was never approved replaces `order_id`/`order_request_key`. Captures are only executed for the bounty's current `order_id` while the bounty is in CAPTURING.
+- The SQL is a design sketch: migrations in the owning implementation phases must add constrained status enums/checks, relevant indexes and validate all allocation invariants. Phase 00 creates the migration foundation, not every product table. Partial remainder refunds are outside this MVP schema.
+- Funding history is append-only in `funding_attempts`; only one unresolved attempt may be active for a bounty. A new attempt can be created only after the prior attempt is resolved, and captures are bound to the stored attempt ID/order ID rather than replacing history.
+- Job completion and heartbeat updates must match both `lease_owner` and `lease_token`; expiry alone never authorizes an old worker to write a result.
+- `submission_evidence` snapshots are append-only by evidence version. Assessment changes are recorded in `submission_assessment_history`; closing, rejecting or losing access never deletes a snapshot.
+- Payout rows contain an encrypted immutable destination snapshot. Updating a contributor changes only future unsubmitted intents.
 
 ---
 
@@ -597,6 +655,7 @@ NEEDS_REVIEW ──approve (confirm)──▶ PAYING or AWAITING_CLAIM
 NEEDS_REVIEW ──reject──▶ FUNDED (reconsider other merged linked PRs)
 AWAITING_CLAIM ──all payees connected──▶ PAYING
 PAYING ──all items SETTLED_OK──▶ PAID
+PAID ──verified item return/reversal──▶ PAYING (+attention; award remains committed)
 
 FUNDED | NEEDS_REVIEW ──approved exception + fresh guards──▶ REFUNDING ──refund SETTLED_OK──▶ CANCELLED
 ```
@@ -607,16 +666,16 @@ Notes:
 - **AWAITING_CLAIM cannot be cancelled.** A committed pay decision is an award owed to its recipients. Missing payment details or failed/returned transfers never authorize a maintainer refund.
 - **No ordinary funded cancel.** Requests are allowed only from FUNDED/NEEDS_REVIEW with no committed award. No cancellation from CAPTURING, SETTLING, AWAITING_CLAIM, PAYING, REFUNDING or PAID. Request submission does not change the base bounty state or stop merge processing.
 - Failures never erase history. Worker failures set `needs_attention` with a reason; operation ids are kept for reconciliation.
-- A failed refund stays REFUNDING + attention. A non-success payout item keeps PAYING + attention (section 9.2). Never show PAID or CANCELLED until confirmed.
+- A failed refund stays REFUNDING + attention. A non-success payout item keeps PAYING + attention (section 9.2). A later verified return/reversal moves the affected delivery back to PAYING + attention while retaining the original PAID receipt and immutable award. Never show PAID or CANCELLED until the current operation is confirmed.
 - Every transition writes `bounty_activity` and enqueues `sync_bounty` in the same transaction.
 
 ### 9.1a Cancellation request (separate from bounty state)
 
-`NOTICE → REVIEW → APPROVED → EXECUTING → COMPLETED`; review may instead become DENIED. New material evidence moves an unexecuted approval back to REVIEW with refreshed evidence; an award supersedes the request. A fresh notice period is required when the cancellation reason materially changes. No deadline grants automatic approval.
+`NOTICE → REVIEW → APPROVED → EXECUTING → COMPLETED`; review may instead become DENIED or SUPERSEDED. New material evidence moves an unexecuted approval back to REVIEW with refreshed evidence; an award supersedes the request. A fresh notice period is required when the cancellation reason materially changes. No deadline grants automatic approval.
 
 Only an independent, authorized operator can approve after notice has elapsed. Before reserving a refund, refresh GitHub open/closed PRs, stored submissions, pending assessments, repository access and payment state. Under the bounty lock, recheck operator authorization, matching evidence/version, no unresolved qualifying claim, no committed award and available captured principal. Persist one refund intent and request key before the call. The worker revalidates before first submission; unknown provider outcomes remain reserved until reconciled. Never hold a SQL lock across an external API call.
 
-Persist the point at which a provider submission may have started. If new evidence arrives after refund reservation but before a provably unsubmitted call, invalidate the approval, retain the aborted intent in history, release its reservation and restore the prior base state for review/settlement under the same lock. Phase 0/7 must model this aborted-intent state explicitly. If the call may have started, reconcile instead of releasing the reservation. Tests must cover both sides of this boundary.
+Persist the point at which a provider submission may have started. If new evidence arrives after refund reservation but before a provably unsubmitted call, invalidate the approval, retain the aborted intent in history, release its reservation and restore the prior base state for review/settlement under the same lock. Phases 00/08 must model this aborted-intent state explicitly. If the call may have started, reconcile instead of releasing the reservation. Tests must cover both sides of this boundary.
 
 New submissions remain possible during NOTICE/REVIEW. Tell contributors the cancellation status; material work prevents a stale approval executing. Spam does not automatically block forever: the independent reviewer records dismissal reasons. After a refund is already in flight, new evidence requires attention and reconciliation rather than issuing a competing payout.
 
@@ -624,7 +683,7 @@ GitHub and PayPal do not share a transaction. Locks prevent local double spendin
 
 ### 9.2 Provider status mapping (`paypal/status-map.ts`)
 
-Verify the enums below against current PayPal docs (APIMatic plugin) during Phase 0/6/7 and adjust only this file.
+Verify the enums below against current PayPal docs (APIMatic plugin) during Phases 00/06/08 and adjust only this file.
 
 **Payout item `transaction_status` → `payouts.local_status`**
 | Provider | Local | Bounty effect |
@@ -717,24 +776,25 @@ Each action: `(ctx: {actorGhId, source}, input) → Result`. Inside one transact
 | `retryVerification` | FUNDED, NEEDS_REVIEW | next attempt; never changes a committed allocation |
 | `status` | any | reply; enqueue `poll_order`/`poll_payout`/`poll_refund` for in-flight operations |
 
-MVP approve always pays the **full bounty amount**. Partial awards are a stretch (Phase 11).
+MVP approve always pays the **full bounty amount**. Partial awards are a stretch (post-MVP).
 
 Cancellation analysis may summarize original requirements, all submission snapshots and the claimed independent fix. It cannot treat repository text as instructions or execute financial tools. If model output is invalid, evidence is incomplete or a contributor disputes the facts, keep the request in review. Expose the operator review via an authenticated `/a/:token` page; this does not add dashboard mutations.
 
 ### 10.4 `paypal/`
 - `client.ts`: token cache (`POST /v1/oauth2/token`, client credentials), refresh at `expires_in - 60s`; `request()` with timeout, retry on network/5xx/429 with the **same** request key; typed errors with `debug_id`.
 - `orders.ts`:
-  - `createOrder(bounty, requestKey)` → `POST /v2/checkout/orders` with header `PayPal-Request-Id: requestKey`, `intent: CAPTURE`, `purchase_units[0]{reference_id: "bounty-{id}", custom_id: "{id}", amount}`, `payment_source.paypal.experience_context{return_url: /fund/return?b={id}, cancel_url: /fund/cancel?b={id}, user_action: "PAY_NOW", brand_name: "GitPay", shipping_preference: "NO_SHIPPING"}`. Approve URL = link `rel=payer-action`.
+  - `createOrder(attempt, requestKey)` → `POST /v2/checkout/orders` with header `PayPal-Request-Id: requestKey`, `intent: CAPTURE`, `purchase_units[0]{reference_id: "bounty-{id}", custom_id: "{id}", amount{currency_code:"USD",value}}`, `payment_source.paypal.experience_context{return_url: /fund/return?b={bountyId}&a={attemptId}, cancel_url: /fund/cancel?b={bountyId}&a={attemptId}, user_action: "PAY_NOW", brand_name: "GitPay", shipping_preference: "NO_SHIPPING"}`. Approve URL = link `rel=payer-action`. PayPal returns the provider order ID as the `token` query parameter; the server validates that token against the stored attempt before capture.
   - `captureOrder(orderId, requestKey)` → `POST /v2/checkout/orders/{id}/capture` with `PayPal-Request-Id`. On `ORDER_ALREADY_CAPTURED` or unknown outcome → `getOrder` and read `purchase_units[0].payments.captures[0]`.
   - `getOrder(orderId)`.
   - Store masked payer email from the capture response (`payer.email_address`) for confirm pages only.
 - `refunds.ts`: `POST /v2/payments/captures/{capture_id}/refund` with `PayPal-Request-Id = refunds.request_key` and explicit amount; `GET /v2/payments/refunds/{id}` to reconcile.
 - `payouts.ts`:
   - `createPayout(decision)` → `POST /v1/payments/payouts`; `sender_batch_header{sender_batch_id, email_subject, email_message}`; items `{recipient_type: "EMAIL", receiver, amount{value, currency: "USD"}, sender_item_id, note}`.
-  - Idempotency: PayPal rejects a reused `sender_batch_id` (within its dedupe window). Also send `PayPal-Request-Id = sender_batch_id`. **Phase 0 preflight determines empirically** what a duplicate POST returns (original response vs duplicate error) and the reconcile path is coded to that result. If the original response was lost and the duplicate returns an error without the batch id, reconcile from the `PAYMENT.PAYOUTSBATCH.*` webhook (its payload carries both `sender_batch_id` and `payout_batch_id`); in dev without webhooks set attention "payout outcome unknown, check PayPal".
+  - Idempotency: PayPal does not process a duplicate `sender_batch_id` within its documented dedupe window; retry the same operation identity and follow the provider's original-batch link or authoritative read. Also send `PayPal-Request-Id = sender_batch_id` only where the endpoint contract supports it. **Phase 0 preflight records** duplicate POST behavior, retention and recovery lookup; the reconcile path must use that observed endpoint-specific result. If the original response was lost and the duplicate returns an error without the batch id, reconcile from the `PAYMENT.PAYOUTSBATCH.*` webhook or provider read; in dev without webhooks set attention "payout outcome unknown, check PayPal".
   - `getPayoutBatch(id)`, `getPayoutItem(id)`.
-- `webhooks.ts`: verify via `POST /v1/notifications/verify-webhook-signature` (headers `paypal-transmission-id`, `-time`, `-sig`, `paypal-cert-url`, `paypal-auth-algo`, `webhook_id`, event); require `SUCCESS`; dedupe by event id. Events only trigger re-reads:
+- `webhooks.ts`: preserve the exact raw request body and verify via `POST /v1/notifications/verify-webhook-signature` (headers `paypal-transmission-id`, `-time`, `-sig`, `paypal-cert-url`, `paypal-auth-algo`, `webhook_id`, event); require `SUCCESS`; dedupe by event id. Events only trigger re-reads:
   - `CHECKOUT.ORDER.APPROVED` → `orderApproved`
+  - `CHECKOUT.PAYMENT-APPROVAL.REVERSED` → reconcile the stored order and keep it from capture
   - `PAYMENT.CAPTURE.*` → `getOrder` reconcile
   - `PAYMENT.PAYOUTSBATCH.*` → bind `payout_batch_id` by `sender_batch_id` if missing, then `poll_payout`
   - `PAYMENT.PAYOUTS-ITEM.*` → `getPayoutItem`, map status
@@ -748,8 +808,8 @@ Cancellation analysis may summarize original requirements, all submission snapsh
 | funded issue requirements + separately recorded clarifications | saved funded terms + Issues API | 16k chars |
 | PR title, body | Pulls API | 8k chars |
 | diff | `pulls.listFiles` paginated `patch` | `MAX_DIFF_CHARS`; skip lockfiles, `dist/`, `*.min.*`, binaries, generated; truncate largest files first; set `input_truncated` |
-| CI | `checks.listForRef(head_sha)` excluding our check + combined status | `pass` when all completed with success/neutral/skipped |
-| eligible authors | `pulls.listCommits` authors + `Co-authored-by:` resolved to users | exclude bots and the bounty creator |
+| CI | `checks.listForRef(head_sha)` excluding our check + combined status | `pass` only when the funded policy is satisfied and at least one genuine external check succeeds; neutral/skipped-only is not pass |
+| eligible authors | PR author plus GitHub API commit authors with stable IDs; co-author trailers are untrusted hints only | exclude bots and the bounty creator; a trailer alone cannot add a payable recipient |
 
 `schema.ts`:
 ```ts
@@ -760,7 +820,7 @@ export const Verdict = z.object({
   reasoning: z.string().min(1).max(2000),
   unmet_requirements: z.array(z.string().max(300)).max(10),
   splits: z.array(z.object({
-    login: z.string(),
+    gh_id: z.string().min(1),
     share: z.number().min(0).max(1),
     why: z.string().max(300),
   })).max(10),
@@ -780,8 +840,8 @@ Decide:
 - coverage: fraction of the issue's requirements implemented.
 - confidence: your confidence in the verdict. Lower it when the diff is truncated or the issue is vague.
 - unmet_requirements: concrete items from the issue that the diff does not implement.
-- splits: share of credit per author among ELIGIBLE_AUTHORS only, weighted by meaningful contribution
-  to resolving the issue, not by line count. Shares sum to 1.
+- splits: share of credit per stable GitHub ID among the server-provided ELIGIBLE_AUTHORS only,
+  weighted by meaningful contribution to resolving the issue, not by line count. Shares sum to 1.
 
 Signals of a fake fix: tests deleted or skipped, assertions weakened, hardcoded expected outputs,
 changes only to comments or formatting. Treat these as DOES_NOT_RESOLVE.
@@ -789,11 +849,11 @@ changes only to comments or formatting. Treat these as DOES_NOT_RESOLVE.
 Call submit_verdict exactly once.
 ```
 
-`verify.ts`: `tools: [submit_verdict]` with `input_schema` from `Verdict`, `tool_choice: {type: "tool", name: "submit_verdict"}`, `temperature: 0`, `model: env.ANTHROPIC_MODEL`. Zod-parse; retry once; then store `status='error'` and complete the Check Run as neutral "Verifier error, use `/bounty retry`". Store `prompt_sha256`.
+`verify.ts`: `tools: [submit_verdict]` with `input_schema` from `Verdict`, a Phase-00-verified `tool_choice: {type: "tool", name: "submit_verdict"}`, `disable_parallel_tool_use: true`, and only model parameters supported by the recorded capability profile. Do not unconditionally send `temperature: 0`; omit or set parameters according to the selected model's verified contract. Zod-parse; retry once; then store `status='error'` and complete the Check Run as neutral "Verifier error, use `/bounty retry`". Store `prompt_sha256` and the capability-profile version.
 
 ### 10.6 `policy/` (pure, fully unit tested)
 ```ts
-export type Alloc = { ghId: number; login: string; cents: number }[];
+export type Alloc = { ghId: string; login: string; cents: number }[];
 export type Decision =
   | { kind: "pay"; allocation: Alloc; reason: string }
   | { kind: "review"; reason: string; suggested?: Alloc };
@@ -802,28 +862,31 @@ export function decide(i: {
   bountyCents: number;
   verdict: Verdict;
   ci: "pass" | "fail" | "pending" | "none";
-  eligible: Map<string, number>;   // login -> gh_id
+  eligible: Map<string, string>;   // stable gh_id -> canonical login
+  evidence: { truncated: boolean; sufficient: boolean; stale: boolean };
   cfg: { minConfidence: number; ciRequired: boolean; minShare: number };
 }): Decision
 ```
 Rules in order:
-1. `ci === "fail"` → review "CI failing". If `ciRequired && ci !== "pass"` → review "CI not passing".
-2. Filter splits to `eligible`, drop `share < minShare`, renormalize. Empty → review "no eligible authors".
-3. `verdict === "RESOLVES" && confidence >= minConfidence` → pay `allocate(bountyCents, splits)`.
-4. Else → review with `suggested = allocate(bountyCents, splits)` (MVP approve pays the full amount; coverage is shown as information).
+1. If evidence is stale, truncated or insufficient, return review with the corresponding reason.
+2. `ci === "fail"` → review "CI failing". If `ciRequired && ci !== "pass"` → review "CI not passing". A required CI policy also requires a genuine external success, not only neutral/skipped checks.
+3. Filter model splits to server-verified stable IDs, reject duplicate/unknown IDs, drop `share < minShare`, and renormalize. Empty → review "no eligible authors".
+4. `verdict === "RESOLVES" && confidence >= minConfidence` → pay `allocate(bountyCents, splits)`.
+5. Else → review with `suggested = allocate(bountyCents, splits)` (MVP approve pays the full amount; coverage is shown as information).
 
 AI can never raise the amount or add a payee outside `eligible`.
 
 ```ts
-export function allocate(total: number, parts: { id: number; w: number }[]): { id: number; cents: number }[] {
+export function allocate(total: number, parts: { id: string; w: number }[]): { id: string; cents: number }[] {
   const sum = parts.reduce((a, p) => a + p.w, 0);
   if (!(sum > 0) || !Number.isInteger(total) || total <= 0) throw new Error("bad allocation input");
+  if (new Set(parts.map(p => p.id)).size !== parts.length) throw new Error("duplicate allocation identity");
   const rows = parts.map(p => {
     const exact = (total * p.w) / sum;
     return { id: p.id, cents: Math.floor(exact), rem: exact - Math.floor(exact) };
   });
   let left = total - rows.reduce((a, r) => a + r.cents, 0);
-  for (const r of [...rows].sort((a, b) => b.rem - a.rem || a.id - b.id)) {
+  for (const r of [...rows].sort((a, b) => b.rem - a.rem || a.id.localeCompare(b.id))) {
     if (left-- <= 0) break;
     r.cents += 1;
   }
@@ -842,15 +905,15 @@ Property tests (fast-check): sum equals `total`; deterministic; no negatives; ne
   6. pay → create the unique immutable award and supersede any unexecuted cancellation request; if any payee lacks `contributors` row → AWAITING_CLAIM + mention with connect link; else → PAYING + enqueue `submit_payout`. Same transaction.
 - `payout.ts`:
   - `submit_payout`: idempotently insert payout rows (`sender_batch_id = gitpay-b{bountyId}-d{decisionId}`, `sender_item_id = {sender_batch_id}-u{ghId}`, `local_status=CREATED`) **before** the call; call `createPayout`; store ids; SUBMITTED; enqueue `poll_payout`.
-  - `poll_payout`: fetch batch, map items (9.2). All SETTLED_OK → PAID + receipt comment. Any SETTLED_FAIL → attention, stay PAYING. IN_FLIGHT → reschedule after `POLL_INTERVAL_MS` (back off to 1 min after 10 polls).
+  - `poll_payout`: fetch batch, map items (9.2). All SETTLED_OK → PAID + receipt comment. Any SETTLED_FAIL → attention, stay PAYING. A later verified return/reversal changes the affected item to SETTLED_FAIL, moves the bounty back to PAYING + attention and preserves the prior receipt/history; no automatic replacement payout is created. IN_FLIGHT → reschedule after `POLL_INTERVAL_MS` (back off to 1 min after 10 polls).
 - `claims.ts` (`retry_claims`): on contributor connect, for AWAITING_CLAIM bounties whose pay decision includes them: if all payees connected → PAYING + `submit_payout`.
-- `refund.ts`: `submit_refund` only accepts a persisted authorized exception; revalidate before the first call, use the saved request key and reconcile unknown outcomes. `poll_refund`: SETTLED_OK → CANCELLED and request COMPLETED + comment; SETTLED_FAIL → attention, stay REFUNDING. No failure automatically creates a new refund or makes an award refundable.
+  - `refund.ts`: `submit_refund` only accepts a persisted authorized exception; revalidate before the first call, transition `RESERVED → MAY_HAVE_SUBMITTED` at the durable submission boundary, use the saved request key and reconcile unknown outcomes. A proven unsent invalidation becomes `ABORTED_UNSENT` and releases only that reservation. `poll_refund`: SETTLED_OK → CANCELLED and request COMPLETED + comment; SETTLED_FAIL → attention, stay REFUNDING. No failure automatically creates a new refund or makes an award refundable.
 
 ### 10.8 `http/`
 | Route | Purpose |
 |---|---|
 | `POST /webhooks/github` | verify, dedupe, enqueue |
-| `POST /webhooks/paypal` | verify via API, dedupe, enqueue reconcile |
+| `POST /webhooks/paypal` | preserve raw body, verify via API, dedupe, enqueue reconcile |
 | `GET /login`, `GET /oauth/github/callback`, `POST /logout` | session |
 | `GET /a/:token` | confirm page (section 4.4) |
 | `POST /a/:token` | execute action (CSRF + Origin + permission + token + version) |
@@ -861,158 +924,53 @@ Property tests (fast-check): sum equals `total`; deterministic; no negatives; ne
 | `GET /api/bounties` | read-only, scoped to user's installation repos |
 | `GET /api/bounties/:id` | detail incl. activity, verifications, decisions, payouts, refunds |
 | `GET /api/payouts` | read-only, scoped |
-| `GET /api/stream` | SSE of scoped changes |
-| `POST /api/ask` | NL → grid state (view only) |
+| `GET /api/stream` | SSE of scoped invalidation events; the client refetches authoritative DTOs |
 | `GET /healthz` | db ping + version |
 
 Repo scope for `/api/*` is cached per session for 60 s and recomputed from the user token.
 
+SSE uses the durable `bounty_activity.id` as the cursor and PostgreSQL `LISTEN/NOTIFY` only as a wake-up signal. Every notification is scope-checked before delivery; reconnects with a missed cursor perform a full scoped refetch. A separate worker writes activity rows and emits the notification, so live updates do not depend on an in-memory event emitter or on the browser for financial execution.
+
 ### 10.9 Read-only dashboard (`packages/web`, AG Grid)
-- GitHub login; tabs **Bounties**, **Payouts**, **Needs attention**. Every row links to the GitHub issue ("Manage in GitHub"). No mutation controls anywhere.
+- GitHub login; tabs **Bounties**, **Payouts**, **Needs attention**. Every row links to the GitHub issue ("Manage in GitHub"). No mutation controls anywhere. Core tables use AG Grid Community and do not require a license.
 - Bounties grid: repo, issue, amount, status chip, PR, verdict, coverage, confidence bar, payees, funded at, paid at, attention.
 - Features with a purpose:
-  - Row grouping by repo with `sum(amount)` and counts.
-  - Master/detail: AI reasoning, unmet requirements, decision history, payout items, activity timeline.
-  - SSE → `applyTransactionAsync` with cell flash.
-  - Integrated chart: payouts per repo per week.
-  - **Ask bar**: "show partial verdicts over $40 in acme/api" → `POST /api/ask` → Claude returns `{filterModel, sortModel, rowGroupCols, pivotMode}` validated by zod against known column ids → `setFilterModel` / `applyColumnState`. Unknown columns rejected. View only.
-- AG Studio: check AG Grid docs; add as a tab only if it integrates cleanly.
+  - Accessible filter/sort and master/detail: AI reasoning, unmet requirements, decision history, payout items and activity timeline.
+  - SSE invalidation → scoped refetch; browser state never authorizes or executes a financial action.
 - Status readable without color; keyboard accessible.
 
 ---
 
-## 11. Phases
+## 11. Phased MVP execution plan
 
-All phases below are **not started**. Repository documentation/basic files are prepared; this does not complete Phase 0. Each completed phase must record evidence and remaining external blockers here.
+The detailed execution breakdown is now in [docs/phases/README.md](docs/phases/README.md), with numbered files `00.md` through `12.md`. **It is a draft for user review, not implementation approval.** Product policy remains defined here and in ADR 0001; the phase overview records the reconciled pre-build refinements. Once the user approves the review draft, implement phase-by-phase without silently choosing between conflicting contracts.
 
-### Phase 0: scaffold and preflight
-Tasks
-- Workspace, tsconfig strict, eslint, prettier, vitest, docker-compose, `.env.example`, MIT LICENSE.
-- `env.ts`, `log.ts` (redaction), drizzle schema + migration from section 8.
-- `scripts/preflight.ts`, each step PASS/FAIL with reason:
-  1. env valid, `PP_BASE` is sandbox
-  2. DB connected, migrations current
-  3. GitHub App JWT (`GET /app`)
-  4. PayPal token
-  5. $1.00 test payout to sandbox contributor email, poll until terminal; print raw `transaction_status`
-  6. **Idempotency probe:** repeat the same payout POST with the same `sender_batch_id` and `PayPal-Request-Id`; print exactly what PayPal returns. Record the result in `paypal/status-map.ts` comments and README.
-  7. Anthropic forced tool call on a trivial schema
-DoD
-- All PASS with real sandbox credentials. Idempotency behavior documented.
+| Phase | Outcome |
+| --- | --- |
+| [00](docs/phases/00.md) | Foundation, local checks and provider feasibility |
+| [01](docs/phases/01.md) | GitHub App, durable jobs/events and draft bounties |
+| [02](docs/phases/02.md) | Authentication and confirmation pages |
+| [03](docs/phases/03.md) | Funding, terms and capture |
+| [04](docs/phases/04.md) | Contributor connection |
+| [05](docs/phases/05.md) | Open submissions, evidence, CI and AI verification |
+| [06](docs/phases/06.md) | Award selection, payouts and claim resumption |
+| [07](docs/phases/07.md) | Maintainer approval/rejection |
+| [08](docs/phases/08.md) | Exceptional cancellation and guarded refunds |
+| [09](docs/phases/09.md) | Read-only visibility and user journeys |
+| [10](docs/phases/10.md) | Recovery, reconciliation and release hardening |
+| [11](docs/phases/11.md) | Deployment and hosted sandbox validation |
+| [12](docs/phases/12.md) | MVP acceptance, documentation and demo |
 
-### Phase 1: GitHub plumbing and draft bounties
-Tasks
-- `github/app.ts`, webhook route, deliveries dedupe, jobs runner with leases (`WORKER_MODE=inline`).
-- Installation handlers.
-- `labels.ts`, `commands.ts` parser (grammar in 4.2), `permissions.commentAuthorCanWrite`.
-- `actions/createDraft`, `actions/status`, `sync_bounty` with status comment (4.1) and badge labels.
-- Command replies for unauthorized/invalid-state attempts.
-DoD
-- Label `bounty:$50` or `/bounty create 50` creates exactly one OPEN bounty and one status comment, even with redelivered webhooks.
-- Non-writer label/command ignored with a reply. Second label on the same issue does not change the amount.
-- Removing/renaming labels changes nothing in DB.
-- Unit tests: amount parsing (valid, cents, over cap, garbage), command grammar (quoted, code block, edited, bot author).
+Every phase contains prerequisites, task IDs, primary files, interface contracts, acceptance cases, verification commands, an end-to-end walkthrough, exit gates and required evidence. Update progress in the phase files; do not maintain a second task checklist here. All phases are not started.
 
-### Phase 2: sessions and confirm pages
-Tasks
-- `oauth.ts`, `sessions`, `oauth_states`, token encryption, refresh handling, `/login`, `/logout`.
-- `action_tokens`, `/a/:token` GET/POST, CSRF + Origin checks, `permissions.userCanWrite`.
-- First confirm action: `cancel` for OPEN bounties.
-DoD
-- `/bounty cancel` on OPEN → reply with confirm link → login → confirm → CANCELLED, comment updated.
-- Reused, expired, stale-version or tampered tokens rejected with an explanation. A user without write+ cannot confirm.
-- Tampered/expired/replayed OAuth state rejected; `return_to` restricted to local paths.
+Implementation priority is risk-first within the dependency graph: prove the local/provider foundation and the GitHub → funding → verification → award path before dashboard polish, then complete review, cancellation, recovery, hosted validation and final acceptance. This is a sequencing tactic only; the complete MVP still requires every phase gate and W01–W16 evidence.
 
-### Phase 3: funding (Orders) and refund transport
-Tasks
-- `paypal/client.ts`, `orders.ts`, `refunds.ts`, `webhooks.ts`, `status-map.ts`.
-- `issueFundToken`, `startFunding`, `create_order`, `/fund/return`, `/fund/cancel`, `orderApproved`, `capture_order`, `poll_order` (dev fallback), `captureResult`.
-- Implement refund transport with mocked authorization contracts, but keep funded refunds disabled until Phase 7. Capture immutable funded terms and notice duration. No maintainer direct-refund path.
-DoD
-- Fund link → PayPal sandbox payment → FUNDED within ~10 s; comment and badge updated.
-- Double return/webhook captures once (one capture id).
-- Abandoned checkout leaves OPEN; `/bounty fund` gives a fresh working link.
-- Cancelling OPEN while an order is approved-but-uncaptured never captures.
-- Mocked authorized refund transport is idempotent; a funded cancellation command cannot enqueue a refund. CANCELLED is shown only after confirmed refund completion once Phase 7 enables the exception flow.
+### Post-MVP candidates
 
-### Phase 4: contributor connect
-Tasks
-- `/connect` (GitHub login, PayPal email form), `contributors` upsert, `retry_claims`. Link from status comments.
-DoD
-- Contributor connects; row keyed by `gh_id`; email absent from logs, comments and check runs.
-
-### Phase 5: linking, verification and Check Runs
-Tasks
-- `linking.ts`, `verifier/*`, `checks.ts`, `actions/linkPr`, `actions/retryVerification`, `check_run.rerequested`.
-- On FUNDED: verify open linked PRs; settle already-merged linked PRs.
-- Demo repo scenarios: (1) real fix → RESOLVES, (2) half fix → PARTIAL, (3) skipped failing test → DOES_NOT_RESOLVE, (4) prompt injection in PR body on unrelated change → DOES_NOT_RESOLVE.
-- `pnpm eval:verifier`: 4 scenarios × 3 runs, verdict table.
-DoD
-- PR with `Fixes #N` on a funded issue → completed Check Run in ~30 s.
-- PR opened before funding gets verified when funding completes.
-- New commit → new verification for new SHA; history kept. `/bounty retry` creates attempt 2.
-- Eval 4/4 on all runs.
-
-### Phase 6: policy, settlement and payouts
-Tasks
-- `policy/*` with unit + property tests; `settlement/settle.ts`, `payout.ts`, `claims.ts`; payout webhooks; receipt and attention comments.
-DoD
-- Merge of scenario 1 → contributor sandbox account paid; comments show "💸 Paid".
-- Redelivered merge webhook / re-run `settle_pr` → no second payout (DB rows and PayPal batches both checked).
-- Unconnected contributor → AWAITING_CLAIM → connect → payout fires.
-- Scenario 2 merge → NEEDS_REVIEW with suggested split.
-- Simulated crash after payout POST (kill worker) → recovery reconciles, no new batch.
-- Non-SUCCESS items never produce PAID.
-
-### Phase 7: review commands
-Tasks
-- `issueApproveToken`/`approve`, `reject` (+ reconsideration); independent cancellation review, saved evidence, notice, notifications, operator conflict checks, stale-approval invalidation, reconciliation and guarded refunds (sections 1.6/9.1a).
-- Operator receives an authenticated review link and records decision reason and next update; read-only dashboard can show request status. Enable funded cancellation only after all protection tests pass and an independent operator is configured.
-DoD
-- `/bounty approve` on scenario 2 → confirm page shows $50.00 and split → confirm → paid.
-- `/bounty reject reason` → FUNDED; another merged linked PR gets considered.
-- AWAITING_CLAIM cancellation is refused; the award persists through connection failure, payout failure and returned funds.
-- Valid submitted PR → cancellation request → merge: no refund, at most one award, normal payout/claim path.
-- Genuine earlier independent fix with no unresolved submissions: notice + independent approval → one refund; confirmed completion → CANCELLED.
-- Self-approval, requester/funder/claimant conflicts, insufficient notice, silence-only approval, copied fixes, stale tokens and missing repository access all prevent refund authorization.
-- Multiple submissions remain possible; empty PRs do not reserve a bounty or gain permanent veto. Recorded dismissal requires evidence.
-- Delayed webhooks/new material submissions invalidate unexecuted approvals. Local cancellation/settlement races cannot allocate the same funds twice; tests distinguish provider-call uncertainty from SQL locking.
-- If no reviewer is configured, funded cancellation is explicitly unavailable.
-
-### Phase 8: read-only dashboard
-Tasks
-- `/api/*`, SSE, Vite React app, AG Grid features from 10.9, Ask bar.
-DoD
-- Merge flips the row to PAYING then PAID live with cell flash.
-- Ask bar: filter by status, amount range, group by repo, sort by confidence; unknown columns rejected.
-- A user cannot see repos outside their installation access via list, detail or SSE.
-- No mutation endpoint exists under `/api`.
-
-### Phase 9: deploy on Render
-Tasks
-- `render.yaml` (web service + Postgres, `WORKER_MODE=inline` unless a paid worker is used), migrations on deploy, switch GitHub and PayPal webhook URLs.
-- Stretch: Render Workflows `JobRunner` adapter behind a flag.
-DoD
-- Full loop on the Render URL: label → fund → PR → check → merge → paid; and label → fund → request cancellation → notice + independent review → approved refund. Use elapsed-time fixtures for automated tests; never shorten the funded notice period silently in a live demo.
-- `pnpm preflight` passes in production env.
-- No cold start during demo (paid instance or keep-alive; GitHub times out webhooks at 10 s).
-
-### Phase 10: demo kit and submission
-Tasks
-- `scripts/demo-seed.ts`: **GitHub side only** with maintainer and contributor PATs (create issue, add label, push prepared branches, open PRs, merge on cue). Funding, confirms and connect are done by hand in the browser. Fresh issue per run.
-- Postman collection: signed sample GitHub webhooks (HMAC pre-request script), read-only API calls.
-- README: one-liner, GIF, architecture, glue principle and decision record, PayPal APIs used (Orders, capture, refunds, Payouts, Webhooks), AI usage (verifier, splits, Ask bar), sponsor tools (APIMatic Context Plugin with examples, AG Grid features, Render), command reference, security model, setup in 10 steps, sandbox accounts, limitations and production notes (fund custody under PayPal's platform/marketplace model, encrypt contributor emails at rest, partial awards).
-- Repo About: description, topics, MIT license visible.
-- Record and upload the video (section 13).
-DoD
-- Fresh clone + README → working local loop in under 15 minutes.
-- Video under 3:00.
-
-### Phase 11: stretch
-- Partial awards: `/bounty approve 30` with automatic remainder refund after payout success (enforce `paid + reserved + refunded ≤ captured` under the row lock).
-- Agent bounties (Agentic Commerce prize): MCP server with `list_funded_bounties`, `get_bounty`, `connect_status` so coding agents can find funded bounties and open PRs on behalf of their operator.
-- Log in with PayPal on `/connect` (verified email or payer id).
-- AG Studio tab; Render Workflows adapter; `.github/gitpay.yml` policy overrides.
+- Partial awards and remainder refunds, editing funded amounts, concurrent funding attempts and a generic recovery endpoint.
+- Verified PayPal identity connection and additional payment-delivery operations beyond the safe reconciliation workflow.
+- Agent bounty discovery through MCP, AG Studio, advanced dashboard analysis and deployment workflow adapters.
+- Ask bar, charts, pivoting, AG Studio and Enterprise-only features are post-MVP candidates and are not part of the route, package or acceptance contract.
 
 ---
 
@@ -1042,7 +1000,7 @@ DoD
 | 1:10–1:30 | Fake-fix PR from another branch: "Does not resolve: test was skipped". No money moves |
 | 1:30–2:00 | Maintainer merges the real fix. Comment: "💸 Paid $50.00 to @contributor". Cut to sandbox account receiving it |
 | 2:00–2:30 | Second bounty in NEEDS_REVIEW: `/bounty approve` → confirm page with exact split → paid. Show a cancellation request blocked by an existing valid submission; mention reviewed exceptions |
-| 2:30–2:50 | Read-only dashboard: rows flip live, Ask bar "show bounties needing review", expand AI reasoning |
+| 2:30–2:50 | Read-only dashboard: rows flip live, filter attention items, expand AI reasoning |
 | 2:50–3:00 | "GitHub + PayPal + Claude. Glue, not a platform." |
 
 ---

@@ -1,6 +1,6 @@
 # Contributing to GitPay
 
-GitPay is currently a documented design and repository foundation. Read [README.md](README.md), [AGENTS.md](AGENTS.md) and the relevant phase of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) before starting implementation.
+GitPay is currently a documented design and repository foundation. Read [README.md](README.md), [AGENTS.md](AGENTS.md) and the relevant phase of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) and its [numbered phase file](docs/phases/README.md) before starting implementation. The phase plan is currently a review draft; execution begins after the user reviews the scope and proposed refinements.
 
 ## Workflow
 
@@ -20,7 +20,7 @@ Financial changes must cover repeated events, unauthorized actors, stale confirm
 
 ## Configuration and secrets
 
-`.env.example` is a template for the planned runtime. Copy it to `.env` only when setting up implementation, then populate credentials locally. `.env` files and private keys are ignored; examples remain tracked. Do not include credentials, contributor payment addresses or unredacted provider payloads in PRs.
+`.env.example` is a template for the planned runtime, including a separate `TEST_DATABASE_URL`, payment-data encryption key and bounded provider/reconciliation settings. Copy it to `.env` only when setting up implementation, then populate credentials locally. `.env` files and private keys are ignored; examples remain tracked. Do not include credentials, contributor payment addresses or unredacted provider payloads in PRs.
 
 Keep PayPal sandbox-only. Connecting a real repository, sending bot comments, creating payment operations, publishing or deploying requires the relevant task authorization; adding documentation does not perform those actions.
 

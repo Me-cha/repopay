@@ -57,6 +57,17 @@ Record evidence, decisions and actors durably. Reconcile webhook gaps and use tr
 
 The app cannot force a maintainer to merge, prove unseen offline work, prevent copying elsewhere or guarantee that all unlinked/deleted submissions are found. Refusing to accept a valid solution is a separate dispute requiring review. This sandbox design is not a claim of regulated escrow or guaranteed real-money protection.
 
+## Operational review rubric
+
+The following rubric makes the accepted policy executable without turning the AI summary into an authority:
+
+1. **Material submission.** Treat a same-repository PR or authenticated evidence link as material when it contains a persisted revision, a non-empty change relevant to the funded criteria, and enough accessible evidence for an operator to assess it. A submission remains unresolved when its revision, authorship, merge state or evidence access is unknown.
+2. **Dismissal.** An operator may mark a claim `DISMISSED` only when the saved snapshot shows that it is empty, unrelated, duplicate of an already-dismissed claim, abusive, or otherwise incapable of satisfying the funded criteria. The operator records the concrete reason and evidence version. “AI confidence is low” is not a dismissal reason.
+3. **Independent fix.** A claimed earlier internal/upstream fix must have an independently observable revision or release, a timestamp before the contributor claim, and no evidence that it copied or depended on the submitted work. Similarity alone is not proof of copying; uncertainty keeps the request in review.
+4. **Unknown access.** Missing app visibility, incomplete pagination, deleted evidence or provider uncertainty blocks refund authorization. It is never treated as proof that no claim or payment exists.
+5. **Approval checklist.** Before approving, the operator records that notice elapsed, all known claims were assessed or explicitly held, no award exists, the funder and capture are identified, the reviewer has no conflict, the repository is still visible, and the exact refund amount is available. The evidence version and reviewer token must match at execution.
+6. **Held cases.** A held case has a named reviewer and `next_update_at`. Silence, a deadline, app removal or contributor non-response never approves a refund.
+
 ## Evidence behind the decision
 
 Research checked on October 26, 2026:
