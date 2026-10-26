@@ -1,0 +1,49 @@
+# Local credentials and environment; track safe templates only.
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+
+# Dependencies, caches, builds and test output.
+node_modules/
+.pnpm-store/
+.npm/
+dist/
+build/
+coverage/
+.vite/
+.cache/
+*.tsbuildinfo
+test-results/
+playwright-report/
+*.log
+
+# Local data and scratch files.
+.data/
+.local/
+tmp/
+*.sqlite
+*.sqlite3
+*.db
+__pycache__/
+*.pyc
+
+# OS/editor files and local agent state.
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+*.swp
+*.swo
+*~
+.codex/
+.claude/
+
+# Keep dependency lockfiles, migrations, AGENTS.md and examples tracked.
