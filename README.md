@@ -4,7 +4,7 @@
 
 GitPay is a planned GitHub App that connects issue bounties to PayPal. Maintainers fund an issue, contributors submit pull requests, AI assesses the proposed solution, and a qualifying merge triggers payment through a deterministic policy.
 
-The principle is **glue, not a platform**: development stays in GitHub, checkout and payouts use PayPal, and small authenticated pages handle confirmations. An optional dashboard displays progress without becoming another place to manage the work.
+The principle is **glue, not a platform**: development stays in GitHub, checkout and payouts use PayPal, and small authenticated pages handle confirmations. An dashboard (optional for users, required in the MVP) displays progress without becoming another place to manage the work.
 
 > **Project status:** repository foundation and implementation plan only. There is no running app, installed bot, verified payment integration or deployed demo yet. All product flows below describe the intended MVP. Payments will use PayPal sandbox only.
 
@@ -72,7 +72,7 @@ flowchart LR
 | GitHub integration | GitHub App, Octokit, webhooks, Check Runs and OAuth |
 | Payments | PayPal sandbox Orders, capture, Payouts, refunds and webhooks |
 | Runtime AI | Claude via Anthropic API; structured verdicts validated with Zod |
-| Web | Server-rendered confirmation pages; React/Vite + AG Grid for the optional dashboard |
+| Web | Server-rendered confirmation pages; React/Vite + AG Grid for the dashboard (optional for users, required in the MVP) |
 | Validation | Vitest, integration tests, property tests, verifier evaluations and sandbox walkthroughs |
 | Deployment target | Render; deployment configuration is not created yet |
 
@@ -101,10 +101,10 @@ External setup will require a GitHub App and demo repository, PayPal sandbox acc
 | [Agent.md](Agent.md) | Pointer to `AGENTS.md` |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution and verification expectations |
 | [docs/phases/](docs/phases/) | Detailed MVP review plan: phases 00–12, task contracts and exit gates |
-| [docs/phases/review-todo.md](docs/phases/review-todo.md) | Pre-build remediation checklist for the reviewed plan |
+| [docs/phases/review-todo.md](docs/phases/review-todo.md) | Completed pre-build review, findings, phase coverage and remaining external gates |
 | [docs/decisions/](docs/decisions/) | Product and architecture decisions with reasoning |
 | [packages/server/](packages/server/) | Planned API, workers and payment domain; documentation placeholder |
-| [packages/web/](packages/web/) | Planned optional dashboard; documentation placeholder |
+| [packages/web/](packages/web/) | Planned dashboard (optional for users, required in the MVP); documentation placeholder |
 | [postman/](postman/) | Planned API/demo collection; documentation placeholder |
 
 Folder changes must update the current map in `AGENTS.md`, affected README links and the plan's target layout in the same change. The PR template includes this requirement.

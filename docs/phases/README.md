@@ -1,8 +1,8 @@
 # GitPay MVP — phase plan for review
 
-**Status:** Draft for user review. No application implementation has started. The pre-build remediation checklist is [review-todo.md](review-todo.md). Prepared October 26, 2026 using the planning-and-task-breakdown, writing-plans and documentation skills.
+**Status:** Draft for user review. No application implementation has started. The pre-build remediation checklist is [review-todo.md](review-todo.md). Comprehensive plan review completed October 26, 2026; see the [review outcome](review-todo.md#final-cross-phase-review--2026-10-26). Implementation remains unstarted and awaits authorization.
 
-This is the execution plan for the MVP described in [IMPLEMENTATION_PLAN.md](../../IMPLEMENTATION_PLAN.md). It breaks the existing design into **13 phases and 57 reviewable tasks**, including negative paths and operations. The [cancellation decision](../decisions/0001-open-participation-and-cancellation.md) remains the accepted product policy. The refinements below are the accepted pre-build contract and must be reconciled into the master architecture before implementation.
+This is the execution plan for the MVP described in [IMPLEMENTATION_PLAN.md](../../IMPLEMENTATION_PLAN.md). It breaks the existing design into **13 phases and 57 reviewable tasks**, including negative paths and operations. The [cancellation decision](../decisions/0001-open-participation-and-cancellation.md) remains the accepted product policy. The refinements below are the accepted pre-build contract and are reconciled into the master architecture.
 
 ## What the MVP delivers
 
@@ -110,12 +110,12 @@ Real-money reversals, disputes outside the recorded protocol and forced acceptan
 4. **Tests and evidence.** For behavior changes use meaningful failing cases, implement, then verify. Config/docs need direct validation, not tests that mirror the config. External probes and browser walkthroughs require observations; mocks do not prove provider integration.
 5. **Scripts are planned.** `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build` and `pnpm exec vitest run <path>` become available in 00. Server integration tests use isolated Postgres through TEST_DATABASE_URL and deny unmatched provider calls. Do not run these now or report nonexistent tests as passing.
 6. **Future scripts.** `pnpm eval:verifier` is added in 05. The web package and its test/build scripts are added in 09; React tests use a DOM test environment. `pnpm test:e2e` is a separate Playwright suite from 09, excluded from Vitest. Each task adds its relevant package/config dependencies explicitly.
-7. **Shared invariants.** Sandbox only, integer cents, one award, exact recipient allocation, preserved evidence, no network inside DB transactions, no exclusive claims, and independent refund review. Snapshot mutable provider results outside locks and verify versions before committing.
+7. **Shared invariants.** Sandbox only, integer cents, one award, exact recipient allocation, preserved evidence, no network inside DB transactions, no exclusive claims, and independent refund review. Snapshot mutable provider results outside locks and fence commits by evidence and operation observation versions; concurrent stale reads cannot overwrite newer outcomes.
 8. **Durable operations.** Store intent, identity and request key before financial calls. Differentiate provably unsent from may-have-submitted. Unknown outcomes remain reserved until reconciliation. Never reset an operation just to make a test/demo work.
 9. **Boundaries.** Webhook routes verify/dedupe/store durable work, then acknowledge; workers perform slow processing. Actor authorization is produced by trusted server code, not deserialized from a client request. External data and AI output are untrusted.
 10. **Migrations.** Add schema with its owning phase. The master SQL is a domain sketch, not an instruction to create all tables in 00. Track migration versions, constrain statuses and use separate connections for concurrency tests.
 11. **Configuration.** Each introduced timeout, retry/rate bound, reconciliation interval or size limit must have explicit validated config and documented test value. Freeze monetary/eligibility policy and notice duration with funded terms; later config changes cannot silently change a funded contract.
-12. **Completion.** Record commands/results and manual/provider evidence under `docs/evidence/NN-summary.md`. Mark local-complete/external-blocked separately; all external gates must pass for phase/MVP completion. No placeholder evidence files are counted as results.
+12. **Completion.** No further broad plan review is a prerequisite for Phase 00 under these unchanged contracts. Implementation checks and external gates remain mandatory; material policy changes need discussion. Record commands/results and manual/provider evidence under `docs/evidence/NN-summary.md`. Mark local-complete/external-blocked separately; all external gates must pass for phase/MVP completion. No placeholder evidence files are counted as results.
 13. **Maintenance.** Update current folder map, module ownership, setup, env examples and phase status in the same change. Keep exact commands in manifests once implemented. Commit/push/deploy only within the authorized task.
 
 ## Shared interface vocabulary
@@ -168,7 +168,7 @@ GitHub event acknowledgement requires delivery receipt and job creation in the s
 | --- | --- | --- |
 | Delayed merge delivery or incomplete pagination selects the wrong winner | Reconcile/order all known candidates, hold earlier undecided merge; late post-award conflict becomes investigation, no second award | 05.01, 06.02, 10.01 |
 | Cancellation approval outlives new work or app access | New evidence invalidates approval; missing visibility blocks refund; unsent and ambiguous intents have distinct recovery | 08.02–08.05, 10.03 |
-| User corrects email while payout is already reserved | Existing intent keeps its original destination; updates affect only future unsubmitted intent creation | 04.02, 06.03 |
+| User corrects email while payout is already reserved | Existing intent keeps its original destination; updates affect only new intent creation | 04.02, 06.03 |
 | Webhook acknowledged before durable job or expired worker resumes | Transactional inbox/jobs; current lease ownership; intent identity survives crash/replay | 01.01–01.02, 10.03 |
 | Fake/skipped checks or injected author identity cause auto-pay | Required successful external CI; verified author identities; bounded untrusted model output | 05.02–05.05, 06.01, 07.02 |
 
@@ -192,10 +192,10 @@ These checks inform the design; they do not prove an integration is configured:
 
 ## Review checklist
 
-- [ ] The W01–W16 workflow coverage matches the intended MVP.
+- [x] The W01–W16 workflow coverage is mapped across all 13 phases; provider/runtime evidence remains an implementation gate.
 - [x] The refinements above are reconciled into the master plan, including CI review rules, dashboard scope and encrypted payout details.
-- [ ] Open participation and first qualifying merge remain the intended selection policy.
-- [ ] Independent reviewer responsibility and the proposed notice duration are acceptable.
-- [ ] We agree on the first implementation slice: Phase 00, with external capability evidence clearly separated from local checks.
+- [x] Open participation and stable first-qualifying-merge selection remain unchanged by this review.
+- [x] Independent review and the accepted 72-hour notice are preserved; notice starts at confirmed publication, not request creation.
+- [ ] User authorizes implementation; the first slice is Phase 00, with external capability evidence separated from local checks.
 
 The review remediation is tracked in [review-todo.md](review-todo.md). Only after that checklist is complete should the user approve Phase 00. Then implement phase-by-phase; do not treat the existence of these documents as approval to start all phases.

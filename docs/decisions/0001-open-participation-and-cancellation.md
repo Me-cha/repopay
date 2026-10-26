@@ -2,7 +2,7 @@
 
 Date: 2026-10-26
 
-Status: Accepted for the GitPay implementation plan; not implemented. The 72-hour notice is an initial configurable MVP choice, to be disclosed before funding.
+Status: Accepted for the GitPay implementation plan; not implemented. The 72-hour notice is the MVP choice, disclosed and fixed before funding. The final plan review clarified publication timing without changing participation, award ownership or refund authority.
 
 ## Context
 
@@ -19,7 +19,7 @@ Funding records the amount, original acceptance criteria, selection and cancella
 A funded cancellation is an exceptional request:
 
 1. The maintainer supplies a reason and evidence through the GitHub command and authenticated confirmation page. Confirmation requests review, not a refund.
-2. The bot posts the reason, evidence links, affected submissions and notice deadline. The initial proposed notice is 72 hours, saved with the funded terms. Funds stay committed and submissions remain open.
+2. The bot posts the reason, evidence links, affected submissions and notice deadline. The notice is 72 hours, saved with the funded terms; its deadline starts only after confirmed publication of the notice. Failed publication cannot consume the contributor response period. Funds stay committed and submissions remain open.
 3. AI assembles evidence from the original criteria, PR snapshots, CI and the claimed internal/upstream fix. Model uncertainty is not proof that a submission is invalid.
 4. An authorized independent operator reviews the exception after notice. The operator must have evidence access and cannot be the requester, funder or claimant. Silence alone does not approve anything.
 5. The backend refreshes GitHub/payment state and rechecks versioned evidence, unresolved claims, awards and available funds before reserving a refund. A stale approval cannot release money.

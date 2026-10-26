@@ -1,6 +1,6 @@
 # GitPay web dashboard
 
-Documentation placeholder for the optional React/Vite + AG Grid dashboard. No executable package exists yet.
+Documentation placeholder for the React/Vite + AG Grid dashboard (optional for users, required in the MVP). No executable package exists yet.
 
 The dashboard is read-only: bounties, payout progress, verification evidence and cases needing attention. It links back to GitHub for management. Authenticated funding, contributor connection and action confirmations belong to the server-rendered pages, including operator cancellation review.
 

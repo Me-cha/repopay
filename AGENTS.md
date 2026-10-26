@@ -25,7 +25,7 @@ GitPay/
 ├── docs/decisions/0001-open-participation-and-cancellation.md
 ├── docs/phases/README.md           # MVP scope, review decisions and phase index
 ├── docs/phases/review-todo.md      # Pre-build plan remediation checklist
-├── docs/phases/00.md … 12.md        # Detailed tasks and gates; review draft
+├── docs/phases/00.md … 12.md        # Reviewed tasks and gates; awaiting implementation authorization
 ├── packages/server/README.md        # Ownership placeholder; no runtime yet
 ├── packages/web/README.md           # Ownership placeholder; no runtime yet
 └── postman/README.md                # Collection placeholder; no collection yet
