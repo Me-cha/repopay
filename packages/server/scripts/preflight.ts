@@ -1,5 +1,5 @@
 import { parseArgs } from 'node:util';
-import { parseEnv, parseNvidiaEnv } from '../src/env.js';
+import { parsePreflightEnv, parseNvidiaEnv } from '../src/env.js';
 import { createLogger } from '../src/log.js';
 import { runPreflight, type PreflightOptions } from '../src/preflight/run.js';
 import { listNvidiaModels, probeNvidiaModels } from '../src/models/nvidia.js';
@@ -14,7 +14,7 @@ try {
     console.log(JSON.stringify({ provider: 'nvidia', report }));
     if (report.some(item => ('status' in item && item.status === 'failed') || ('listed' in item && !item.listed))) process.exitCode = 1;
   } else {
-    const env = parseEnv(process.env);
+    const env = parsePreflightEnv(process.env);
     const options: PreflightOptions = { modelProbe: values['model-probe'] ?? false };
     if (values['sandbox-payment']) {
       const recipient = process.env.PREFLIGHT_SANDBOX_RECIPIENT;

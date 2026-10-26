@@ -1,6 +1,6 @@
 # Contributing to GitPay
 
-GitPay has a Phase 0 local foundation; product workflows and external feasibility remain pending. Read [README.md](README.md), [AGENTS.md](AGENTS.md) and the relevant phase of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) and its [numbered phase file](docs/phases/README.md) before starting implementation. Phase 0 is authorized. Later phases require explicit scope authorization and their prerequisite gates.
+GitPay has completed Phase 0: the local foundation and scoped provider feasibility are verified. Product workflows remain future work. Read [README.md](README.md), [AGENTS.md](AGENTS.md) and the relevant phase of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) and its [numbered phase file](docs/phases/README.md) before starting implementation. Phase 0 is complete. Later phases require explicit scope authorization and their prerequisite gates.
 
 ## Workflow
 
@@ -27,3 +27,5 @@ Keep PayPal sandbox-only. Connecting a real repository, sending bot comments, cr
 ## Decisions
 
 The [decision records](docs/decisions/) explain policy choices. Keep historical decisions, mark them superseded when appropriate, and link their replacements. Runtime provider changes and changes to cancellation or reward-selection policy need explicit reasoning; they are not incidental refactors.
+
+Provider feasibility uses `pnpm preflight` (read-only), `--model-probe` for one Nemotron generation, and explicit `--sandbox-payment` for the persisted sandbox payout identity. Preflight validates only consumed provider settings; full application startup still requires webhook/OAuth configuration. See [setup](docs/setup.md) and [ADR 0003](docs/decisions/0003-nemotron-only-and-preflight-scope.md).

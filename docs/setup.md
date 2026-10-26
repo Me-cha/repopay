@@ -18,7 +18,7 @@ pnpm db:migrate
 
 Do not overwrite an existing `.env`. Compose exposes PostgreSQL 16 only on `127.0.0.1:5433`, with development-only credentials. The primary database is `gitpay`; tests use `gitpay_test`. `createdb` reports an error if the test database already exists; retain the existing database. Migrations are versioned and rerunnable. Test migrations use `TEST_DATABASE_URL` and an isolated schema through the test helper, never the primary migration command.
 
-Populate the blank secrets/model in `.env` before `pnpm dev` or `pnpm start`. Both startup and preflight validate configuration. `GH_PRIVATE_KEY` can contain literal `\n` escapes in one quoted line; the probe converts them to line breaks. Generate separate 32-byte base64 values for `TOKEN_ENC_KEY` and `PAYMENT_DATA_ENC_KEY`, and random 32-byte or longer session/webhook secrets; keep them local. The encryption keys must differ. Funded cancellation stays disabled.
+Populate the required application settings in `.env` before `pnpm dev` or `pnpm start`; the Nemotron model is already pinned. Both startup and preflight validate configuration. `GH_PRIVATE_KEY` can contain literal `\n` escapes in one quoted line; the probe converts them to line breaks. Generate separate 32-byte base64 values for `TOKEN_ENC_KEY` and `PAYMENT_DATA_ENC_KEY`, and random 32-byte or longer session/webhook secrets; keep them local. The encryption keys must differ. Funded cancellation stays disabled.
 
 ```sh
 pnpm dev
@@ -49,7 +49,7 @@ Missing database configuration fails integration tests. Nock rejects unmatched e
 
 1. **GitHub:** create the App/demo installation described in [architecture section 3](../IMPLEMENTATION_PLAN.md#3-external-setup-human-does-this-codex-documents-it-in-readme). Put its App ID, slug, private key, client ID/secret and webhook secret in `.env`. The Phase 0 probe signs a JWT and reads `/app`; installation access and user OAuth are verified in later phases. No bot comments are posted.
 2. **PayPal:** use a sandbox REST app and business account with Payouts enabled and sufficient sandbox balance. Set `PP_CLIENT_ID`, `PP_SECRET`, `PP_WEBHOOK_ID`; keep the exact sandbox `PP_BASE`. Prepare a personal sandbox recipient account. A successful OAuth token alone does not establish Payouts capability.
-3. **NVIDIA:** set `NVIDIA_API_KEY`. The template pins `NVIDIA_PRIMARY_MODEL=deepseek-ai/deepseek-v4.1-flash`, `NVIDIA_FALLBACK_MODEL=nvidia/nemotron-3-ultra-550b-a55b`, and `NVIDIA_BASE=https://integrate.api.nvidia.com/v1`. See [ADR 0002](decisions/0002-nvidia-runtime-models.md). The current application does not read Anthropic credentials.
+3. **NVIDIA:** set `NVIDIA_API_KEY`. The template pins `NVIDIA_MODEL=nvidia/nemotron-3-ultra-550b-a55b`, and `NVIDIA_BASE=https://integrate.api.nvidia.com/v1`. See [ADR 0003](decisions/0003-nemotron-only-and-preflight-scope.md). The current application does not read Anthropic credentials.
 
 Never paste credentials into chat or evidence files.
 
@@ -65,9 +65,13 @@ pnpm preflight --model-only --model-probe
 pnpm preflight --model-probe
 ```
 
-The explicit model probe calls **both models independently**, with synthetic text only. It uses OpenAI-compatible Chat Completions, `response_format.type=json_schema`, non-streaming output, temperature 1 and top_p 0.95. Nemotron enables thinking, but raw reasoning is not returned/logged. `NVIDIA_MAX_TOKENS` bounds generated output (template: 2048); `NVIDIA_TIMEOUT_MS` bounds each attempt (template: 120000 ms). The probe requires a completed, non-refused response from the requested model whose content parses to exactly `{confirmed:true}`. It exits nonzero if either model fails. A listed model alone does not establish inference or structured-output capability.
+Full provider preflight uses `parsePreflightEnv`: GitHub App ID/slug/client ID/private key, PayPal sandbox client credentials, NVIDIA settings and provider limits. It does not consume or require `PP_WEBHOOK_ID`, `GH_WEBHOOK_SECRET`, `GH_CLIENT_SECRET`, database settings or local application keys. Leave unregistered webhook IDs blank; never insert placeholders to pass a probe. Full application startup still uses strict `parseEnv` and requires those settings.
 
-The application adapter tries DeepSeek first and Nemotron once after a timeout/network failure, HTTP 429 or server error. Other HTTP errors and malformed/truncated model output stay errors. A valid negative answer never triggers fallback. The independent probe deliberately bypasses fallback to expose each model's capability. These are bounded requests using the owner's NVIDIA account allocation; do not assume unlimited free availability. The former `--anthropic-probe` / `--tool-choice` flags have been replaced by `--model-probe`.
+The explicit model probe calls **Nemotron once**, with synthetic text only. It uses OpenAI-compatible Chat Completions, `response_format.type=json_schema`, non-streaming output, temperature 1 and top_p 0.95. Nemotron enables thinking, but raw reasoning is not returned/logged. `NVIDIA_MAX_TOKENS` bounds generated output (template: 2048); `NVIDIA_TIMEOUT_MS` bounds each attempt (template: 120000 ms). The probe requires a completed, non-refused response from the requested model whose content parses to exactly `{confirmed:true}`. It exits nonzero if the model fails. A listed model alone does not establish inference or structured-output capability.
+
+The application adapter makes one bounded Nemotron attempt. Provider errors, malformed/truncated output, refusals and model mismatch stay errors. A valid negative answer stays final. These requests use the owner's NVIDIA account allocation; no permanent or unlimited free availability is assumed. The former primary/fallback model variables are replaced by `NVIDIA_MODEL`.
+
+Use a sandbox Merchant REST app associated with a Business sender in a payout-sending-supported test country (the verified fixture uses US). Its Client ID and Secret authenticate the sender. The recipient is a separate sandbox account and needs no REST app. The default IN sender was rejected with `PAYOUT_NOT_AVAILABLE`.
 
 For the sandbox payment probe, set `PREFLIGHT_SANDBOX_RECIPIENT` in local `.env` to an explicitly selected **sandbox** recipient address, then run:
 
@@ -81,6 +85,8 @@ The ignored `.data/preflight/payout.json` contains immutable operation IDs, amou
 
 The CLI refuses resubmission at 29 days, providing margin before PayPal's documented 30-day deduplication window. If a process crashes, inspect its state and provider history before removing a stale `.lock`; never erase the identity. After expiry, use PayPal's sandbox portal or authenticated read-only batch lookup for reconciliation, not another send. Missing/untrusted recovery links or unexpected response schemas fail closed. Actual retention/duplicate behavior remains an external evidence requirement.
 
+The observed sandbox duplicate response is HTTP 400 `USER_BUSINESS_ERROR` with `SENDER_BATCH_ID` and the exact issue `Batch with given sender_batch_id already exists`, without a recovery link. The adapter accepts that specific format as well as `DUPLICATE_BATCH_ID`. Recovery uses the saved batch ID; an unknown batch still requires manual reconciliation. Preserve the active identity at `.data/preflight/payout.json`. The earlier definitively country-rejected operation was archived separately when the owner switched test accounts; do not reset state for normal retries.
+
 Record redacted request/batch/item IDs, HTTP statuses, actual duplicate response shape, recipient receipt and model profile in [00-preflight.md](evidence/00-preflight.md). Provider response bodies, emails, keys and tokens stay out of tracked evidence and logs. All external gates must pass before Phase 01.
 
 ## Configuration bounds
@@ -91,5 +97,5 @@ Record redacted request/batch/item IDs, HTTP statuses, actual duplicate response
 
 - [GitHub App JWT authentication](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-json-web-token-jwt-for-a-github-app) and [authenticated App endpoint](https://docs.github.com/en/rest/apps/apps#get-the-authenticated-app).
 - [PayPal create payout and deduplication](https://developer.paypal.com/api/payments.payouts-batch/v1/payouts-post), [batch lookup](https://developer.paypal.com/api/payments.payouts-batch/v1/payouts-get), and [official OpenAPI schema](https://github.com/paypal/paypal-rest-api-specifications/blob/main/openapi/payments_payouts_batch_v1.json).
-- [NVIDIA DeepSeek API](https://docs.api.nvidia.com/nim/reference/nvidia-deepseek-v4_1-flash-infer) and [NVIDIA Nemotron API](https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3-ultra-550b-a55b-infer).
+- [NVIDIA Nemotron API](https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3-ultra-550b-a55b-infer).
 - [Drizzle migrations](https://orm.drizzle.team/docs/migrations).

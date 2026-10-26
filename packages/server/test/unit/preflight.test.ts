@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import nock from 'nock';
 import { afterEach, expect, it } from 'vitest';
-import { parseEnv } from '../../src/env.js';
+import { parseEnv, parsePreflightEnv } from '../../src/env.js';
 import { runPreflight } from '../../src/preflight/run.js';
 import { probePayout } from '../../src/paypal/client.js';
 import { syntheticEnv } from '../helpers/env.js';
@@ -20,8 +20,9 @@ const snapshot = { batch_header: { payout_batch_id: 'BATCH123', batch_status: 'S
 it('probe_default_does_not_pay or generate model output', async () => {
   token();
   nock('https://api.github.com').get('/app').reply(200, { slug: env.GH_APP_SLUG });
-  nock('https://integrate.api.nvidia.com').get('/v1/models').reply(200, { data: [{ id: env.NVIDIA_PRIMARY_MODEL }, { id: env.NVIDIA_FALLBACK_MODEL }] });
-  const report = await runPreflight(env, {});
+  nock('https://integrate.api.nvidia.com').get('/v1/models').reply(200, { data: [{ id: env.NVIDIA_MODEL }] });
+  const providerEnv = parsePreflightEnv({ ...syntheticEnv(), GH_PRIVATE_KEY: privateKey, PP_WEBHOOK_ID: '', GH_WEBHOOK_SECRET: '', GH_CLIENT_SECRET: '' });
+  const report = await runPreflight(providerEnv, {});
   expect(report.paypal).toEqual({ authentication: 'ok', payouts: 'not_probed' });
   expect(report.nvidia.structuredOutput).toBe('not_probed');
   expect(report.github.authentication).toBe('ok');
@@ -77,4 +78,34 @@ it('rejects hostile duplicate recovery links', async () => {
   const file = await stateFile(); token();
   nock(env.PP_BASE).post('/v1/payments/payouts').reply(400, { name: 'DUPLICATE_BATCH_ID', links: [{ rel: 'duplicate_batch', href: 'https://attacker.example/BATCH123' }] });
   await expect(probePayout(env, { recipient: 'recipient@example.com', stateFile: file })).rejects.toThrow(/recovery/);
+});
+const observedDuplicate = {
+  name: 'USER_BUSINESS_ERROR', message: 'User business error.',
+  details: [{ field: 'SENDER_BATCH_ID', issue: 'Batch with given sender_batch_id already exists' }], links: [],
+};
+it('recovers the observed sandbox duplicate response using the persisted accepted batch', async () => {
+  const file = await stateFile(); token();
+  nock(env.PP_BASE).post('/v1/payments/payouts').reply(201, batch);
+  nock(env.PP_BASE).post('/v1/payments/payouts').reply(400, observedDuplicate);
+  nock(env.PP_BASE).get('/v1/payments/payouts/BATCH123').reply(200, snapshot);
+  const result = await probePayout(env, { recipient: 'recipient@example.com', stateFile: file });
+  expect(result).toMatchObject({ batchId: 'BATCH123', duplicateHttpStatus: 400, itemStatuses: ['SUCCESS'] });
+  expect(JSON.parse(await readFile(file, 'utf8'))).toMatchObject({ batchId: 'BATCH123', amountCents: 100 });
+});
+it('requires manual recovery when the observed duplicate has no link or saved batch', async () => {
+  const file = await stateFile(); token();
+  nock(env.PP_BASE).post('/v1/payments/payouts').reply(400, observedDuplicate);
+  await expect(probePayout(env, { recipient: 'recipient@example.com', stateFile: file })).rejects.toThrow(/manual recovery/);
+  expect(JSON.parse(await readFile(file, 'utf8'))).not.toHaveProperty('batchId');
+});
+it.each([
+  { ...observedDuplicate, name: 'VALIDATION_ERROR' },
+  { ...observedDuplicate, details: [{ field: 'RECEIVER', issue: 'Batch with given sender_batch_id already exists' }] },
+  { ...observedDuplicate, details: [{ field: 'SENDER_BATCH_ID', issue: 'Invalid sender batch ID' }] },
+])('does not treat unrelated business errors as a duplicate: %j', async response => {
+  const file = await stateFile(); token();
+  nock(env.PP_BASE).post('/v1/payments/payouts').reply(201, batch);
+  nock(env.PP_BASE).post('/v1/payments/payouts').reply(400, response);
+  await expect(probePayout(env, { recipient: 'recipient@example.com', stateFile: file })).rejects.toThrow(/refused payout/);
+  expect(JSON.parse(await readFile(file, 'utf8'))).toMatchObject({ batchId: 'BATCH123' });
 });

@@ -1,6 +1,6 @@
 # ADR 0002 — NVIDIA-hosted DeepSeek with Nemotron fallback
 
-**Status:** Accepted by the user October 26, 2026. Supersedes the earlier v3/v4 selection of Claude through Anthropic for runtime verification. The prior selection is preserved here as history; ADR 0001's participation/cancellation policy is unchanged.
+**Status:** Superseded October 27, 2026 by [ADR 0003](0003-nemotron-only-and-preflight-scope.md). The decision below was accepted by the user October 26, 2026 and is retained as history. Supersedes the earlier v3/v4 selection of Claude through Anthropic for runtime verification. The prior selection is preserved here as history; ADR 0001's participation/cancellation policy is unchanged.
 
 ## Decision
 

@@ -6,7 +6,7 @@ GitPay is a planned GitHub App that connects issue bounties to PayPal. Maintaine
 
 The principle is **glue, not a platform**: development stays in GitHub, checkout and payouts use PayPal, and small authenticated pages handle confirmations. An optional dashboard displays progress without becoming another place to manage the work.
 
-> **Project status:** Phase 0 local foundation is implemented: workspace, configuration, health endpoint, database migrations and isolated tests. NVIDIA model routing is implemented; Nemotron passed a live schema probe, while DeepSeek inference and the remaining provider setup are still unverified. There is no installed bot, bounty workflow or deployed demo yet. All product flows below describe the intended MVP; payments are sandbox only.
+> **Project status:** Phase 0 is complete and reviewed as of October 27, 2026. The local foundation, GitHub authentication, NVIDIA Nemotron output, and a $1 PayPal sandbox payout with duplicate/recovery checks and recipient receipt are verified. There is no installed bot, bounty workflow or deployed demo yet. Product flows below describe the intended MVP; payments are sandbox only.
 
 ## Intended flow
 
@@ -55,7 +55,7 @@ flowchart LR
     PP[PayPal sandbox] -->|Verified events| API
     API --> DB[(Postgres state and jobs)]
     DB --> W[Worker]
-    W --> AI[DeepSeek / Nemotron verifier]
+    W --> AI[Nemotron verifier]
     AI --> P[Deterministic payment policy]
     P --> DB
     W -->|Orders, payouts, reviewed refunds| PP
@@ -71,12 +71,12 @@ flowchart LR
 | Backend and storage | Express 5, PostgreSQL 16, Drizzle, durable database jobs |
 | GitHub integration | GitHub App, Octokit, webhooks, Check Runs and OAuth |
 | Payments | PayPal sandbox Orders, capture, Payouts, refunds and webhooks |
-| Runtime AI | NVIDIA API: DeepSeek primary, Nemotron fallback; structured verdicts validated with Zod |
+| Runtime AI | NVIDIA API: Nemotron only; structured verdicts validated with Zod |
 | Web | Server-rendered confirmation pages; React/Vite + AG Grid for the optional dashboard |
 | Validation | Vitest, integration tests, property tests, verifier evaluations and sandbox walkthroughs |
 | Deployment target | Render; deployment configuration is not created yet |
 
-Codex is the coding assistant, while NVIDIA-hosted DeepSeek/Nemotron are the selected runtime models. Neither receives unrestricted authority to move money. See [the provider decision](docs/decisions/0002-nvidia-runtime-models.md).
+Codex is the coding assistant, while NVIDIA-hosted Nemotron is the selected runtime model. The model receives no unrestricted authority to move money. See [the provider decision](docs/decisions/0003-nemotron-only-and-preflight-scope.md).
 
 ## Start here
 
@@ -87,7 +87,7 @@ cd GitPay
 
 Start with [the phased MVP review plan](docs/phases/README.md) and [Phase 00](docs/phases/00.md). Read [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the architecture and [AGENTS.md](AGENTS.md) for repository instructions. Phase 0 provides the executable server workspace. Follow [local setup and provider probes](docs/setup.md); see [Phase 0 evidence](docs/evidence/00-summary.md) for actual checks and remaining gates.
 
-The tracked [.env.example](.env.example) lists validated configuration. Copy it to `.env` and fill in credentials locally. Empty credentials and the model field are intentional; startup and preflight fail safely until populated. Do not paste secrets into issues, PRs or agent instructions.
+The tracked [.env.example](.env.example) lists validated configuration. Copy it to `.env` and fill in credentials locally. Credentials are intentionally blank; the Nemotron model is pinned. Startup and preflight validate their respective required settings. Do not paste secrets into issues, PRs or agent instructions.
 
 External setup will require a GitHub App and demo repository, PayPal sandbox accounts with Payouts access, and a NVIDIA API key and model access. Cancellation testing also needs an independent reviewer identity. Exact setup requirements are recorded in section 3 of the plan; verify provider documentation during implementation.
 

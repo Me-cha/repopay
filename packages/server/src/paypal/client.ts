@@ -1,22 +1,32 @@
 import { z } from 'zod';
-import type { Env } from '../env.js';
+import type { PreflightEnv } from '../env.js';
 import { ProbeError, requestJson } from '../preflight/http.js';
 import { saveState, withProbeState, type ProbeState } from '../preflight/state.js';
 const batchId = z.string().regex(/^[A-Za-z0-9]+$/).max(256);
+type PayPalEnv = Pick<PreflightEnv, 'PP_BASE' | 'PP_CLIENT_ID' | 'PP_SECRET' | 'PROVIDER_TIMEOUT_MS' | 'PROVIDER_RESPONSE_MAX_BYTES'>;
 const batchSchema = z.object({ batch_header: z.object({ payout_batch_id: batchId, batch_status: z.enum(['DENIED', 'PENDING', 'PROCESSING', 'SUCCESS', 'CANCELED']) }) });
 const snapshotSchema = batchSchema.extend({ items: z.array(z.object({ payout_item_id: batchId, transaction_status: z.enum(['SUCCESS', 'FAILED', 'PENDING', 'UNCLAIMED', 'RETURNED', 'ONHOLD', 'BLOCKED', 'REFUNDED', 'REVERSED']) })).min(1).max(1) });
-const duplicateSchema = z.object({ name: z.string(), details: z.array(z.object({ issue: z.string() })).optional(), links: z.array(z.object({ rel: z.string(), href: z.string() })).optional() }).refine(value => value.name === 'DUPLICATE_BATCH_ID' || value.details?.some(detail => detail.issue === 'DUPLICATE_BATCH_ID'));
+const duplicateSchema = z.object({
+  name: z.string(), details: z.array(z.object({ field: z.string().optional(), issue: z.string() })).optional(),
+  links: z.array(z.object({ rel: z.string(), href: z.string() })).optional(),
+}).refine(value => value.name === 'DUPLICATE_BATCH_ID' || value.details?.some(detail =>
+  detail.issue === 'DUPLICATE_BATCH_ID' || (
+    // Observed sandbox format: no recovery link; a saved batch is still required below.
+    value.name === 'USER_BUSINESS_ERROR' && detail.field === 'SENDER_BATCH_ID' &&
+    detail.issue === 'Batch with given sender_batch_id already exists'
+  ),
+));
 export function assertSandbox(env: { PP_BASE: string }): void { if (env.PP_BASE !== 'https://api-m.sandbox.paypal.com') throw new ProbeError('PayPal sandbox is required'); }
-export async function paypalToken(env: Env): Promise<string> {
+export async function paypalToken(env: PayPalEnv): Promise<string> {
   assertSandbox(env);
   const result = await requestJson(env, env.PP_BASE + '/v1/oauth2/token', { method: 'POST', headers: { Authorization: 'Basic ' + Buffer.from(env.PP_CLIENT_ID + ':' + env.PP_SECRET).toString('base64'), 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'grant_type=client_credentials' });
   if (result.status !== 200) throw new ProbeError(`PayPal authentication HTTP ${String(result.status)}`);
   return z.object({ access_token: z.string().min(1), token_type: z.literal('Bearer') }).parse(result.body).access_token;
 }
 export interface PayoutProbeOptions { recipient: string; stateFile: string; now?: Date }
-export async function probePayout(input: Omit<Env, 'PP_BASE'> & { PP_BASE: string }, options: PayoutProbeOptions) {
+export async function probePayout(input: Omit<PayPalEnv, 'PP_BASE'> & { PP_BASE: string }, options: PayoutProbeOptions) {
   assertSandbox(input);
-  const env: Env = { ...input, PP_BASE: 'https://api-m.sandbox.paypal.com' };
+  const env: PayPalEnv = { ...input, PP_BASE: 'https://api-m.sandbox.paypal.com' };
   const recipient = z.email().parse(options.recipient);
   return withProbeState(options.stateFile, recipient, env.PP_CLIENT_ID, options.now ?? new Date(), async state => {
     const token = await paypalToken(env);

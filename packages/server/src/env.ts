@@ -7,8 +7,7 @@ const key = z.string().refine(value => /^[A-Za-z0-9+/]{43}=$/.test(value) && Buf
 const database = z.url().refine(value => ['postgres:', 'postgresql:'].includes(new URL(value).protocol));
 const nvidiaSchema = z.object({
   NVIDIA_API_KEY: text, NVIDIA_BASE: z.literal('https://integrate.api.nvidia.com/v1'),
-  NVIDIA_PRIMARY_MODEL: z.literal('deepseek-ai/deepseek-v4.1-flash'),
-  NVIDIA_FALLBACK_MODEL: z.literal('nvidia/nemotron-3-ultra-550b-a55b'),
+  NVIDIA_MODEL: z.literal('nvidia/nemotron-3-ultra-550b-a55b'),
   NVIDIA_MAX_TOKENS: integer(128, 16384), NVIDIA_TIMEOUT_MS: integer(1000, 120000),
   PROVIDER_RESPONSE_MAX_BYTES: integer(1, 10485760),
 });
@@ -18,20 +17,30 @@ export function parseNvidiaEnv(input: Record<string, string | undefined>): Nvidi
   if (!result.success) throw new Error('Invalid configuration: ' + [...new Set(result.error.issues.map(issue => issue.path.join('.')))].join(', '));
   return result.data;
 }
-const schema = z.object({
+const preflightSchema = z.object({
   ...nvidiaSchema.shape,
+  GH_APP_ID: z.string().regex(/^[1-9]\d*$/), GH_APP_SLUG: text, GH_PRIVATE_KEY: text, GH_CLIENT_ID: text,
+  PP_BASE: z.literal('https://api-m.sandbox.paypal.com'), PP_CLIENT_ID: text, PP_SECRET: text,
+  PROVIDER_TIMEOUT_MS: integer(100, 120000),
+});
+export type PreflightEnv = z.infer<typeof preflightSchema>;
+export function parsePreflightEnv(input: Record<string, string | undefined>): PreflightEnv {
+  const result = preflightSchema.safeParse(input);
+  if (!result.success) throw new Error('Invalid configuration: ' + [...new Set(result.error.issues.map(issue => issue.path.join('.')))].join(', '));
+  return result.data;
+}
+const schema = z.object({
+  ...preflightSchema.shape,
   NODE_ENV: z.enum(['development', 'test', 'production']), PORT: integer(1, 65535),
   PUBLIC_URL: z.url().refine(value => ['http:', 'https:'].includes(new URL(value).protocol)),
   DATABASE_URL: database, TEST_DATABASE_URL: database,
   WORKER_MODE: z.enum(['inline', 'separate']), SESSION_SECRET: z.string().min(32),
   TOKEN_ENC_KEY: key, PAYMENT_DATA_ENC_KEY: key, ACTION_TOKEN_TTL_SEC: integer(1, 3600),
-  GH_APP_ID: z.string().regex(/^[1-9]\d*$/), GH_APP_SLUG: text, GH_PRIVATE_KEY: text,
-  GH_WEBHOOK_SECRET: z.string().min(32), GH_CLIENT_ID: text, GH_CLIENT_SECRET: text,
-  PP_BASE: z.literal('https://api-m.sandbox.paypal.com'), PP_CLIENT_ID: text, PP_SECRET: text, PP_WEBHOOK_ID: text,
+  GH_WEBHOOK_SECRET: z.string().min(32), GH_CLIENT_SECRET: text, PP_WEBHOOK_ID: text,
   POLICY_MIN_CONFIDENCE: fraction, POLICY_CI_REQUIRED: flag, POLICY_MIN_SHARE: fraction,
   MAX_BOUNTY_CENTS: integer(1, 2147483647), MAX_DIFF_CHARS: integer(1, 1000000),
   POLL_INTERVAL_MS: integer(100, 3600000), JOB_LEASE_SEC: integer(1, 3600),
-  PROVIDER_TIMEOUT_MS: integer(100, 120000), WEBHOOK_BODY_MAX_BYTES: integer(1, 10485760), PROVIDER_RESPONSE_MAX_BYTES: integer(1, 10485760),
+  WEBHOOK_BODY_MAX_BYTES: integer(1, 10485760),
   RECONCILIATION_INTERVAL_SEC: integer(1, 86400), RECONCILIATION_PAGE_LIMIT: integer(1, 1000),
   RECONCILIATION_RATE_PER_MIN: integer(1, 1000), RECONCILIATION_MAX_ATTEMPTS: integer(1, 100),
   SSE_HEARTBEAT_SEC: integer(1, 300), FUNDED_CANCELLATION_ENABLED: flag,

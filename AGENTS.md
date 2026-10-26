@@ -20,7 +20,7 @@ GitPay/
 ├── docker-compose.yml, drizzle.config.ts
 ├── .github/{pull_request_template.md,workflows/ci.yml}
 ├── docs/setup.md
-├── docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md}
+├── docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md,0003-nemotron-only-and-preflight-scope.md}
 ├── docs/phases/{README.md,review-todo.md,00.md … 12.md}
 ├── docs/evidence/{00-summary.md,00-preflight.md}
 ├── packages/server/
@@ -31,7 +31,7 @@ GitPay/
 │   ├── src/http/routes.ts
 │   ├── src/paypal/client.ts        # Sandbox feasibility adapter only
 │   ├── src/preflight/{run.ts,http.ts,state.ts}
-│   ├── src/models/nvidia.ts        # Bounded structured output and fallback
+│   ├── src/models/nvidia.ts        # Bounded Nemotron structured output
 │   ├── scripts/{migrate.ts,preflight.ts}
 │   └── test/{helpers/,unit/,integration/}
 ├── packages/web/README.md          # Dashboard placeholder
@@ -65,7 +65,7 @@ Keep these instructions concise. Put detailed module contracts in the plan or sc
 
 ## Implementation and verification
 
-Codex is the development assistant. NVIDIA-hosted DeepSeek is primary and Nemotron is fallback, as authorized in [ADR 0002](docs/decisions/0002-nvidia-runtime-models.md). Preserve validated output and deterministic money policy when changing model behavior. Use official provider documentation or an available relevant MCP integration to verify API shapes, statuses and authentication. Do not assume tools or credentials are installed.
+Codex is the development assistant. NVIDIA-hosted Nemotron is the sole runtime model, as authorized in [ADR 0003](docs/decisions/0003-nemotron-only-and-preflight-scope.md). Preserve validated output and deterministic money policy when changing model behavior. Use official provider documentation or an available relevant MCP integration to verify API shapes, statuses and authentication. Do not assume tools or credentials are installed.
 
 Use TypeScript strict and boundary validation as specified in the plan. Keep business actions in the server domain modules; transports delegate to them. Database changes use reviewed migrations. Before editing, inspect the working tree and preserve unrelated user changes.
 

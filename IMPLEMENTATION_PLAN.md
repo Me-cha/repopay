@@ -7,7 +7,7 @@ Status: **implementation authorized for Phase 00; task progress and outstanding 
 
 Hackathon target: PayPal "Build What's Next with PayPal and AI". The inherited submission date is November 12, 2026; verify the official deadline, eligibility and prize rules before submission.
 
-Development uses **Codex** and [AGENTS.md](AGENTS.md). The runtime verifier uses NVIDIA-hosted DeepSeek with Nemotron fallback, authorized in [ADR 0002](docs/decisions/0002-nvidia-runtime-models.md). That decision supersedes the v3 Anthropic selection; Codex remains the development assistant.
+Development uses **Codex** and [AGENTS.md](AGENTS.md). The runtime verifier uses NVIDIA-hosted Nemotron only, authorized in [ADR 0003](docs/decisions/0003-nemotron-only-and-preflight-scope.md). That decision supersedes the v3 Anthropic selection; Codex remains the development assistant.
 
 Revision v4 incorporates open participation, exceptional cancellation review, persistent contributor awards and the GitPay name. The pre-build review remediation recorded in [the phase review TODO](docs/phases/review-todo.md) is now part of this canonical plan: the master architecture, schema sketch, state machines and phase contracts must agree before Phase 00 starts. See [the cancellation decision](docs/decisions/0001-open-participation-and-cancellation.md) for reasons and tradeoffs.
 
@@ -181,7 +181,7 @@ Design rules:
 ### 3.2 PayPal sandbox
 - developer.paypal.com → Apps & Credentials → **Sandbox** → create REST app. Copy client id and secret.
 - Confirm **Payouts** is enabled in app features. #1 blocker. `pnpm preflight` verifies it.
-- Sandbox accounts: 1 Business (platform: receives funding, sends payouts and refunds; large balance), 1 Personal `maintainer` (funds), 1 Personal `contributor` (receives).
+- Sandbox accounts: 1 Business (platform: receives funding, sends payouts and refunds; large balance), 1 Personal `maintainer` (funds), 1 Personal `contributor` (receives). Use a sending-supported simulated country such as US for the Business account and select it when creating the sandbox Merchant REST app. The default IN sandbox sender was rejected with `PAYOUT_NOT_AVAILABLE`; see [Phase 0 provider evidence](docs/evidence/00-preflight.md).
 - Sandbox webhook to `${PUBLIC_URL}/webhooks/paypal`, events:
   `CHECKOUT.ORDER.APPROVED`, `CHECKOUT.PAYMENT-APPROVAL.REVERSED`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED`, `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.REFUNDED`,
   `PAYMENT.PAYOUTSBATCH.SUCCESS`, `PAYMENT.PAYOUTSBATCH.DENIED`, `PAYMENT.PAYOUTSBATCH.PROCESSING`,
@@ -189,7 +189,7 @@ Design rules:
   Copy the webhook id. Webhook payloads are triggers only; state is always re-read from the API (section 9.2).
 
 ### 3.3 Other
-- NVIDIA API key with access to both selected models.
+- NVIDIA API key with access to the selected Nemotron model.
 - smee.io for local GitHub webhooks. PayPal cannot reach localhost: dev uses polling fallbacks.
 - Optional APIMatic Context Plugin/MCP in Codex if available; otherwise use official PayPal documentation. Do not assume any integration is installed.
 
@@ -254,7 +254,7 @@ Unauthorized or invalid-state commands get a short reply explaining why and what
 | HTTP | Express 5 |
 | GitHub | `@octokit/app`, `octokit.graphql` |
 | PayPal | `@paypal/paypal-server-sdk` for Orders/Payments if it fits; plain `fetch` client for Payouts, webhook verification and gaps |
-| LLM | NVIDIA OpenAI-compatible Chat Completions via bounded fetch; DeepSeek primary, Nemotron fallback; JSON-schema output validated by Zod |
+| LLM | NVIDIA OpenAI-compatible Chat Completions via bounded fetch; Nemotron only, one bounded attempt; JSON-schema output validated by Zod |
 | DB | Postgres 16, `drizzle-orm` + `drizzle-kit`, `pg` |
 | Validation | `zod` |
 | Crypto | Node `crypto` (AES-256-GCM for stored OAuth tokens, HMAC for state, SHA-256 for token hashes) |
@@ -279,7 +279,7 @@ GitPay/
 ├─ tsconfig.base.json  tsconfig.json  eslint.config.js  vitest.config.ts  drizzle.config.ts
 ├─ docs/setup.md
 ├─ docs/evidence/{00-summary.md,00-preflight.md} (later phases add their evidence)
-├─ docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md}
+├─ docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md,0003-nemotron-only-and-preflight-scope.md}
 ├─ docs/phases/{README.md,review-todo.md,00.md,...,12.md} (task source of truth; status in phase index)
 ├─ docker-compose.yml (Phase 0)  render.yaml (future deployment)
 ├─ postman/README.md  gitpay.postman_collection.json (Phase 12)
@@ -326,7 +326,7 @@ Boot fails clearly on missing/invalid required values. `.env.example` is the con
 | `PP_BASE` | must equal `https://api-m.sandbox.paypal.com` |
 | `PP_CLIENT_ID`, `PP_SECRET`, `PP_WEBHOOK_ID` | |
 | `NVIDIA_API_KEY`, `NVIDIA_BASE` | key and exact `https://integrate.api.nvidia.com/v1` base |
-| `NVIDIA_PRIMARY_MODEL`, `NVIDIA_FALLBACK_MODEL` | `deepseek-ai/deepseek-v4.1-flash` / `nvidia/nemotron-3-ultra-550b-a55b` |
+| `NVIDIA_MODEL` | `nvidia/nemotron-3-ultra-550b-a55b`; sole approved runtime model |
 | `NVIDIA_MAX_TOKENS`, `NVIDIA_TIMEOUT_MS` | explicit model-generation budget and per-attempt timeout; examples `2048`, `120000` |
 | `POLICY_MIN_CONFIDENCE` | e.g. `0.75` |
 | `POLICY_CI_REQUIRED` | `true`/`false` |
@@ -861,7 +861,7 @@ changes only to comments or formatting. Treat these as DOES_NOT_RESOLVE.
 Return only the JSON object matching the supplied verdict schema.
 ```
 
-`verify.ts`: reuse `models/nvidia.ts` with the `Verdict` schema. Send the Phase-00-tested OpenAI-compatible JSON-schema profile: non-streaming response, temperature 1, top_p 0.95, bounded max_tokens; Nemotron thinking enabled. Accept only a completed, non-refused, model-matched response whose JSON passes Zod. Attempt DeepSeek first, then one Nemotron fallback only on transport timeout/failure, HTTP 429 or server error. Invalid/truncated output and other HTTP errors remain errors without fallback; a valid negative verdict is final. Store `status='error'` on exhaustion and complete the Check Run as neutral "Verifier error, use `/bounty retry`". Store actual model, attempts, `prompt_sha256` and capability-profile version. Both model profiles must pass Phase 05 evaluations before automatic settlement. See ADR 0002.
+`verify.ts`: reuse `models/nvidia.ts` with the `Verdict` schema. Send the Phase-00-tested OpenAI-compatible JSON-schema profile: non-streaming response, temperature 1, top_p 0.95, bounded max_tokens; Nemotron thinking enabled. Accept only a completed, non-refused, model-matched response whose JSON passes Zod. Make one bounded Nemotron attempt. Transport failures, HTTP errors and invalid/truncated output remain errors; a valid negative verdict is final. Store `status='error'` on exhaustion and complete the Check Run as neutral "Verifier error, use `/bounty retry`". Store actual model, attempts, `prompt_sha256` and capability-profile version. The Nemotron profile must pass Phase 05 evaluations before automatic settlement. See ADR 0003.
 
 ### 10.6 `policy/` (pure, fully unit tested)
 ```ts

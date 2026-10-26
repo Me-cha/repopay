@@ -1,11 +1,11 @@
 import { sign } from 'node:crypto';
 import { z } from 'zod';
-import type { Env } from '../env.js';
+import type { PreflightEnv } from '../env.js';
 import { paypalToken, probePayout, type PayoutProbeOptions } from '../paypal/client.js';
 import { ProbeError, requestJson } from './http.js';
 import { listNvidiaModels, probeNvidiaModels } from '../models/nvidia.js';
 export interface PreflightOptions { modelProbe?: boolean; payout?: PayoutProbeOptions }
-export async function runPreflight(env: Env, options: PreflightOptions) {
+export async function runPreflight(env: PreflightEnv, options: PreflightOptions) {
   const now = Math.floor(Date.now() / 1000);
   const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
   const payload = Buffer.from(JSON.stringify({ iat: now - 60, exp: now + 540, iss: env.GH_CLIENT_ID })).toString('base64url');

@@ -1,6 +1,6 @@
 # GitPay MVP — phase plan
 
-**Status:** Phase 00 authorized October 26, 2026; local foundation implemented, external feasibility blocked on DeepSeek inference availability and remaining provider setup. Later phases are not started. The pre-build remediation checklist is [review-todo.md](review-todo.md). Prepared October 26, 2026 using the planning-and-task-breakdown, writing-plans and documentation skills.
+**Status:** Phase 00 COMPLETE — October 27, 2026; verification and final review are complete. Local checks, GitHub authentication, Nemotron output and PayPal payout/duplicate/recovery/receipt are evidenced. Later phases are not started or authorized. See [Phase 00](00.md) and [provider evidence](../evidence/00-preflight.md).
 
 This is the execution plan for the MVP described in [IMPLEMENTATION_PLAN.md](../../IMPLEMENTATION_PLAN.md). It breaks the existing design into **13 phases and 57 reviewable tasks**, including negative paths and operations. The [cancellation decision](../decisions/0001-open-participation-and-cancellation.md) remains the accepted product policy. The refinements below are the accepted pre-build contract and are reconciled into the master architecture.
 
@@ -10,7 +10,7 @@ GitPay connects GitHub issues/PRs to PayPal sandbox. Maintainers fund a publishe
 
 Every main user workflow is in scope, including inability to proceed safely. The product must explain failed/pending payments, lost repository access, unconnected recipients, stale confirmations and unresolved disputes rather than pretending these states do not exist.
 
-The development assistant remains Codex. The runtime verifier uses NVIDIA-hosted DeepSeek with Nemotron fallback, per [ADR 0002](../decisions/0002-nvidia-runtime-models.md). Exclusive contributor assignment, dashboard mutations and live-money deployment remain outside scope.
+The development assistant remains Codex. The runtime verifier uses NVIDIA-hosted Nemotron only, per [ADR 0003](../decisions/0003-nemotron-only-and-preflight-scope.md). Exclusive contributor assignment, dashboard mutations and live-money deployment remain outside scope.
 
 ## Review decisions
 
@@ -176,7 +176,7 @@ GitHub event acknowledgement requires delivery receipt and job creation in the s
 
 - **GitHub:** owner-controlled App/demo repository and separate maintainer/contributor identities. Add an independent reviewer with evidence access for cancellation. Account creation, secret values and collaborator invitations require the owner's action/authorization.
 - **PayPal:** sandbox business platform account, maintainer and contributor personal sandbox accounts, Payouts capability and sufficient sandbox balance. A second contributor account is needed to evidence a two-author award. Feasibility is not assumed from credentials existing.
-- **NVIDIA:** a permitted API key and access to the selected DeepSeek/Nemotron models. Probe both independently and evaluate both before automatic verification. Record the exact profile and failures; model listing alone does not prove inference capability.
+- **NVIDIA:** a permitted API key and access to the selected Nemotron model. Probe its capability and evaluate it before automatic verification. Record the exact profile and failures; model listing alone does not prove inference capability.
 - **Hosting:** account, region/plan and durable Postgres/worker capability must be verified in 11. Never invent a working deployment URL or free-worker guarantee.
 - **Independent review:** someone must actually operate the exception process. Without that person, funded refunds remain disabled and full W10 acceptance is blocked. Development can establish local correctness, but it cannot invent operating capacity.
 - **Notice:** the planned 72-hour real notice may determine earliest live-refund test timing. Schedule a legitimate test request early once Phase 08 is ready; use test clocks only for labelled automated/simulated cases.
@@ -198,4 +198,4 @@ These checks inform the design; they do not prove an integration is configured:
 - [ ] Independent reviewer responsibility and the proposed notice duration are acceptable.
 - [x] We agree on the first implementation slice: Phase 00, with external capability evidence clearly separated from local checks. Authorized October 26, 2026.
 
-The review remediation is tracked in [review-todo.md](review-todo.md). Phase 00 was subsequently authorized. Its external gate remains open; do not start Phase 01 or treat these documents as authorization for all phases.
+The review remediation is tracked in [review-todo.md](review-todo.md). Phase 00 is complete with scoped provider evidence. Phase 01 is ready for its own scope authorization; it has not started. These documents do not authorize all phases.

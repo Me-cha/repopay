@@ -1,6 +1,8 @@
 # Phase 00 — local foundation evidence
 
-**Status: local foundation verified; external feasibility blocked. Phase 00 is not complete.** October 26, 2026. Worktree branch: `feat/phase-00-foundation`; base commit: `1b2998b39f7739c1b2e57227a9d6387d5947827a`. The worktree was clean before implementation. Changes remain uncommitted; nothing was pushed or deployed.
+**Status: Phase 00 COMPLETE — October 27, 2026.** Local checks, scoped live provider gates and final review passed. See the closeout section below and [provider evidence](00-preflight.md). Phase 01 has not started.
+
+**Historical starting point (October 26):** branch `feat/phase-00-foundation`, base `1b2998b39f7739c1b2e57227a9d6387d5947827a`; the worktree was clean before initial implementation. At that initial checkpoint the external gate was blocked and changes were uncommitted. The foundation now exists in commit `eb05795`; the current closeout changes remain uncommitted. This closeout did not commit, push or deploy.
 
 ## Delivered
 
@@ -52,9 +54,9 @@ Provider tests intercept HTTP with Nock. They cover no payment/model generation 
 
 ## Remaining gates and review boundaries
 
-At initial setup, the owner confirmed accounts and credentials existed but were unavailable locally. They subsequently configured the NVIDIA key; GitHub/PayPal setup remains pending. [Provider evidence](00-preflight.md) records every unavailable external check. The local `.env` is ignored and now contains the owner-provided NVIDIA credential; complete the remaining setup using [setup](../setup.md).
+At initial setup, the owner confirmed accounts and credentials existed but were unavailable locally. They subsequently configured the NVIDIA key and supplied the GitHub App private key; GitHub App authentication passed on October 27, 2026. PayPal sandbox authentication and the $1 payout/duplicate/recovery checks now pass; the recipient-side $1 receipt is also independently confirmed in sandbox Activity. [Provider evidence](00-preflight.md) records every unavailable external check. The local `.env` is ignored and now contains the owner-provided NVIDIA credential; complete the remaining setup using [setup](../setup.md).
 
-Actual GitHub App authentication, DeepSeek inference capability, PayPal Payouts access, duplicate behavior and a recipient receipt remain unverified. NVIDIA credentials are now available locally and Nemotron passed a live structured-output probe; see the provider evidence record. Phase 01 remains blocked by the combined Phase 00 gate. Hosted GitHub Actions has not run; local checks exercise its commands. No browser validation is needed for this JSON-only health scaffold; no UI is claimed.
+GitHub App authentication is now verified. DeepSeek inference was never verified and was removed from scope by the user on October 27. The recipient-side $1 sandbox receipt is independently confirmed. PayPal Payouts access, immediate duplicate rejection and saved-batch recovery are now verified. NVIDIA credentials are now available locally and Nemotron passed a live structured-output probe; see the provider evidence record. The combined Phase 00 gate subsequently passed as recorded below; Phase 01 remains not started and unauthorized. Hosted GitHub Actions has not run; local checks exercise its commands. No browser validation is needed for this JSON-only health scaffold; no UI is claimed.
 
 Reviewer boundaries: provider capabilities require real credentials; final docs and smoke checks are verified by the implementer; financial workflows, authorization enforcement and worker behavior belong to later phases. Their absence is not evidence that the full product is ready.
 
@@ -62,10 +64,20 @@ Dependency installation reports two deprecated transitive packages under drizzle
 
 ## NVIDIA provider migration — October 26, 2026
 
-Per the user's instruction and [ADR 0002](../decisions/0002-nvidia-runtime-models.md), current code requires NVIDIA instead of Anthropic. DeepSeek is primary; Nemotron is the bounded fallback. Added independent model-only probes and separate inference timeout/output limits. Existing local secret values were preserved; only missing non-secret NVIDIA settings were added. No key was printed or tracked.
+At this historical checkpoint, the user's instruction and [ADR 0002](../decisions/0002-nvidia-runtime-models.md) replaced Anthropic with NVIDIA, using DeepSeek primary and Nemotron fallback. That selection is superseded by ADR 0003 below. Added independent model-only probes and separate inference timeout/output limits. Existing local secret values were preserved; only missing non-secret NVIDIA settings were added. No key was printed or tracked.
 
 After this change, `pnpm test` passed **67 tests across 8 files**, and `pnpm typecheck`, `pnpm lint`, `pnpm build` passed. Earlier 43-test/fresh-source entries above describe the initial foundation before this migration. Added cases cover transient fallback, non-retryable HTTP errors, negative verdict preservation, malformed/truncated/schema-invalid/model-mismatched output, response limits, transport timeout and independent capability results. The timeout case simulates only the fetch transport: Nock's delayed-response abort caused a native Undici assertion with the installed versions; real timeout signaling, fallback request and validation still run.
 
 `pnpm preflight --model-only` passed with both exact model IDs listed. `pnpm preflight --model-only --model-probe` exited 1: Nemotron validated, DeepSeek timed out. No GitHub or PayPal calls were made in these model-only checks. Live results are recorded separately in [00-preflight.md](00-preflight.md).
 
 Independent review found that interrupted error bodies could misclassify known authentication/quota errors as retryable. Four regression cases (401/402/403/422) failed before the fix and pass afterward; observed HTTP status is now preserved. Final suite: 67/67; typecheck, lint and build passed. No remaining material review findings.
+
+## Phase 0 closeout — October 27, 2026
+
+The user instructed us to drop DeepSeek and complete Phase 0. [ADR 0003](../decisions/0003-nemotron-only-and-preflight-scope.md) records Nemotron-only inference with a single bounded attempt and provider-scoped preflight configuration. Full application webhook/OAuth requirements remain strict; no placeholder webhook ID is used. Historical test counts above describe earlier checkpoints.
+
+The new model-selection and preflight-boundary tests failed before implementation, then passed. Final local checks: **82 tests across 8 files**, typecheck, lint and build all pass. Both default `pnpm preflight` and `pnpm preflight --model-probe --sandbox-payment` exit 0 with real owner-configured credentials. The combined run validates Nemotron and recovers the same successful payout, without creating another payment. Recipient receipt is independently confirmed in Brave; the sandbox balance-display discrepancy remains documented. See [provider evidence](00-preflight.md) for IDs and exact observed limits.
+
+A fresh read-only whole-branch/worktree review found no material code defects. Its important documentation finding identified conflicting current status statements in this summary, the phase index footer and CONTRIBUTING; all were reconciled and local links/whitespace checked. No unresolved critical, important or minor findings remain. No commit, push, deployment or Phase 01 implementation was performed as part of this closeout.
+
+Review boundaries were retained deliberately: award ordering/pagination/late merges (05/06/10), cancellation/refunds (08/10), product recipient reservation (04/06), webhook/worker execution (01/10), and CI/authorship/verifier-quality policy (05/06/07) are future-phase work, not delivered product guarantees. Current probe account/recipient binding and bounded model output were reviewed. The reviewer did not operate live accounts; the implementer's recorded live API and browser receipt evidence supplies that proof. The full 30-day retention duration and wallet balance discrepancy remain empirical limitations. These boundaries prevent a Phase 0 completion claim from being mistaken for production payment readiness.

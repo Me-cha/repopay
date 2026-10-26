@@ -1,7 +1,7 @@
 import { pino, type DestinationStream, type Logger } from 'pino';
-import type { Env } from './env.js';
+import type { Env, PreflightEnv } from './env.js';
 const sensitiveKey = /api[_-]?key|token|secret|password|cookie|authorization|email|private.?key|receiver|destination|payload|body|database_url|enc_key/i;
-export function createLogger(env: Env, destination?: DestinationStream): Logger {
+export function createLogger(env: Env | PreflightEnv, destination?: DestinationStream): Logger {
   const secrets = Object.entries(env).filter(([name, value]) => sensitiveKey.test(name) && typeof value === 'string').map(([, value]) => String(value));
   function clean(value: unknown, seen = new WeakSet<object>()): unknown {
     if (value instanceof Error) return { type: 'Error', message: '[REDACTED]' };
