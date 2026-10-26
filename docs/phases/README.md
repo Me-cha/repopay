@@ -1,8 +1,8 @@
-# GitPay MVP — phase plan for review
+# GitPay MVP — phase plan
 
-**Status:** Draft for user review. No application implementation has started. The pre-build remediation checklist is [review-todo.md](review-todo.md). Prepared October 26, 2026 using the planning-and-task-breakdown, writing-plans and documentation skills.
+**Status:** Phase 00 authorized October 26, 2026; local foundation implemented, external feasibility blocked on DeepSeek inference availability and remaining provider setup. Later phases are not started. The pre-build remediation checklist is [review-todo.md](review-todo.md). Prepared October 26, 2026 using the planning-and-task-breakdown, writing-plans and documentation skills.
 
-This is the execution plan for the MVP described in [IMPLEMENTATION_PLAN.md](../../IMPLEMENTATION_PLAN.md). It breaks the existing design into **13 phases and 57 reviewable tasks**, including negative paths and operations. The [cancellation decision](../decisions/0001-open-participation-and-cancellation.md) remains the accepted product policy. The refinements below are the accepted pre-build contract and must be reconciled into the master architecture before implementation.
+This is the execution plan for the MVP described in [IMPLEMENTATION_PLAN.md](../../IMPLEMENTATION_PLAN.md). It breaks the existing design into **13 phases and 57 reviewable tasks**, including negative paths and operations. The [cancellation decision](../decisions/0001-open-participation-and-cancellation.md) remains the accepted product policy. The refinements below are the accepted pre-build contract and are reconciled into the master architecture.
 
 ## What the MVP delivers
 
@@ -10,7 +10,7 @@ GitPay connects GitHub issues/PRs to PayPal sandbox. Maintainers fund a publishe
 
 Every main user workflow is in scope, including inability to proceed safely. The product must explain failed/pending payments, lost repository access, unconnected recipients, stale confirmations and unresolved disputes rather than pretending these states do not exist.
 
-The development assistant remains Codex. The runtime verifier remains Claude through Anthropic. No new model provider, exclusive contributor assignment, dashboard mutation system or live-money deployment is proposed.
+The development assistant remains Codex. The runtime verifier uses NVIDIA-hosted DeepSeek with Nemotron fallback, per [ADR 0002](../decisions/0002-nvidia-runtime-models.md). Exclusive contributor assignment, dashboard mutations and live-money deployment remain outside scope.
 
 ## Review decisions
 
@@ -34,7 +34,7 @@ Keep partial awards, changing funded amounts, third-party funding, live money, K
 
 | Phase | Deliverable | Depends on | Main review checkpoint |
 | --- | --- | --- | --- |
-| [00 — Foundation and provider feasibility](00.md) | Reproducible workspace, DB, tests, sandbox capability evidence | Plan review | Can we actually use GitHub auth, Claude structured output and PayPal Payouts? |
+| [00 — Foundation and provider feasibility](00.md) | Reproducible workspace, DB, tests, sandbox capability evidence | Plan review | Can we actually use GitHub auth, NVIDIA structured output and PayPal Payouts? |
 | [01 — GitHub App, events and drafts](01.md) | Durable webhook/jobs flow and visible unfunded bounties | 00 | Replayed events cannot create duplicate bounties |
 | [02 — Authentication and confirmations](02.md) | Login, permission checks and safe draft cancellation | 01 | Money actions cannot be authorized by a label, GET or replayed token |
 | [03 — Funding and capture](03.md) | Checkout, immutable funded terms and confirmed capture | 02 | Funded means captured, including after worker failure |
@@ -104,11 +104,11 @@ Real-money reversals, disputes outside the recorded protocol and forced acceptan
 
 ## Execution contract
 
-1. **Review first.** These are planning files requested for review. Do not install packages, scaffold runtime code, operate accounts or start implementing them in this planning turn.
+1. **Scope first.** Phase 00 is authorized. The plan does not authorize later phases or external account operations; follow the current user request.
 2. **Existing references.** Read AGENTS.md, the relevant architecture section and the phase before implementing. User instructions take precedence. If approved, these phase contracts refine the v4 schema sketches; reconcile the master architecture with approved refinements before implementing Phase 00.
 3. **Task size.** Each numbered task owns a reviewable contract and approximately 3–5 primary files. Split framework boilerplate into a small prerequisite task if required; do not balloon a task into multiple unrelated subsystems.
 4. **Tests and evidence.** For behavior changes use meaningful failing cases, implement, then verify. Config/docs need direct validation, not tests that mirror the config. External probes and browser walkthroughs require observations; mocks do not prove provider integration.
-5. **Scripts are planned.** `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build` and `pnpm exec vitest run <path>` become available in 00. Server integration tests use isolated Postgres through TEST_DATABASE_URL and deny unmatched provider calls. Do not run these now or report nonexistent tests as passing.
+5. **Checks.** Phase 00 provides `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm build` and `pnpm exec vitest run <path>`. Server integration tests use isolated Postgres through an explicitly exported TEST_DATABASE_URL and deny unmatched provider calls. See [setup](../setup.md).
 6. **Future scripts.** `pnpm eval:verifier` is added in 05. The web package and its test/build scripts are added in 09; React tests use a DOM test environment. `pnpm test:e2e` is a separate Playwright suite from 09, excluded from Vitest. Each task adds its relevant package/config dependencies explicitly.
 7. **Shared invariants.** Sandbox only, integer cents, one award, exact recipient allocation, preserved evidence, no network inside DB transactions, no exclusive claims, and independent refund review. Snapshot mutable provider results outside locks and verify versions before committing.
 8. **Durable operations.** Store intent, identity and request key before financial calls. Differentiate provably unsent from may-have-submitted. Unknown outcomes remain reserved until reconciliation. Never reset an operation just to make a test/demo work.
@@ -176,7 +176,7 @@ GitHub event acknowledgement requires delivery receipt and job creation in the s
 
 - **GitHub:** owner-controlled App/demo repository and separate maintainer/contributor identities. Add an independent reviewer with evidence access for cancellation. Account creation, secret values and collaborator invitations require the owner's action/authorization.
 - **PayPal:** sandbox business platform account, maintainer and contributor personal sandbox accounts, Payouts capability and sufficient sandbox balance. A second contributor account is needed to evidence a two-author award. Feasibility is not assumed from credentials existing.
-- **Anthropic:** a permitted API key/model with the required structured-output capability. Record actual model and evaluation evidence; do not assume every model accepts the old forced-tool/temperature parameters.
+- **NVIDIA:** a permitted API key and access to the selected DeepSeek/Nemotron models. Probe both independently and evaluate both before automatic verification. Record the exact profile and failures; model listing alone does not prove inference capability.
 - **Hosting:** account, region/plan and durable Postgres/worker capability must be verified in 11. Never invent a working deployment URL or free-worker guarantee.
 - **Independent review:** someone must actually operate the exception process. Without that person, funded refunds remain disabled and full W10 acceptance is blocked. Development can establish local correctness, but it cannot invent operating capacity.
 - **Notice:** the planned 72-hour real notice may determine earliest live-refund test timing. Schedule a legitimate test request early once Phase 08 is ready; use test clocks only for labelled automated/simulated cases.
@@ -196,6 +196,6 @@ These checks inform the design; they do not prove an integration is configured:
 - [x] The refinements above are reconciled into the master plan, including CI review rules, dashboard scope and encrypted payout details.
 - [ ] Open participation and first qualifying merge remain the intended selection policy.
 - [ ] Independent reviewer responsibility and the proposed notice duration are acceptable.
-- [ ] We agree on the first implementation slice: Phase 00, with external capability evidence clearly separated from local checks.
+- [x] We agree on the first implementation slice: Phase 00, with external capability evidence clearly separated from local checks. Authorized October 26, 2026.
 
-The review remediation is tracked in [review-todo.md](review-todo.md). Only after that checklist is complete should the user approve Phase 00. Then implement phase-by-phase; do not treat the existence of these documents as approval to start all phases.
+The review remediation is tracked in [review-todo.md](review-todo.md). Phase 00 was subsequently authorized. Its external gate remains open; do not start Phase 01 or treat these documents as authorization for all phases.

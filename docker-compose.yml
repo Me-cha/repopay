@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: postgres:16.13-alpine
+    environment:
+      POSTGRES_USER: gitpay
+      POSTGRES_PASSWORD: gitpay
+      POSTGRES_DB: gitpay
+    ports:
+      - '127.0.0.1:5433:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U gitpay -d gitpay']
+      interval: 2s
+      timeout: 5s
+      retries: 20
+volumes:
+  postgres-data:

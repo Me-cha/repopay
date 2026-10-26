@@ -3,11 +3,11 @@
 > "Fund an issue. Merge a qualifying solution. Pay the contributor."
 > A GitHub App that glues GitHub issues and PRs to PayPal: maintainers fund bounties through PayPal checkout, AI verifies PRs and merged work is paid through PayPal Payouts.
 
-Status: **planning and repository foundation; application implementation has not started**. Updated October 26, 2026. This is the canonical implementation plan; [PLAN.md](PLAN.md) is a navigation pointer.
+Status: **implementation authorized for Phase 00; task progress and outstanding gates are tracked in [the phase index](docs/phases/README.md)**. Updated October 26, 2026. This is the canonical implementation plan; [PLAN.md](PLAN.md) is a navigation pointer.
 
 Hackathon target: PayPal "Build What's Next with PayPal and AI". The inherited submission date is November 12, 2026; verify the official deadline, eligibility and prize rules before submission.
 
-Development uses **Codex** and [AGENTS.md](AGENTS.md). The runtime verifier remains Claude via the Anthropic API as selected in v3. Changing the coding assistant does not change the application's model provider.
+Development uses **Codex** and [AGENTS.md](AGENTS.md). The runtime verifier uses NVIDIA-hosted DeepSeek with Nemotron fallback, authorized in [ADR 0002](docs/decisions/0002-nvidia-runtime-models.md). That decision supersedes the v3 Anthropic selection; Codex remains the development assistant.
 
 Revision v4 incorporates open participation, exceptional cancellation review, persistent contributor awards and the GitPay name. The pre-build review remediation recorded in [the phase review TODO](docs/phases/review-todo.md) is now part of this canonical plan: the master architecture, schema sketch, state machines and phase contracts must agree before Phase 00 starts. See [the cancellation decision](docs/decisions/0001-open-participation-and-cancellation.md) for reasons and tradeoffs.
 
@@ -141,7 +141,7 @@ Main prizes, Best Use of PayPal + AI, Most Impactful, Best Demo, AG Grid, APIMat
 │ sync_bounty    → bot comment    │──▶ GitHub comment / badge label
 │ run_command    → actions        │
 │ create_order / capture_order    │──▶ PayPal Orders
-│ verify_pr      → github+claude  │──▶ Check Run
+│ verify_pr      → github+NVIDIA  │──▶ Check Run
 │ settle_pr      → policy         │
 │ submit_payout / poll_payout     │──▶ PayPal Payouts
 │ submit_refund / poll_refund     │──▶ PayPal Refunds
@@ -189,7 +189,7 @@ Design rules:
   Copy the webhook id. Webhook payloads are triggers only; state is always re-read from the API (section 9.2).
 
 ### 3.3 Other
-- Anthropic API key.
+- NVIDIA API key with access to both selected models.
 - smee.io for local GitHub webhooks. PayPal cannot reach localhost: dev uses polling fallbacks.
 - Optional APIMatic Context Plugin/MCP in Codex if available; otherwise use official PayPal documentation. Do not assume any integration is installed.
 
@@ -254,7 +254,7 @@ Unauthorized or invalid-state commands get a short reply explaining why and what
 | HTTP | Express 5 |
 | GitHub | `@octokit/app`, `octokit.graphql` |
 | PayPal | `@paypal/paypal-server-sdk` for Orders/Payments if it fits; plain `fetch` client for Payouts, webhook verification and gaps |
-| LLM | `@anthropic-ai/sdk`, forced tool use with a Phase-00-verified capability profile; model parameters are not assumed universally |
+| LLM | NVIDIA OpenAI-compatible Chat Completions via bounded fetch; DeepSeek primary, Nemotron fallback; JSON-schema output validated by Zod |
 | DB | Postgres 16, `drizzle-orm` + `drizzle-kit`, `pg` |
 | Validation | `zod` |
 | Crypto | Node `crypto` (AES-256-GCM for stored OAuth tokens, HMAC for state, SHA-256 for token hashes) |
@@ -274,15 +274,23 @@ The following is the **target layout**, not a claim that the runtime exists. [AG
 GitPay/
 ├─ IMPLEMENTATION_PLAN.md  PLAN.md (pointer)  README.md  AGENTS.md  Agent.md (pointer)
 ├─ CONTRIBUTING.md  LICENSE (MIT)  .gitignore  .gitattributes  .editorconfig  .env.example
-├─ .github/pull_request_template.md
-├─ docs/decisions/0001-open-participation-and-cancellation.md
-├─ docs/phases/{README.md,review-todo.md,00.md,...,12.md} (review draft; task source of truth)
-├─ render.yaml  docker-compose.yml (Phase 0/deployment, not present yet)
+├─ .github/{pull_request_template.md,workflows/ci.yml}
+├─ package.json  pnpm-workspace.yaml  pnpm-lock.yaml  .node-version  .npmrc
+├─ tsconfig.base.json  tsconfig.json  eslint.config.js  vitest.config.ts  drizzle.config.ts
+├─ docs/setup.md
+├─ docs/evidence/{00-summary.md,00-preflight.md} (later phases add their evidence)
+├─ docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md}
+├─ docs/phases/{README.md,review-todo.md,00.md,...,12.md} (task source of truth; status in phase index)
+├─ docker-compose.yml (Phase 0)  render.yaml (future deployment)
 ├─ postman/README.md  gitpay.postman_collection.json (Phase 12)
 ├─ packages/
+│  ├─ server/{README.md,package.json,tsconfig.json,tsconfig.build.json}
 │  ├─ server/src/
 │  │  ├─ main.ts  worker.ts  env.ts  log.ts
-│  │  ├─ db/{schema.ts,client.ts,migrations/}
+│  │  ├─ db/{schema.ts,client.ts,transaction.ts,migrate.ts,migrations/}
+│  │  ├─ domain/types.ts
+│  │  ├─ preflight/{run.ts,http.ts,state.ts}
+│  │  ├─ models/nvidia.ts
 │  │  ├─ jobs/{queue.ts,runner.ts,kinds.ts}
 │  │  ├─ github/{app.ts,handlers.ts,commands.ts,labels.ts,linking.ts,reconciliation.ts,checks.ts,comments.ts,permissions.ts,oauth.ts}
 │  │  ├─ actions/{create.ts,fund.ts,cancel.ts,cancellation-review.ts,approve.ts,reject.ts,link.ts,retry.ts,status.ts,guards.ts,activity.ts}
@@ -292,10 +300,10 @@ GitPay/
 │  │  ├─ settlement/{settle.ts,payout.ts,claims.ts,refund.ts}
 │  │  ├─ http/{routes.ts,confirm.ts,fund.ts,connect.ts,auth.ts,session.ts,api.ts,sse.ts}
 │  │  └─ util/{money.ts,crypto.ts,parse.ts}
-│  ├─ server/test/{unit/,integration/,fixtures/}
-│  ├─ server/scripts/{preflight.ts,demo-seed.ts,eval-verifier.ts}
+│  ├─ server/test/{helpers/,unit/,integration/,fixtures/}
+│  ├─ server/scripts/{migrate.ts,preflight.ts,demo-seed.ts,eval-verifier.ts}
 │  └─ web/src/{main.tsx,App.tsx,grid/,api.ts}
-└─ package.json
+└─ packages/web/README.md (present; web runtime added in Phase 09)
 ```
 
 All business actions live in `actions/`. Comment commands, confirm POSTs and policy settlement call the same functions. HTTP and webhook layers never touch state directly.
@@ -317,7 +325,9 @@ Boot fails clearly on missing/invalid required values. `.env.example` is the con
 | `GH_APP_ID`, `GH_APP_SLUG`, `GH_PRIVATE_KEY`, `GH_WEBHOOK_SECRET`, `GH_CLIENT_ID`, `GH_CLIENT_SECRET` | |
 | `PP_BASE` | must equal `https://api-m.sandbox.paypal.com` |
 | `PP_CLIENT_ID`, `PP_SECRET`, `PP_WEBHOOK_ID` | |
-| `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | explicit model id |
+| `NVIDIA_API_KEY`, `NVIDIA_BASE` | key and exact `https://integrate.api.nvidia.com/v1` base |
+| `NVIDIA_PRIMARY_MODEL`, `NVIDIA_FALLBACK_MODEL` | `deepseek-ai/deepseek-v4.1-flash` / `nvidia/nemotron-3-ultra-550b-a55b` |
+| `NVIDIA_MAX_TOKENS`, `NVIDIA_TIMEOUT_MS` | explicit model-generation budget and per-attempt timeout; examples `2048`, `120000` |
 | `POLICY_MIN_CONFIDENCE` | e.g. `0.75` |
 | `POLICY_CI_REQUIRED` | `true`/`false` |
 | `POLICY_MIN_SHARE` | e.g. `0.05` |
@@ -325,7 +335,9 @@ Boot fails clearly on missing/invalid required values. `.env.example` is the con
 | `MAX_DIFF_CHARS` | e.g. `160000` |
 | `POLL_INTERVAL_MS` | e.g. `5000`; orders, payouts, refunds |
 | `JOB_LEASE_SEC` | e.g. `120` |
-| `PROVIDER_TIMEOUT_MS` | e.g. `10000`; bounded GitHub/PayPal/Anthropic request timeout |
+| `PROVIDER_TIMEOUT_MS` | e.g. `10000`; bounded GitHub/PayPal (model requests use NVIDIA_TIMEOUT_MS) request timeout |
+| `PROVIDER_RESPONSE_MAX_BYTES` | explicit maximum probe/provider JSON response bytes; example `1048576` |
+| `PREFLIGHT_SANDBOX_RECIPIENT` | optional local-only address; required only for explicit sandbox payment probe |
 | `WEBHOOK_BODY_MAX_BYTES` | e.g. `1048576`; reject oversized raw webhook bodies before parsing |
 | `RECONCILIATION_INTERVAL_SEC` | e.g. `60`; scheduler interval |
 | `RECONCILIATION_PAGE_LIMIT` | e.g. `100`; bounded GitHub/provider pages per scan |
@@ -846,10 +858,10 @@ Decide:
 Signals of a fake fix: tests deleted or skipped, assertions weakened, hardcoded expected outputs,
 changes only to comments or formatting. Treat these as DOES_NOT_RESOLVE.
 
-Call submit_verdict exactly once.
+Return only the JSON object matching the supplied verdict schema.
 ```
 
-`verify.ts`: `tools: [submit_verdict]` with `input_schema` from `Verdict`, a Phase-00-verified `tool_choice: {type: "tool", name: "submit_verdict"}`, `disable_parallel_tool_use: true`, and only model parameters supported by the recorded capability profile. Do not unconditionally send `temperature: 0`; omit or set parameters according to the selected model's verified contract. Zod-parse; retry once; then store `status='error'` and complete the Check Run as neutral "Verifier error, use `/bounty retry`". Store `prompt_sha256` and the capability-profile version.
+`verify.ts`: reuse `models/nvidia.ts` with the `Verdict` schema. Send the Phase-00-tested OpenAI-compatible JSON-schema profile: non-streaming response, temperature 1, top_p 0.95, bounded max_tokens; Nemotron thinking enabled. Accept only a completed, non-refused, model-matched response whose JSON passes Zod. Attempt DeepSeek first, then one Nemotron fallback only on transport timeout/failure, HTTP 429 or server error. Invalid/truncated output and other HTTP errors remain errors without fallback; a valid negative verdict is final. Store `status='error'` on exhaustion and complete the Check Run as neutral "Verifier error, use `/bounty retry`". Store actual model, attempts, `prompt_sha256` and capability-profile version. Both model profiles must pass Phase 05 evaluations before automatic settlement. See ADR 0002.
 
 ### 10.6 `policy/` (pure, fully unit tested)
 ```ts
@@ -943,7 +955,7 @@ SSE uses the durable `bounty_activity.id` as the cursor and PostgreSQL `LISTEN/N
 
 ## 11. Phased MVP execution plan
 
-The detailed execution breakdown is now in [docs/phases/README.md](docs/phases/README.md), with numbered files `00.md` through `12.md`. **It is a draft for user review, not implementation approval.** Product policy remains defined here and in ADR 0001; the phase overview records the reconciled pre-build refinements. Once the user approves the review draft, implement phase-by-phase without silently choosing between conflicting contracts.
+The detailed execution breakdown is now in [docs/phases/README.md](docs/phases/README.md), with numbered files `00.md` through `12.md`. **Phase 00 is authorized; later phases are not implicitly approved.** Product policy remains defined here and in ADR 0001; the phase overview records the reconciled pre-build refinements. Implement only the authorized phase, without silently choosing between conflicting contracts.
 
 | Phase | Outcome |
 | --- | --- |
@@ -961,7 +973,7 @@ The detailed execution breakdown is now in [docs/phases/README.md](docs/phases/R
 | [11](docs/phases/11.md) | Deployment and hosted sandbox validation |
 | [12](docs/phases/12.md) | MVP acceptance, documentation and demo |
 
-Every phase contains prerequisites, task IDs, primary files, interface contracts, acceptance cases, verification commands, an end-to-end walkthrough, exit gates and required evidence. Update progress in the phase files; do not maintain a second task checklist here. All phases are not started.
+Every phase contains prerequisites, task IDs, primary files, interface contracts, acceptance cases, verification commands, an end-to-end walkthrough, exit gates and required evidence. Update progress in the phase files; do not maintain a second task checklist here. Current completion status and external blockers are recorded only in the phase index and numbered phase files.
 
 Implementation priority is risk-first within the dependency graph: prove the local/provider foundation and the GitHub → funding → verification → award path before dashboard polish, then complete review, cancellation, recovery, hosted validation and final acceptance. This is a sequencing tactic only; the complete MVP still requires every phase gate and W01–W16 evidence.
 
@@ -979,7 +991,7 @@ Implementation priority is risk-first within the dependency graph: prove the loc
 | Layer | What |
 |---|---|
 | Unit | amount parsing, command grammar, link regex, `decide`, `allocate` (property), state guards per action, status mapping, permission decisions |
-| Integration | webhook fixtures + `nock` for GitHub/PayPal/Anthropic; assert DB rows, jobs, outbound calls |
+| Integration | webhook fixtures + `nock` for GitHub/PayPal/NVIDIA; assert DB rows, jobs, outbound calls |
 | Idempotency | replay every webhook twice; double confirm POST; repeated `/fund/return`; assert one capture/payout/refund and stable request keys |
 | Authorization | non-writer commands and confirms rejected; token reuse/expiry/stale version; dashboard scope via list, detail and SSE |
 | Lifecycle | abandoned checkout, OPEN cancel with approved order, capture pending/declined, refund pending/failed, verifier error, AWAITING_CLAIM cancel refused, payout ONHOLD/UNCLAIMED/FAILED, worker crash mid-payout, cancel vs merge race |
@@ -1001,7 +1013,7 @@ Implementation priority is risk-first within the dependency graph: prove the loc
 | 1:30–2:00 | Maintainer merges the real fix. Comment: "💸 Paid $50.00 to @contributor". Cut to sandbox account receiving it |
 | 2:00–2:30 | Second bounty in NEEDS_REVIEW: `/bounty approve` → confirm page with exact split → paid. Show a cancellation request blocked by an existing valid submission; mention reviewed exceptions |
 | 2:30–2:50 | Read-only dashboard: rows flip live, filter attention items, expand AI reasoning |
-| 2:50–3:00 | "GitHub + PayPal + Claude. Glue, not a platform." |
+| 2:50–3:00 | "GitHub + PayPal + NVIDIA. Glue, not a platform." |
 
 ---
 

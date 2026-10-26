@@ -1,6 +1,6 @@
 # Plan review remediation TODO
 
-**Status:** Complete pending user approval. This checklist tracks corrections from the pre-build review of the implementation plan. It is documentation work only; it does not authorize Phase 00 or any provider operation.
+**Status:** Pre-build review complete; Phase 00 subsequently authorized October 26, 2026. This checklist tracks corrections from the pre-build review of the implementation plan. It is documentation work only; it does not authorize Phase 00 or any provider operation.
 
 **Loop contract:** Work on one item at a time. Inspect the affected contract, update the canonical plan and phase files, run the focused documentation/consistency checks, then mark the item complete. Do not mark an item complete because a sentence was added without reconciling the dependent schema, state machine, phase gate and environment documentation.
 
@@ -26,4 +26,4 @@
 
 ## Completion rule
 
-This remediation list is complete only when every item and checkpoint is checked, the final verification commands have fresh output, and the phase index still says implementation has not started.
+This remediation list is complete only when every item and checkpoint is checked, the final verification commands have fresh output, and the phase index accurately reflects the state at the review checkpoint. Runtime work was not started at that historical checkpoint; current implementation status belongs to the numbered phase files.
