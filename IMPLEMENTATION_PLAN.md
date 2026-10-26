@@ -3,11 +3,11 @@
 > "Fund an issue. Merge a qualifying solution. Pay the contributor."
 > A GitHub App that glues GitHub issues and PRs to PayPal: maintainers fund bounties through PayPal checkout, AI verifies PRs and merged work is paid through PayPal Payouts.
 
-Status: **planning and repository foundation; application implementation has not started**. Updated October 26, 2026. This is the canonical implementation plan; [PLAN.md](PLAN.md) is a navigation pointer.
+Status: **implementation authorized for Phase 00; task progress and outstanding gates are tracked in [the phase index](docs/phases/README.md)**. Updated October 26, 2026. This is the canonical implementation plan; [PLAN.md](PLAN.md) is a navigation pointer.
 
 Hackathon target: PayPal "Build What's Next with PayPal and AI". The inherited submission date is November 12, 2026; verify the official deadline, eligibility and prize rules before submission.
 
-Development uses **Codex** and [AGENTS.md](AGENTS.md). The runtime verifier remains Claude via the Anthropic API as selected in v3. Changing the coding assistant does not change the application's model provider.
+Development uses **Codex** and [AGENTS.md](AGENTS.md). The runtime verifier uses NVIDIA-hosted Nemotron only, authorized in [ADR 0003](docs/decisions/0003-nemotron-only-and-preflight-scope.md). That decision supersedes the v3 Anthropic selection; Codex remains the development assistant.
 
 Revision v4 incorporates open participation, exceptional cancellation review, persistent contributor awards and the GitPay name. The pre-build review remediation recorded in [the phase review TODO](docs/phases/review-todo.md) is now part of this canonical plan: the master architecture, schema sketch, state machines and phase contracts must agree before Phase 00 starts. See [the cancellation decision](docs/decisions/0001-open-participation-and-cancellation.md) for reasons and tradeoffs.
 
@@ -35,29 +35,32 @@ Revision v4 incorporates open participation, exceptional cancellation review, pe
 ## 1. Product
 
 ### 1.1 Principle: glue, not a platform
+
 Two things already exist: **GitHub** (issues, PRs, CI) and **PayPal** (checkout, payouts, refunds). GitPay fills the gap between them. Users never adopt a new home:
 
-| Action | Where it happens |
-|---|---|
-| Create bounty | GitHub: label `bounty:$50` or comment `/bounty create 50` |
-| Fund | PayPal checkout, reached from the bot's comment |
-| Contribute | GitHub PR with `Fixes #N` |
-| Verification result | GitHub Check Run on the PR |
+| Action                               | Where it happens                                                          |
+| ------------------------------------ | ------------------------------------------------------------------------- |
+| Create bounty                        | GitHub: label `bounty:$50` or comment `/bounty create 50`                 |
+| Fund                                 | PayPal checkout, reached from the bot's comment                           |
+| Contribute                           | GitHub PR with `Fixes #N`                                                 |
+| Verification result                  | GitHub Check Run on the PR                                                |
 | Approve, reject, cancel, link, retry | GitHub comment commands; money actions finish on a one-click confirm page |
-| Get paid | PayPal Payouts |
-| Monitor (optional) | Read-only AG Grid dashboard |
+| Get paid                             | PayPal Payouts                                                            |
+| Monitor (optional)                   | Read-only AG Grid dashboard                                               |
 
 The only web pages built: **confirm pages** for money actions, the **funding return** page, the contributor **connect PayPal** page and the **read-only dashboard** (optional for users, required in the MVP).
 
 ### 1.2 Users
-| Role | Does |
-|---|---|
+
+| Role                                          | Does                                                                                                                                    |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | Maintainer (write/maintain/admin on the repo) | Creates and funds bounties, merges PRs, approves/rejects submissions and requests exceptional cancellation via comments + confirm pages |
-| Contributor | Opens a PR, connects PayPal once, gets paid on merge |
-| Org admin | Optionally monitors accessible repositories on the read-only dashboard |
-| Cancellation operator | Reviews evidence and confirms exceptional refunds; cannot approve their own or a conflicted request |
+| Contributor                                   | Opens a PR, connects PayPal once, gets paid on merge                                                                                    |
+| Org admin                                     | Optionally monitors accessible repositories on the read-only dashboard                                                                  |
+| Cancellation operator                         | Reviews evidence and confirms exceptional refunds; cannot approve their own or a conflicted request                                     |
 
 ### 1.3 Core loop
+
 1. Maintainer adds label `bounty:$50` (or comments `/bounty create 50`). App creates an **OPEN (unfunded draft)** bounty. No PayPal call yet.
 2. Bot comments on the issue: amount, state, available actions and a **Fund $50.00** link.
 3. Maintainer clicks Fund → confirm page (GitHub login, write permission rechecked, amount shown) → **Pay with PayPal** → PayPal checkout → return → server captures → **FUNDED**. Paying the exact amount on PayPal is the financial intent, not the label.
@@ -68,10 +71,12 @@ The only web pages built: **confirm pages** for money actions, the **funding ret
 ### 1.4 Decision record v3: GitHub-native actions with confirmed money movement (accepted Oct 26, 2026)
 
 **History.**
+
 - v1: labels and comments controlled everything including refunds on label removal.
 - v2: a dashboard owned all actions. It solved v1's safety issues but turned the project into a separate platform maintainers must adopt, which is the opposite of the winning pattern (glue between existing tools) and roughly doubled scope.
 
 **Decision.**
+
 - Users act in GitHub. Postgres stays authoritative for amount, state and history (kept from v2).
 - Labels and `/bounty create` only create an **unfunded draft**. They can never fund, cancel, refund, resize or approve.
 - Removing, renaming or deleting a label has no financial effect. The bot may reply with a hint (`/bounty cancel`).
@@ -117,6 +122,7 @@ Exact abuse case: a contributor submits a valid solution, the maintainer request
 See [ADR 0001](docs/decisions/0001-open-participation-and-cancellation.md) for rationale, sources and limitations.
 
 ### 1.7 Prize targets (drives priority)
+
 Main prizes, Best Use of PayPal + AI, Most Impactful, Best Demo, AG Grid, APIMatic, Render.
 
 ---
@@ -141,7 +147,7 @@ Main prizes, Best Use of PayPal + AI, Most Impactful, Best Demo, AG Grid, APIMat
 │ sync_bounty    → bot comment    │──▶ GitHub comment / badge label
 │ run_command    → actions        │
 │ create_order / capture_order    │──▶ PayPal Orders
-│ verify_pr      → github+claude  │──▶ Check Run
+│ verify_pr      → github+NVIDIA  │──▶ Check Run
 │ settle_pr      → policy         │
 │ submit_payout / poll_payout     │──▶ PayPal Payouts
 │ submit_refund / poll_refund     │──▶ PayPal Refunds
@@ -152,6 +158,7 @@ Main prizes, Best Use of PayPal + AI, Most Impactful, Best Demo, AG Grid, APIMat
 ```
 
 Design rules:
+
 - **AI proposes, deterministic policy or an authorized person decides, PayPal executes.** Maintainers approve awards; independent operators approve exceptional refunds. The two authorities are distinct.
 - Postgres is authoritative. GitHub comments and labels are projections written by `sync_bounty` after DB transitions.
 - Every state transition, activity entry and job enqueue for one action happen in **one SQL transaction**, guarded by `where status = $expected and version = $expectedVersion` and incrementing `version`.
@@ -159,6 +166,7 @@ Design rules:
 - Verification runs before merge so payout at merge is fast.
 
 ### 2.1 Role of the GitHub App
+
 - **Installation** grants the app access to selected repos: read issues, diffs, CI; receive webhooks; write comments, labels and Check Runs. Installation tokens power background work.
 - **User authorization** (GitHub OAuth through the same App) identifies a person on confirm pages, the connect page and the dashboard. It never grants authority by itself: each action rechecks the user's current repo permission.
 - Comment commands are authorized by the **comment author's** current permission (checked with the installation token via `repos.getCollaboratorPermissionLevel`).
@@ -169,6 +177,7 @@ Design rules:
 ## 3. External setup (human does this, Codex documents it in README)
 
 ### 3.1 GitHub
+
 - **Three roles/accounts for the cancellation demo:** maintainer (owns/funds), contributor (submits), and independent operator (reviews exceptions with repository read access). The operator cannot be the funder, requester or claimant.
 - Create a GitHub App:
   - Webhook URL: smee.io channel in dev, Render URL in prod. Path `/webhooks/github`. Webhook secret: random 32 bytes.
@@ -179,9 +188,10 @@ Design rules:
 - Demo repo `gitpay-demo`: tiny TypeScript library, vitest suite, GitHub Actions workflow running tests on PRs. Add `contributor` as collaborator. Install the app on it.
 
 ### 3.2 PayPal sandbox
+
 - developer.paypal.com → Apps & Credentials → **Sandbox** → create REST app. Copy client id and secret.
 - Confirm **Payouts** is enabled in app features. #1 blocker. `pnpm preflight` verifies it.
-- Sandbox accounts: 1 Business (platform: receives funding, sends payouts and refunds; large balance), 1 Personal `maintainer` (funds), 1 Personal `contributor` (receives).
+- Sandbox accounts: 1 Business (platform: receives funding, sends payouts and refunds; large balance), 1 Personal `maintainer` (funds), 1 Personal `contributor` (receives). Use a sending-supported simulated country such as US for the Business account and select it when creating the sandbox Merchant REST app. The default IN sandbox sender was rejected with `PAYOUT_NOT_AVAILABLE`; see [Phase 0 provider evidence](docs/evidence/00-preflight.md).
 - Sandbox webhook to `${PUBLIC_URL}/webhooks/paypal`, events:
   `CHECKOUT.ORDER.APPROVED`, `CHECKOUT.PAYMENT-APPROVAL.REVERSED`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.DENIED`, `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.REFUNDED`,
   `PAYMENT.PAYOUTSBATCH.SUCCESS`, `PAYMENT.PAYOUTSBATCH.DENIED`, `PAYMENT.PAYOUTSBATCH.PROCESSING`,
@@ -189,7 +199,8 @@ Design rules:
   Copy the webhook id. Webhook payloads are triggers only; state is always re-read from the API (section 9.2).
 
 ### 3.3 Other
-- Anthropic API key.
+
+- NVIDIA API key with access to the selected Nemotron model.
 - smee.io for local GitHub webhooks. PayPal cannot reach localhost: dev uses polling fallbacks.
 - Optional APIMatic Context Plugin/MCP in Codex if available; otherwise use official PayPal documentation. Do not assume any integration is installed.
 
@@ -198,46 +209,50 @@ Design rules:
 ## 4. Bot UX (comments are the UI)
 
 ### 4.1 Status comment (one per bounty on the issue, edited in place)
+
 Hidden marker `<!-- gitpay:bounty:{id} -->`. Always shows amount, state, linked PRs and **available actions for the current state**:
 
-| State | Shown actions |
-|---|---|
-| OPEN | **[Fund $50.00]**(confirm link) · `/bounty cancel` |
-| CAPTURING | "Confirming payment with PayPal…" · `/bounty status` |
-| FUNDED | "Anyone may submit a PR with `Fixes #12`; no reservation" · **[Connect PayPal]** · `/bounty cancel <reason>` (request exceptional review only) |
-| SETTLING | "Evaluating merged PR #34…" |
-| NEEDS_REVIEW | reason + AI summary · `/bounty approve` · `/bounty reject <reason>` · `/bounty cancel <reason>` (request only; unresolved claims block refund) |
-| AWAITING_CLAIM | "Award committed: @alice connect PayPal to receive $50.00: **[Connect]**" · `/bounty status`; no cancellation |
-| PAYING | per-recipient status · `/bounty status` |
-| PAID | receipt: recipients and amounts; a later verified return/reversal shows attention and delivery history without erasing the award |
-| REFUNDING | refund status · `/bounty status` |
-| CANCELLED | "Cancelled" (+ "refunded $50.00" if captured) |
+| State          | Shown actions                                                                                                                                  |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| OPEN           | **[Fund $50.00]**(confirm link) · `/bounty cancel`                                                                                             |
+| CAPTURING      | "Confirming payment with PayPal…" · `/bounty status`                                                                                           |
+| FUNDED         | "Anyone may submit a PR with `Fixes #12`; no reservation" · **[Connect PayPal]** · `/bounty cancel <reason>` (request exceptional review only) |
+| SETTLING       | "Evaluating merged PR #34…"                                                                                                                    |
+| NEEDS_REVIEW   | reason + AI summary · `/bounty approve` · `/bounty reject <reason>` · `/bounty cancel <reason>` (request only; unresolved claims block refund) |
+| AWAITING_CLAIM | "Award committed: @alice connect PayPal to receive $50.00: **[Connect]**" · `/bounty status`; no cancellation                                  |
+| PAYING         | per-recipient status · `/bounty status`                                                                                                        |
+| PAID           | receipt: recipients and amounts; a later verified return/reversal shows attention and delivery history without erasing the award               |
+| REFUNDING      | refund status · `/bounty status`                                                                                                               |
+| CANCELLED      | "Cancelled" (+ "refunded $50.00" if captured)                                                                                                  |
 
 If `needs_attention` is set, add a ⚠️ line with a safe user-facing reason and the next step. A pending cancellation adds a separate banner with reason, evidence links, notice deadline, reviewer/next update and "funds have not been refunded". This banner does not replace the bounty lifecycle or disable submissions.
 
 ### 4.2 Commands
+
 Grammar: the comment's **first non-quoted, non-code line** must match exactly. Ignore edited comments, bot comments and lines starting with `>`. Case-insensitive keyword.
 
-| Command | Where | Who | Effect |
-|---|---|---|---|
-| `/bounty create <amount>` | issue | write+ | Same as label: create OPEN draft |
-| `/bounty fund` | issue | write+ | Re-post a fresh Fund confirm link (OPEN only) |
-| `/bounty status` | issue or PR | anyone | Reply with state; enqueue reconciliation of any in-flight capture/payout/refund |
-| `/bounty approve` | issue or PR | write+ | NEEDS_REVIEW only: reply with confirm link showing full amount and split |
-| `/bounty reject <reason>` | issue or PR | write+ | NEEDS_REVIEW → FUNDED directly (no money moves); reconsider other merged linked PRs |
-| `/bounty cancel [reason]` | issue | write+ | OPEN: confirm draft cancellation. FUNDED/NEEDS_REVIEW: reason required, confirm a cancellation request; no money moves. Award committed: refuse cancellation |
-| `/bounty link #<pr>` | issue | write+ | Link a same-repo PR explicitly; enqueue verification (and settlement if already merged) |
-| `/bounty retry` | PR | write+ | New verification attempt for the PR's current head |
+| Command                   | Where       | Who    | Effect                                                                                                                                                       |
+| ------------------------- | ----------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/bounty create <amount>` | issue       | write+ | Same as label: create OPEN draft                                                                                                                             |
+| `/bounty fund`            | issue       | write+ | Re-post a fresh Fund confirm link (OPEN only)                                                                                                                |
+| `/bounty status`          | issue or PR | anyone | Reply with state; enqueue reconciliation of any in-flight capture/payout/refund                                                                              |
+| `/bounty approve`         | issue or PR | write+ | NEEDS_REVIEW only: reply with confirm link showing full amount and split                                                                                     |
+| `/bounty reject <reason>` | issue or PR | write+ | NEEDS_REVIEW → FUNDED directly (no money moves); reconsider other merged linked PRs                                                                          |
+| `/bounty cancel [reason]` | issue       | write+ | OPEN: confirm draft cancellation. FUNDED/NEEDS_REVIEW: reason required, confirm a cancellation request; no money moves. Award committed: refuse cancellation |
+| `/bounty link #<pr>`      | issue       | write+ | Link a same-repo PR explicitly; enqueue verification (and settlement if already merged)                                                                      |
+| `/bounty retry`           | PR          | write+ | New verification attempt for the PR's current head                                                                                                           |
 
 On a PR linked to more than one bounty, commands require the issue: `/bounty approve #12`.
 Unauthorized or invalid-state commands get a short reply explaining why and what is allowed now.
 
 ### 4.3 Labels
+
 - `bounty:$<amount>` with `/^bounty:\$(\d{1,6})(?:\.(\d{2}))?$/i` → create OPEN draft if no active bounty exists for the issue. If one exists, reply with its amount and state; never change it.
 - App-managed badge labels `bounty-open`, `bounty-funded`, `bounty-paid` are best-effort projections written by `sync_bounty`.
 - Any unlabel/rename/delete: no financial effect. Optional reply hint: "Labels don't affect funds. Use `/bounty cancel`."
 
 ### 4.4 Confirm pages (`/a/:token`)
+
 - Token: 32 random bytes (base64url) stored hashed in `action_tokens` with bounty id, action, params, `bounty_version`, requester, `expires_at` (`ACTION_TOKEN_TTL_SEC`), `used_at`.
 - GET: require GitHub login (redirect through OAuth with signed state, then back). For maintainer actions recheck write+ permission with the user token; operator review actions require configured operator identity, evidence access and conflict checks instead. Check token unused, unexpired, bounty version unchanged. Render: action, exact amount, recipients (logins + cents) or refund destination ("the PayPal account that funded this bounty", masked payer email), consequences, Confirm button with CSRF token.
 - POST: recheck everything, verify CSRF token and `Origin`, mark token used and run the action in **one transaction**. Redirect to a status page that polls `/api/bounties/:id`.
@@ -249,21 +264,21 @@ Unauthorized or invalid-state commands get a short reply explaining why and what
 
 ## 5. Tech stack
 
-| Concern | Choice |
-|---|---|
-| Runtime | Node 22 LTS, pnpm workspaces, TypeScript strict |
-| HTTP | Express 5 |
-| GitHub | `@octokit/app`, `octokit.graphql` |
-| PayPal | `@paypal/paypal-server-sdk` for Orders/Payments if it fits; plain `fetch` client for Payouts, webhook verification and gaps |
-| LLM | `@anthropic-ai/sdk`, forced tool use with a Phase-00-verified capability profile; model parameters are not assumed universally |
-| DB | Postgres 16, `drizzle-orm` + `drizzle-kit`, `pg` |
-| Validation | `zod` |
-| Crypto | Node `crypto` (AES-256-GCM for stored OAuth tokens, HMAC for state, SHA-256 for token hashes) |
-| Logging | `pino` with redaction |
-| Tests | `vitest`, `nock` or `msw`, `fast-check` for property tests |
-| Web | Vite + React + `ag-grid-react` Community (read-only dashboard only); confirm/connect/fund pages are server-rendered HTML |
-| Local infra | `docker compose` (Postgres), `smee-client` |
-| Deploy | Render (web service + Postgres; worker inline or separate) |
+| Concern     | Choice                                                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Runtime     | Node 22 LTS, pnpm workspaces, TypeScript strict                                                                                      |
+| HTTP        | Express 5                                                                                                                            |
+| GitHub      | `@octokit/app`, `octokit.graphql`                                                                                                    |
+| PayPal      | `@paypal/paypal-server-sdk` for Orders/Payments if it fits; plain `fetch` client for Payouts, webhook verification and gaps          |
+| LLM         | NVIDIA OpenAI-compatible Chat Completions via bounded fetch; Nemotron only, one bounded attempt; JSON-schema output validated by Zod |
+| DB          | Postgres 16, `drizzle-orm` + `drizzle-kit`, `pg`                                                                                     |
+| Validation  | `zod`                                                                                                                                |
+| Crypto      | Node `crypto` (AES-256-GCM for stored OAuth tokens, HMAC for state, SHA-256 for token hashes)                                        |
+| Logging     | `pino` with redaction                                                                                                                |
+| Tests       | `vitest`, `nock` or `msw`, `fast-check` for property tests                                                                           |
+| Web         | Vite + React + `ag-grid-react` Community (read-only dashboard only); confirm/connect/fund pages are server-rendered HTML             |
+| Local infra | `docker compose` (Postgres), `smee-client`                                                                                           |
+| Deploy      | Render (web service + Postgres; worker inline or separate)                                                                           |
 
 ---
 
@@ -275,18 +290,26 @@ The following is the **target layout**, not a claim that the runtime exists. [AG
 GitPay/
 ├─ IMPLEMENTATION_PLAN.md  PLAN.md (pointer)  README.md  AGENTS.md  Agent.md (pointer)
 ├─ CONTRIBUTING.md  LICENSE (MIT)  .gitignore  .gitattributes  .editorconfig  .env.example
-├─ .github/pull_request_template.md
-├─ docs/decisions/0001-open-participation-and-cancellation.md
-├─ docs/phases/{README.md,review-todo.md,00.md,...,12.md} (review draft; task source of truth)
-├─ render.yaml  docker-compose.yml (Phase 0/deployment, not present yet)
+├─ .github/{pull_request_template.md,workflows/ci.yml}
+├─ package.json  pnpm-workspace.yaml  pnpm-lock.yaml  .node-version  .npmrc
+├─ tsconfig.base.json  tsconfig.json  eslint.config.js  vitest.config.ts  drizzle.config.ts
+├─ docs/setup.md
+├─ docs/evidence/{00-summary.md,00-preflight.md} (later phases add their evidence)
+├─ docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md,0003-nemotron-only-and-preflight-scope.md}
+├─ docs/phases/{README.md,review-todo.md,00.md,...,12.md} (task source of truth; status in phase index)
+├─ docker-compose.yml (Phase 0)  render.yaml (future deployment)
 ├─ postman/README.md  gitpay.postman_collection.json (Phase 12)
 ├─ packages/
+│  ├─ server/{README.md,package.json,tsconfig.json,tsconfig.build.json}
 │  ├─ server/src/
 │  │  ├─ main.ts  worker.ts  env.ts  log.ts
-│  │  ├─ db/{schema.ts,client.ts,transaction.ts,migrations/}
-│  │  ├─ jobs/{queue.ts,runner.ts,kinds.ts,scheduler.ts}
-│  │  ├─ github/{app.ts,handlers.ts,commands.ts,labels.ts,linking.ts,reconciliation.ts,checks.ts,ci.ts,authors.ts,comments.ts,permissions.ts,oauth.ts}
-│  │  ├─ actions/{connect.ts,tokens.ts,cancellation-request.ts,create.ts,fund.ts,cancel.ts,cancellation-review.ts,approve.ts,reject.ts,link.ts,retry.ts,status.ts,guards.ts,activity.ts}
+│  │  ├─ db/{schema.ts,client.ts,transaction.ts,migrate.ts,migrations/}
+│  │  ├─ domain/types.ts
+│  │  ├─ preflight/{run.ts,http.ts,state.ts}
+│  │  ├─ models/nvidia.ts
+│  │  ├─ jobs/{queue.ts,runner.ts,kinds.ts}
+│  │  ├─ github/{app.ts,handlers.ts,commands.ts,labels.ts,linking.ts,reconciliation.ts,checks.ts,comments.ts,permissions.ts,oauth.ts}
+│  │  ├─ actions/{create.ts,fund.ts,cancel.ts,cancellation-review.ts,approve.ts,reject.ts,link.ts,retry.ts,status.ts,guards.ts,activity.ts}
 │  │  ├─ paypal/{client.ts,orders.ts,payouts.ts,refunds.ts,webhooks.ts,status-map.ts}
 │  │  ├─ verifier/{collect.ts,prompt.ts,schema.ts,verify.ts}
 │  │  ├─ policy/{decide.ts,allocate.ts}
@@ -296,10 +319,10 @@ GitPay/
 │  │  ├─ cancellation/{evidence.ts,authorization.ts}
 │  │  ├─ read-models/{bounties.ts,payouts.ts}  operations/attention.ts
 │  │  └─ util/{money.ts,crypto.ts,parse.ts}
-│  ├─ server/test/{unit/,integration/,fixtures/}
-│  ├─ server/scripts/{migrate.ts,check-migrations.ts,preflight.ts,demo-seed.ts,eval-verifier.ts}
+│  ├─ server/test/{helpers/,unit/,integration/,fixtures/}
+│  ├─ server/scripts/{migrate.ts,preflight.ts,demo-seed.ts,eval-verifier.ts}
 │  └─ web/src/{main.tsx,App.tsx,grid/,api.ts}
-└─ package.json
+└─ packages/web/README.md (present; web runtime added in Phase 09)
 ```
 
 All business actions live in `actions/`. Comment commands, confirm POSTs and policy settlement call the same functions. HTTP and webhook layers never touch state directly.
@@ -310,35 +333,39 @@ All business actions live in `actions/`. Comment commands, confirm POSTs and pol
 
 Boot fails clearly on missing/invalid required values. `.env.example` is the configuration template, not working credentials. `CANCELLATION_OPERATOR_GH_IDS` may be empty only when funded cancellation is disabled. Validate the notice period as positive and record it with funded terms. Runtime config validation is a Phase 0 deliverable.
 
-| Var | Notes |
-|---|---|
-| `NODE_ENV`, `PORT`, `PUBLIC_URL`, `DATABASE_URL`, `TEST_DATABASE_URL` | Separate test database is mandatory for destructive fixture resets |
-| `WORKER_MODE` | `inline` or `separate` |
-| `SESSION_SECRET` | 32+ bytes; HMAC for OAuth state and CSRF |
-| `TOKEN_ENC_KEY` | 32 bytes base64; AES-256-GCM key for stored GitHub user tokens |
-| `PAYMENT_DATA_ENC_KEY` | 32 bytes base64; AES-256-GCM key for contributor destinations and payout snapshots |
-| `ACTION_TOKEN_TTL_SEC` | e.g. `900` |
-| `GH_APP_ID`, `GH_APP_SLUG`, `GH_PRIVATE_KEY`, `GH_WEBHOOK_SECRET`, `GH_CLIENT_ID`, `GH_CLIENT_SECRET` | |
-| `PP_BASE` | must equal `https://api-m.sandbox.paypal.com` |
-| `PP_CLIENT_ID`, `PP_SECRET`, `PP_WEBHOOK_ID` | |
-| `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` | explicit model id |
-| `POLICY_MIN_CONFIDENCE` | e.g. `0.75` |
-| `POLICY_CI_REQUIRED` | `true`/`false` |
-| `POLICY_MIN_SHARE` | e.g. `0.05` |
-| `MAX_BOUNTY_CENTS` | e.g. `100000` |
-| `MAX_DIFF_CHARS` | e.g. `160000` |
-| `POLL_INTERVAL_MS` | e.g. `5000`; orders, payouts, refunds |
-| `JOB_LEASE_SEC` | e.g. `120` |
-| `PROVIDER_TIMEOUT_MS` | e.g. `10000`; bounded GitHub/PayPal/Anthropic request timeout |
-| `WEBHOOK_BODY_MAX_BYTES` | e.g. `1048576`; reject oversized raw webhook bodies before parsing |
-| `RECONCILIATION_INTERVAL_SEC` | e.g. `60`; scheduler interval |
-| `RECONCILIATION_PAGE_LIMIT` | e.g. `100`; bounded GitHub/provider pages per scan |
-| `RECONCILIATION_RATE_PER_MIN` | e.g. `30`; scan/action rate limit |
-| `RECONCILIATION_MAX_ATTEMPTS` | e.g. `10`; scan retry ceiling before attention |
-| `SSE_HEARTBEAT_SEC` | e.g. `30`; connection keepalive |
-| `FUNDED_CANCELLATION_ENABLED` | default `false`; Phase 08 permits explicitly authorized isolated sandbox validation after local safety tests, then wider enablement only after its real refund gate; false disables new cancellation/refund authorization |
-| `CANCELLATION_OPERATOR_GH_IDS` | comma-separated stable GitHub IDs; nonempty when enabled; conflict checks still required |
-| `CANCELLATION_NOTICE_HOURS` | `72`; snapshot per funded bounty |
+| Var                                                                                                   | Notes                                                                                                                                                                                                                     |
+| ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`, `PORT`, `PUBLIC_URL`, `DATABASE_URL`, `TEST_DATABASE_URL`                                 | Separate test database is mandatory for destructive fixture resets                                                                                                                                                        |
+| `WORKER_MODE`                                                                                         | `inline` or `separate`                                                                                                                                                                                                    |
+| `SESSION_SECRET`                                                                                      | 32+ bytes; HMAC for OAuth state and CSRF                                                                                                                                                                                  |
+| `TOKEN_ENC_KEY`                                                                                       | 32 bytes base64; AES-256-GCM key for stored GitHub user tokens                                                                                                                                                            |
+| `PAYMENT_DATA_ENC_KEY`                                                                                | 32 bytes base64; AES-256-GCM key for contributor destinations and payout snapshots                                                                                                                                        |
+| `ACTION_TOKEN_TTL_SEC`                                                                                | e.g. `900`                                                                                                                                                                                                                |
+| `GH_APP_ID`, `GH_APP_SLUG`, `GH_PRIVATE_KEY`, `GH_WEBHOOK_SECRET`, `GH_CLIENT_ID`, `GH_CLIENT_SECRET` |                                                                                                                                                                                                                           |
+| `PP_BASE`                                                                                             | must equal `https://api-m.sandbox.paypal.com`                                                                                                                                                                             |
+| `PP_CLIENT_ID`, `PP_SECRET`, `PP_WEBHOOK_ID`                                                          |                                                                                                                                                                                                                           |
+| `NVIDIA_API_KEY`, `NVIDIA_BASE`                                                                       | key and exact `https://integrate.api.nvidia.com/v1` base                                                                                                                                                                  |
+| `NVIDIA_MODEL`                                                                                        | `nvidia/nemotron-3-ultra-550b-a55b`; sole approved runtime model                                                                                                                                                          |
+| `NVIDIA_MAX_TOKENS`, `NVIDIA_TIMEOUT_MS`                                                              | explicit model-generation budget and per-attempt timeout; examples `2048`, `120000`                                                                                                                                       |
+| `POLICY_MIN_CONFIDENCE`                                                                               | e.g. `0.75`                                                                                                                                                                                                               |
+| `POLICY_CI_REQUIRED`                                                                                  | `true`/`false`                                                                                                                                                                                                            |
+| `POLICY_MIN_SHARE`                                                                                    | e.g. `0.05`                                                                                                                                                                                                               |
+| `MAX_BOUNTY_CENTS`                                                                                    | e.g. `100000`                                                                                                                                                                                                             |
+| `MAX_DIFF_CHARS`                                                                                      | e.g. `160000`                                                                                                                                                                                                             |
+| `POLL_INTERVAL_MS`                                                                                    | e.g. `5000`; orders, payouts, refunds                                                                                                                                                                                     |
+| `JOB_LEASE_SEC`                                                                                       | e.g. `120`                                                                                                                                                                                                                |
+| `PROVIDER_TIMEOUT_MS`                                                                                 | e.g. `10000`; bounded GitHub/PayPal (model requests use NVIDIA_TIMEOUT_MS) request timeout                                                                                                                                |
+| `PROVIDER_RESPONSE_MAX_BYTES`                                                                         | explicit maximum probe/provider JSON response bytes; example `1048576`                                                                                                                                                    |
+| `PREFLIGHT_SANDBOX_RECIPIENT`                                                                         | optional local-only address; required only for explicit sandbox payment probe                                                                                                                                             |
+| `WEBHOOK_BODY_MAX_BYTES`                                                                              | e.g. `1048576`; reject oversized raw webhook bodies before parsing                                                                                                                                                        |
+| `RECONCILIATION_INTERVAL_SEC`                                                                         | e.g. `60`; scheduler interval                                                                                                                                                                                             |
+| `RECONCILIATION_PAGE_LIMIT`                                                                           | e.g. `100`; bounded GitHub/provider pages per scan                                                                                                                                                                        |
+| `RECONCILIATION_RATE_PER_MIN`                                                                         | e.g. `30`; scan/action rate limit                                                                                                                                                                                         |
+| `RECONCILIATION_MAX_ATTEMPTS`                                                                         | e.g. `10`; scan retry ceiling before attention                                                                                                                                                                            |
+| `SSE_HEARTBEAT_SEC`                                                                                   | e.g. `30`; connection keepalive                                                                                                                                                                                           |
+| `FUNDED_CANCELLATION_ENABLED`                                                                         | default `false`; Phase 08 permits explicitly authorized isolated sandbox validation after local safety tests, then wider enablement only after its real refund gate; false disables new cancellation/refund authorization |
+| `CANCELLATION_OPERATOR_GH_IDS`                                                                        | comma-separated stable GitHub IDs; nonempty when enabled; conflict checks still required                                                                                                                                  |
+| `CANCELLATION_NOTICE_HOURS`                                                                           | `72`; snapshot per funded bounty                                                                                                                                                                                          |
 
 ---
 
@@ -652,6 +679,7 @@ create table deliveries (
 ```
 
 Rules:
+
 - Identity is `gh_id` and `repo_id`, never login or repo name. Stable IDs cross application/DB boundaries as strings; parse losslessly or reject unsafe numeric provider values before conversion. Compare numeric PR IDs as BigInt for merge-time ties without converting them to Number; allocation ties use canonical string byte order. Neither comparator is locale-sensitive.
 - Lock the bounty row (`select ... for update`) before creating any order, capture, refund, decision or payout.
 - One active bounty per issue (partial unique index). A cancelled bounty can be recreated as a new row.
@@ -674,6 +702,7 @@ Rules:
 ## 9. State machines
 
 ### 9.1 Bounty
+
 ```
 OPEN ──order approved──▶ CAPTURING ──capture COMPLETED──▶ FUNDED
   │                         └─capture failed/declined──▶ OPEN (+attention)
@@ -693,6 +722,7 @@ FUNDED | NEEDS_REVIEW ──approved exception + fresh guards──▶ REFUNDING
 ```
 
 Notes:
+
 - **OPEN cancel is simple.** With `intent: CAPTURE` an approved order cannot be captured without our server calling capture. The capture job runs only when the bounty is CAPTURING with a matching `order_id`. Cancelling OPEN just transitions to CANCELLED under the row lock; an orphan approved order expires unused.
 - **CAPTURING** exists so cancellation cannot race an in-flight capture. Unknown capture outcome → `GET /v2/checkout/orders/{id}` to reconcile.
 - **AWAITING_CLAIM cannot be cancelled.** A committed pay decision is an award owed to its recipients. Missing payment details or failed/returned transfers never authorize a maintainer refund.
@@ -741,46 +771,48 @@ Webhook **event names** differ from item statuses (`PAYMENT.PAYOUTS-ITEM.SUCCEED
 ## 10. Module specs
 
 ### 10.1 `jobs/`
+
 - `enqueue(kind, payload, { dedupeKey, maxAttempts, runAfter? })` → `insert ... on conflict (dedupe_key) do nothing`.
 - Claim: `update jobs set status='running', locked_until=now()+lease, attempts=attempts+1 where id = (select id from jobs where (status='queued' and run_after<=now()) or (status='running' and locked_until<now()) order by id for update skip locked limit 1) returning *`.
 - Success → done. Error → queued with `run_after = now() + min(2^attempts * 2s, 5m)` or failed at `max_attempts` (+ bounty attention).
 - Every job handler must be idempotent under re-execution after a crash.
 
-| kind | payload | dedupe key |
-|---|---|---|
-| `sync_bounty` | bountyId, version | `sync:{bountyId}:{version}` |
-| `run_command` | installationId, repoId, issueNumber, commentId | `cmd:{commentId}` |
-| `create_bounty_from_label` | installationId, repoId, issueNumber, amountCents, senderId | `label:{repoId}:{issue}:{deliveryId}` |
-| `create_order` | bountyId, orderRequestKey | `order:{orderRequestKey}` |
-| `capture_order` | bountyId, orderId | `capture:{orderId}` |
-| `verify_pr` | installationId, repoId, prNumber, headSha, attempt, bountyId | `verify:{bountyId}:{pr}:{sha}:{attempt}` |
-| `settle_pr` | installationId, repoId, prNumber, headSha, considerationId | `settle:{repoId}:{pr}:{considerationId}` |
-| `submit_payout` | decisionId | `payout:{decisionId}` |
-| `poll_payout` | decisionId | none (self-reschedules until all items terminal) |
-| `submit_refund` | refundId | `refund:{refundId}` |
-| `poll_refund` | refundId | none |
-| `poll_order` | bountyId, orderId | none (starts at order creation independently of browser return; stops when resolved) |
-| `retry_claims` | ghId, connectionActivityId | `claims:{ghId}:{connectionActivityId}` |
-| `reconcile_submissions` | bountyId, scanId | `submissions:{bountyId}:{scanId}` |
-| `assess_cancellation` | requestId, evidenceVersion | `cancel-evidence:{requestId}:{evidenceVersion}` |
+| kind                       | payload                                                      | dedupe key                                                                           |
+| -------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `sync_bounty`              | bountyId, version                                            | `sync:{bountyId}:{version}`                                                          |
+| `run_command`              | installationId, repoId, issueNumber, commentId               | `cmd:{commentId}`                                                                    |
+| `create_bounty_from_label` | installationId, repoId, issueNumber, amountCents, senderId   | `label:{repoId}:{issue}:{deliveryId}`                                                |
+| `create_order`             | bountyId, orderRequestKey                                    | `order:{orderRequestKey}`                                                            |
+| `capture_order`            | bountyId, orderId                                            | `capture:{orderId}`                                                                  |
+| `verify_pr`                | installationId, repoId, prNumber, headSha, attempt, bountyId | `verify:{bountyId}:{pr}:{sha}:{attempt}`                                             |
+| `settle_pr`                | installationId, repoId, prNumber, headSha, considerationId   | `settle:{repoId}:{pr}:{considerationId}`                                             |
+| `submit_payout`            | decisionId                                                   | `payout:{decisionId}`                                                                |
+| `poll_payout`              | decisionId                                                   | none (self-reschedules until all items terminal)                                     |
+| `submit_refund`            | refundId                                                     | `refund:{refundId}`                                                                  |
+| `poll_refund`              | refundId                                                     | none                                                                                 |
+| `poll_order`               | bountyId, orderId                                            | none (starts at order creation independently of browser return; stops when resolved) |
+| `retry_claims`             | ghId, connectionActivityId                                   | `claims:{ghId}:{connectionActivityId}`                                               |
+| `reconcile_submissions`    | bountyId, scanId                                             | `submissions:{bountyId}:{scanId}`                                                    |
+| `assess_cancellation`      | requestId, evidenceVersion                                   | `cancel-evidence:{requestId}:{evidenceVersion}`                                      |
 
 **`considerationId`:** `merge:{mergeCommitSha}` for the merge event; `rej:{decisionId}` when a rejection reopens consideration; `link:{activityId}` when `/bounty link` links an already-merged PR. The bounty row lock and status (not the job key) are the final barrier against double allocation.
 
 `WORKER_MODE=inline` runs the runner in `main.ts`; `separate` runs `worker.ts`. The runner sits behind a `JobRunner` interface (Render Workflows adapter is a stretch).
 
 ### 10.2 `github/`
+
 - Webhook route: raw body, `app.webhooks.verifyAndReceive`, insert `deliveries('github', X-GitHub-Delivery)` (skip duplicates), dispatch, return 200. Handlers only enqueue.
 
-| Event | Action |
-|---|---|
-| `installation.*`, `installation_repositories.*` | upsert/suspend/delete installations; set attention on affected bounties with "app access removed"; never refund automatically |
-| `issues.labeled` | label matches bounty pattern and sender write+ → `create_bounty_from_label` |
-| `issues.unlabeled`, `label.*` | no financial action; optional hint reply (once per issue) |
-| `issue_comment.created` | starts with `/bounty` and author is not a bot → `run_command` |
-| `pull_request.opened/reopened/edited/synchronize` | resolve and persist links for every PR; for linked bounties in FUNDED/NEEDS_REVIEW enqueue `verify_pr` (attempt 1 for the head) |
-| `pull_request.closed` with `merged` | enqueue `settle_pr` with `considerationId = merge:{merge_commit_sha}` and `headSha = pull_request.head.sha` |
-| `check_run.rerequested` (our check) | recheck sender write permission, allocate next attempt, enqueue `verify_pr` |
-| external `check_run.completed`, `check_suite.completed`, `status` | refresh bound CI evidence; reconsider the saved unawarded candidate; never react recursively to GitPay checks |
+| Event                                                             | Action                                                                                                                          |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `installation.*`, `installation_repositories.*`                   | upsert/suspend/delete installations; set attention on affected bounties with "app access removed"; never refund automatically   |
+| `issues.labeled`                                                  | label matches bounty pattern and sender write+ → `create_bounty_from_label`                                                     |
+| `issues.unlabeled`, `label.*`                                     | no financial action; optional hint reply (once per issue)                                                                       |
+| `issue_comment.created`                                           | starts with `/bounty` and author is not a bot → `run_command`                                                                   |
+| `pull_request.opened/reopened/edited/synchronize`                 | resolve and persist links for every PR; for linked bounties in FUNDED/NEEDS_REVIEW enqueue `verify_pr` (attempt 1 for the head) |
+| `pull_request.closed` with `merged`                               | enqueue `settle_pr` with `considerationId = merge:{merge_commit_sha}` and `headSha = pull_request.head.sha`                     |
+| `check_run.rerequested` (our check)                               | recheck sender write permission, allocate next attempt, enqueue `verify_pr`                                                     |
+| external `check_run.completed`, `check_suite.completed`, `status` | refresh bound CI evidence; reconsider the saved unawarded candidate; never react recursively to GitPay checks                   |
 
 - `reconciliation.ts`: periodically rescan relevant open and closed PRs and recover failed webhook deliveries. Before any refund, reconcile live state and stored evidence. Missing webhooks or a 404 cannot establish absence of claims; unavailable evidence blocks authorization.
 - `linking.ts`: GraphQL `closingIssuesReferences(first: 100, after: cursor)` with complete pagination; fallback regex `/\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)\b/gi` on PR body. Same-repo issues only. Snapshot stable PR identity, SHA, observed timeline and merge time in `submission_evidence`; retain closed/rejected submissions for exception review. Persist at open/sync time; never delete `source='command'` links on refresh.
@@ -790,32 +822,34 @@ Webhook **event names** differ from item statuses (`PAYMENT.PAYOUTS-ITEM.SUCCEED
 - `oauth.ts`: start flow → random nonce + browser-binding cookie → `oauth_states` row → GitHub authorize URL with signed state. Callback: verify signature, binding, expiry, single use, local `return_to`; exchange code; `GET /user`; create `sessions` row with encrypted tokens; set cookie (`httpOnly`, `secure`, `sameSite=lax`). Serialize refresh per session and compare-and-swap token generations; delete a session on confirmed refresh failure only if its generation is still current. Logout invalidates pending refresh results.
 
 ### 10.3 `actions/` (single source of business logic)
+
 Each action: `(ctx: {actorGhId, source}, input) → Result`. Inside one transaction: lock bounty, check state + version, check permission result passed in by the caller, write changes + activity + jobs.
 
-| Action | Allowed from | Effect |
-|---|---|---|
-| `createDraft` | none (no active bounty on issue) | validate cents ≤ `MAX_BOUNTY_CENTS`; insert OPEN; `sync_bounty` |
-| `issueFundToken` | OPEN | create `action_tokens(fund)`; return link |
-| `startFunding` (confirm POST) | OPEN | new `order_request_key`; enqueue `create_order`; page waits for approve URL then redirects to PayPal |
-| `orderApproved` (verified webhook or reconciliation worker) | OPEN with matching `order_id` | → CAPTURING; enqueue `capture_order` |
-| `captureResult` (worker) | CAPTURING | COMPLETED → FUNDED (+ enqueue `verify_pr` for open linked PRs and `settle_pr` for already-merged linked PRs); else per 9.2 |
-| `issueCancelToken` | OPEN, or FUNDED/NEEDS_REVIEW without award | draft token or request-only token; funded request requires reason/evidence and enabled review service |
-| `cancelDraft` (confirm POST) | OPEN | → CANCELLED; no refund; respect outstanding capture guards |
-| `requestCancellation` (confirm POST) | FUNDED/NEEDS_REVIEW without award | persist NOTICE request and evidence; notify contributors; preserve base state; no refund job |
-| `reviewCancellation` (operator confirm POST) | elapsed NOTICE/REVIEW | independent eligible operator records approve/deny + reasons; approval bound to current evidence; AI cannot call this action |
-| `authorizeRefund` (guarded worker) | approved request; FUNDED/NEEDS_REVIEW without award | reconcile first, recheck all section 9.1a guards under lock, persist refund + request key; → REFUNDING/EXECUTING; enqueue submit_refund |
-| `issueApproveToken` | NEEDS_REVIEW | params: full `amount_cents`, allocation = AI split filtered to eligible via `allocate`, or single recipient if AI split is empty (maintainer must pick on the page) |
-| `approve` (confirm POST) | NEEDS_REVIEW | `pay` decision by maintainer; then same path as policy pay |
-| `reject` | NEEDS_REVIEW | `reject` decision for that PR; → FUNDED; enqueue `settle_pr` for other merged linked PRs (`rej:{decisionId}`), skipping PRs with a reject decision on this bounty |
-| `linkPr` | OPEN, FUNDED, NEEDS_REVIEW | validate same repo and PR exists; insert link; enqueue verify; if merged and FUNDED, enqueue settle (`link:{activityId}`) |
-| `retryVerification` | FUNDED, NEEDS_REVIEW | next attempt; never changes a committed allocation |
-| `status` | any | reply; enqueue `poll_order`/`poll_payout`/`poll_refund` for in-flight operations |
+| Action                                                      | Allowed from                                        | Effect                                                                                                                                                              |
+| ----------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createDraft`                                               | none (no active bounty on issue)                    | validate cents ≤ `MAX_BOUNTY_CENTS`; insert OPEN; `sync_bounty`                                                                                                     |
+| `issueFundToken`                                            | OPEN                                                | create `action_tokens(fund)`; return link                                                                                                                           |
+| `startFunding` (confirm POST)                               | OPEN                                                | new `order_request_key`; enqueue `create_order`; page waits for approve URL then redirects to PayPal                                                                |
+| `orderApproved` (verified webhook or reconciliation worker) | OPEN with matching `order_id`                       | → CAPTURING; enqueue `capture_order`                                                                                                                                |
+| `captureResult` (worker)                                    | CAPTURING                                           | COMPLETED → FUNDED (+ enqueue `verify_pr` for open linked PRs and `settle_pr` for already-merged linked PRs); else per 9.2                                          |
+| `issueCancelToken`                                          | OPEN, or FUNDED/NEEDS_REVIEW without award          | draft token or request-only token; funded request requires reason/evidence and enabled review service                                                               |
+| `cancelDraft` (confirm POST)                                | OPEN                                                | → CANCELLED; no refund; respect outstanding capture guards                                                                                                          |
+| `requestCancellation` (confirm POST)                        | FUNDED/NEEDS_REVIEW without award                   | persist NOTICE request and evidence; notify contributors; preserve base state; no refund job                                                                        |
+| `reviewCancellation` (operator confirm POST)                | elapsed NOTICE/REVIEW                               | independent eligible operator records approve/deny + reasons; approval bound to current evidence; AI cannot call this action                                        |
+| `authorizeRefund` (guarded worker)                          | approved request; FUNDED/NEEDS_REVIEW without award | reconcile first, recheck all section 9.1a guards under lock, persist refund + request key; → REFUNDING/EXECUTING; enqueue submit_refund                             |
+| `issueApproveToken`                                         | NEEDS_REVIEW                                        | params: full `amount_cents`, allocation = AI split filtered to eligible via `allocate`, or single recipient if AI split is empty (maintainer must pick on the page) |
+| `approve` (confirm POST)                                    | NEEDS_REVIEW                                        | `pay` decision by maintainer; then same path as policy pay                                                                                                          |
+| `reject`                                                    | NEEDS_REVIEW                                        | `reject` decision for that PR; → FUNDED; enqueue `settle_pr` for other merged linked PRs (`rej:{decisionId}`), skipping PRs with a reject decision on this bounty   |
+| `linkPr`                                                    | OPEN, FUNDED, NEEDS_REVIEW                          | validate same repo and PR exists; insert link; enqueue verify; if merged and FUNDED, enqueue settle (`link:{activityId}`)                                           |
+| `retryVerification`                                         | FUNDED, NEEDS_REVIEW                                | next attempt; never changes a committed allocation                                                                                                                  |
+| `status`                                                    | any                                                 | reply; enqueue `poll_order`/`poll_payout`/`poll_refund` for in-flight operations                                                                                    |
 
 MVP approve always pays the **full bounty amount**. Partial awards are a stretch (post-MVP).
 
 Cancellation analysis may summarize original requirements, all submission snapshots and the claimed independent fix. It cannot treat repository text as instructions or execute financial tools. If model output is invalid, evidence is incomplete or a contributor disputes the facts, keep the request in review. Expose the operator review via an authenticated `/a/:token` page; this does not add dashboard mutations.
 
 ### 10.4 `paypal/`
+
 - `client.ts`: token cache (`POST /v1/oauth2/token`, client credentials), refresh at `expires_in - 60s`; `request()` with timeout, retry reads on network/5xx/429; retry financial POSTs only through the persisted intent recovery guard, within its verified dedupe window, with the **same** request key; typed errors with `debug_id`.
 - `orders.ts`:
   - `createOrder(attempt, requestKey)` → `POST /v2/checkout/orders` with header `PayPal-Request-Id: requestKey`, `intent: CAPTURE`, `purchase_units[0]{reference_id: "bounty-{id}", custom_id: "{id}", amount{currency_code:"USD",value}}`, `payment_source.paypal.experience_context{return_url: /fund/return?b={bountyId}&a={attemptId}, cancel_url: /fund/cancel?b={bountyId}&a={attemptId}, user_action: "PAY_NOW", brand_name: "GitPay", shipping_preference: "NO_SHIPPING"}`. Approve URL = link `rel=payer-action`. PayPal returns the provider order ID as the `token` query parameter; the return page validates that token against the stored attempt; only a verified provider read in the worker authorizes capture under the existing funding intent.
@@ -836,17 +870,19 @@ Cancellation analysis may summarize original requirements, all submission snapsh
   - `PAYMENT.CAPTURE.REFUNDED` → reconcile refunds for that capture
 
 ### 10.5 `verifier/`
+
 `collect.ts` builds `VerifyInput`:
 
-| Field | Source | Limit |
-|---|---|---|
-| funded issue requirements + separately recorded clarifications | saved funded terms + Issues API | 16k chars |
-| PR title, body | Pulls API | 8k chars |
-| diff | `pulls.listFiles` paginated `patch` | `MAX_DIFF_CHARS`; skip lockfiles, `dist/`, `*.min.*`, binaries, generated; truncate largest files first; set `input_truncated` |
-| CI | `checks.listForRef(head_sha)` excluding our check + combined status | `pass` only when the funded policy is satisfied and at least one genuine external check succeeds; neutral/skipped-only is not pass |
-| eligible authors | PR author plus GitHub API commit authors with stable IDs; co-author trailers are untrusted hints only | exclude bots and the bounty creator; a trailer alone cannot add a payable recipient |
+| Field                                                          | Source                                                                                                | Limit                                                                                                                              |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| funded issue requirements + separately recorded clarifications | saved funded terms + Issues API                                                                       | 16k chars                                                                                                                          |
+| PR title, body                                                 | Pulls API                                                                                             | 8k chars                                                                                                                           |
+| diff                                                           | `pulls.listFiles` paginated `patch`                                                                   | `MAX_DIFF_CHARS`; skip lockfiles, `dist/`, `*.min.*`, binaries, generated; truncate largest files first; set `input_truncated`     |
+| CI                                                             | `checks.listForRef(head_sha)` excluding our check + combined status                                   | `pass` only when the funded policy is satisfied and at least one genuine external check succeeds; neutral/skipped-only is not pass |
+| eligible authors                                               | PR author plus GitHub API commit authors with stable IDs; co-author trailers are untrusted hints only | exclude bots and the bounty creator; a trailer alone cannot add a payable recipient                                                |
 
 Evidence rules (implemented in 03/05, consumed in 06/07):
+
 - Snapshot the CI policy version, required context names and trusted producing App IDs/status provenance with funded terms. If required CI cannot be identified, display the limitation and hold for configuration before funding; a newly invented unrelated success is not sufficient. Evaluate the latest run per trusted context, all required contexts and relevant failures/pending work. Neutral/skipped mandatory contexts do not pass. Manual review cannot waive funded CI requirements.
 - Persist base SHA, head SHA and tested SHA plus their verified relationship. GitHub PR workflows may test a synthetic merge SHA; accept it only with evidence binding the exact PR head/base pair. Re-read PR identity/revision around collection. Bind post-merge/squash/rebase results to saved submission evidence; missing mapping, pagination limits, omitted patches, relevant filtered files or changed base/head force insufficient/stale evidence and prevent auto-pay. A file-name exclusion cannot silently hide a relevant change.
 - PR account identity is provider-authenticated; Git commit author fields and email-associated API users are attribution evidence, not proof of authorship. Preserve identity provenance. For an additional commit author, an email-associated API user alone is insufficient to establish authenticated attribution for automatic payout: require evidence binding that author to the revision (not just a committer signature); otherwise route the proposed multi-author allocation to maintainer review. Suspected spoofing or ambiguous attribution requires review, never automatic payee addition; trailers alone remain ineligible. The reviewer may choose only identities supported by recorded server evidence, with a reason. Do not claim cryptographic authorship verification from an API username.
@@ -854,6 +890,7 @@ Evidence rules (implemented in 03/05, consumed in 06/07):
 - CI completion can resume a candidate held solely for CI once fresh policy passes; an explicit maintainer rejection remains excluded. Automatic re-evaluation never overwrites a committed award.
 
 `schema.ts`:
+
 ```ts
 export const Verdict = z.object({
   verdict: z.enum(["RESOLVES", "PARTIAL", "DOES_NOT_RESOLVE"]),
@@ -861,15 +898,20 @@ export const Verdict = z.object({
   confidence: z.number().min(0).max(1),
   reasoning: z.string().min(1).max(2000),
   unmet_requirements: z.array(z.string().max(300)).max(10),
-  splits: z.array(z.object({
-    gh_id: z.string().min(1),
-    share: z.number().min(0).max(1),
-    why: z.string().max(300),
-  })).max(10),
+  splits: z
+    .array(
+      z.object({
+        gh_id: z.string().min(1),
+        share: z.number().min(0).max(1),
+        why: z.string().max(300),
+      }),
+    )
+    .max(10),
 });
 ```
 
 `prompt.ts` system prompt (verbatim, tune via eval):
+
 ```
 You verify whether a pull request resolves a GitHub issue that carries a cash bounty.
 
@@ -888,12 +930,13 @@ Decide:
 Signals of a fake fix: tests deleted or skipped, assertions weakened, hardcoded expected outputs,
 changes only to comments or formatting. Treat these as DOES_NOT_RESOLVE.
 
-Call submit_verdict exactly once.
+Return only the JSON object matching the supplied verdict schema.
 ```
 
-`verify.ts`: `tools: [submit_verdict]` with `input_schema` from `Verdict`, a Phase-00-verified `tool_choice: {type: "tool", name: "submit_verdict"}`, `disable_parallel_tool_use: true`, and only model parameters supported by the recorded capability profile. Do not unconditionally send `temperature: 0`; omit or set parameters according to the selected model's verified contract. Zod-parse; retry once; then store `status='error'` and complete the Check Run as neutral "Verifier error, use `/bounty retry`". Store `prompt_sha256` and the capability-profile version.
+`verify.ts`: reuse `models/nvidia.ts` with the `Verdict` schema. Send the Phase-00-tested OpenAI-compatible JSON-schema profile: non-streaming response, temperature 1, top_p 0.95, bounded max_tokens; Nemotron thinking enabled. Accept only a completed, non-refused, model-matched response whose JSON passes Zod. Make one bounded Nemotron attempt. Transport failures, HTTP errors and invalid/truncated output remain errors; a valid negative verdict is final. Store `status='error'` on exhaustion and complete the Check Run as neutral "Verifier error, use `/bounty retry`". Store actual model, attempts, `prompt_sha256` and capability-profile version. The Nemotron profile must pass Phase 05 evaluations before automatic settlement. See ADR 0003.
 
 ### 10.6 `policy/` (pure, fully unit tested)
+
 ```ts
 export type Alloc = { ghId: string; login: string; cents: number }[];
 export type Decision =
@@ -904,12 +947,14 @@ export function decide(i: {
   bountyCents: number;
   verdict: Verdict;
   ci: "pass" | "fail" | "pending" | "none";
-  eligible: Map<string, string>;   // stable gh_id -> canonical login
+  eligible: Map<string, string>; // stable gh_id -> canonical login
   evidence: { truncated: boolean; sufficient: boolean; stale: boolean };
   cfg: { minConfidence: number; ciRequired: boolean; minShare: number };
-}): Decision
+}): Decision;
 ```
+
 Rules in order:
+
 1. If evidence is stale, truncated or insufficient, return review with the corresponding reason.
 2. `ci === "fail"` → review "CI failing". If `ciRequired && ci !== "pass"` → review "CI not passing". A required CI policy also requires a genuine external success, not only neutral/skipped checks.
 3. Filter model splits to server-verified stable IDs, reject duplicate/unknown IDs, drop `share < minShare`, and use integer weight totals to normalize during allocation. Empty → review "no eligible authors".
@@ -923,6 +968,7 @@ Allocation implementation contract: validate positive safe-integer cents, unique
 Property tests (fast-check): sum equals `total`; deterministic; no negatives; never more recipients than parts.
 
 ### 10.7 `settlement/`
+
 - `settle.ts` (`settle_pr`):
   1. Reconcile eligible merged candidates outside the transaction and order by `merged_at`, then stable PR ID. Under the bounty lock, select/persist the earliest unresolved candidate and its SHA; only that candidate may enter SETTLING. A worker arriving first cannot reserve for a later merge. Resume the persisted candidate after crashes; no award or refund intent may already exist. Pending cancellation requests do not block settlement.
   2. Resolve rejected candidates before considering the next merge. Rejection may reopen award consideration but does not erase the submission or resolve its separate cancellation claim.
@@ -938,28 +984,30 @@ Property tests (fast-check): sum equals `total`; deterministic; no negatives; ne
   - `refund.ts`: `submit_refund` only accepts a persisted authorized exception; revalidate before the first call, transition `RESERVED → MAY_HAVE_SUBMITTED` at the durable submission boundary, use the saved request key and reconcile unknown outcomes. A proven unsent invalidation becomes `ABORTED_UNSENT` and releases only that reservation. `poll_refund`: SETTLED_OK → CANCELLED and request COMPLETED + comment; SETTLED_FAIL → attention, stay REFUNDING. No failure automatically creates a new refund or makes an award refundable.
 
 ### 10.8 `http/`
-| Route | Purpose |
-|---|---|
-| `POST /webhooks/github` | verify, dedupe, enqueue |
-| `POST /webhooks/paypal` | preserve raw body, verify via API, dedupe, enqueue reconcile |
-| `GET /login`, `GET /oauth/github/callback`, `POST /logout` | session |
-| `GET /a/:token` | confirm page (section 4.4) |
-| `POST /a/:token` | execute action (CSRF + Origin + permission + token + version) |
-| `GET /fund/return?b=&a=&token=` | require scoped session, validate attempt/order binding and display stored status; no capture or authorization on GET. The worker confirms provider APPROVED against the prior authenticated funding intent; FUNDED shown only after capture |
-| `GET /fund/cancel?b=&a=` | "Checkout closed; checking payment status." Link back to the issue. Never cancels the bounty |
-| `GET /connect`, `POST /connect` | contributor PayPal email (zod), upsert `contributors`, enqueue `retry_claims` |
-| `GET /api/me` | session user |
-| `GET /api/bounties` | read-only, scoped to user's installation repos |
-| `GET /api/bounties/:id` | detail incl. activity, verifications, decisions, payouts, refunds |
-| `GET /api/payouts` | read-only, scoped |
-| `GET /api/stream` | SSE of scoped invalidation events; the client refetches authoritative DTOs |
-| `GET /healthz` | db ping + version |
+
+| Route                                                      | Purpose                                                                                                                                                                                                                                     |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /webhooks/github`                                    | verify, dedupe, enqueue                                                                                                                                                                                                                     |
+| `POST /webhooks/paypal`                                    | preserve raw body, verify via API, dedupe, enqueue reconcile                                                                                                                                                                                |
+| `GET /login`, `GET /oauth/github/callback`, `POST /logout` | session                                                                                                                                                                                                                                     |
+| `GET /a/:token`                                            | confirm page (section 4.4)                                                                                                                                                                                                                  |
+| `POST /a/:token`                                           | execute action (CSRF + Origin + permission + token + version)                                                                                                                                                                               |
+| `GET /fund/return?b=&a=&token=`                            | require scoped session, validate attempt/order binding and display stored status; no capture or authorization on GET. The worker confirms provider APPROVED against the prior authenticated funding intent; FUNDED shown only after capture |
+| `GET /fund/cancel?b=&a=`                                   | "Checkout closed; checking payment status." Link back to the issue. Never cancels the bounty                                                                                                                                                |
+| `GET /connect`, `POST /connect`                            | contributor PayPal email (zod), upsert `contributors`, enqueue `retry_claims`                                                                                                                                                               |
+| `GET /api/me`                                              | session user                                                                                                                                                                                                                                |
+| `GET /api/bounties`                                        | read-only, scoped to user's installation repos                                                                                                                                                                                              |
+| `GET /api/bounties/:id`                                    | detail incl. activity, verifications, decisions, payouts, refunds                                                                                                                                                                           |
+| `GET /api/payouts`                                         | read-only, scoped                                                                                                                                                                                                                           |
+| `GET /api/stream`                                          | SSE of scoped invalidation events; the client refetches authoritative DTOs                                                                                                                                                                  |
+| `GET /healthz`                                             | db ping + version                                                                                                                                                                                                                           |
 
 Repo scope for `/api/*` is cached per session for 60 s and recomputed from the user token.
 
 SSE uses `bounty_activity.id` as an invalidation cursor (sequence order is not commit order) and PostgreSQL `LISTEN/NOTIFY` only as a wake-up signal. Every notification is scope-checked before delivery; reconnects with a missed cursor perform a full scoped refetch. A separate worker writes activity rows and emits a transactional notification on commit, so live updates do not depend on an in-memory event emitter or on the browser for financial execution. Periodic scoped full refetch at the configured heartbeat cadence, plus reconnect/tab-focus refetch, repairs out-of-order commits and missed hints; LISTEN/NOTIFY and sequence cursors are not an exactly-once event stream.
 
 ### 10.9 Read-only dashboard (`packages/web`, AG Grid)
+
 - GitHub login; tabs **Bounties**, **Payouts**, **Needs attention**. Every row links to the GitHub issue ("Manage in GitHub"). No mutation controls anywhere. Core tables use AG Grid Community and do not require a license.
 - Bounties grid: repo, issue, amount, status chip, PR, verdict, coverage, confidence bar, payees, funded at, paid at, attention.
 - Features with a purpose:
@@ -971,25 +1019,25 @@ SSE uses `bounty_activity.id` as an invalidation cursor (sequence order is not c
 
 ## 11. Phased MVP execution plan
 
-The detailed execution breakdown is now in [docs/phases/README.md](docs/phases/README.md), with numbered files `00.md` through `12.md`. **It is a draft for user review, not implementation approval.** Product policy remains defined here and in ADR 0001; the phase overview records the reconciled pre-build refinements. Once the user approves the review draft, implement phase-by-phase without silently choosing between conflicting contracts.
+The detailed execution breakdown is now in [docs/phases/README.md](docs/phases/README.md), with numbered files `00.md` through `12.md`. **Phase 00 is authorized; later phases are not implicitly approved.** Product policy remains defined here and in ADR 0001; the phase overview records the reconciled pre-build refinements. Implement only the authorized phase, without silently choosing between conflicting contracts.
 
-| Phase | Outcome |
-| --- | --- |
-| [00](docs/phases/00.md) | Foundation, local checks and provider feasibility |
+| Phase                   | Outcome                                            |
+| ----------------------- | -------------------------------------------------- |
+| [00](docs/phases/00.md) | Foundation, local checks and provider feasibility  |
 | [01](docs/phases/01.md) | GitHub App, durable jobs/events and draft bounties |
-| [02](docs/phases/02.md) | Authentication and confirmation pages |
-| [03](docs/phases/03.md) | Funding, terms and capture |
-| [04](docs/phases/04.md) | Contributor connection |
+| [02](docs/phases/02.md) | Authentication and confirmation pages              |
+| [03](docs/phases/03.md) | Funding, terms and capture                         |
+| [04](docs/phases/04.md) | Contributor connection                             |
 | [05](docs/phases/05.md) | Open submissions, evidence, CI and AI verification |
-| [06](docs/phases/06.md) | Award selection, payouts and claim resumption |
-| [07](docs/phases/07.md) | Maintainer approval/rejection |
-| [08](docs/phases/08.md) | Exceptional cancellation and guarded refunds |
-| [09](docs/phases/09.md) | Read-only visibility and user journeys |
-| [10](docs/phases/10.md) | Recovery, reconciliation and release hardening |
-| [11](docs/phases/11.md) | Deployment and hosted sandbox validation |
-| [12](docs/phases/12.md) | MVP acceptance, documentation and demo |
+| [06](docs/phases/06.md) | Award selection, payouts and claim resumption      |
+| [07](docs/phases/07.md) | Maintainer approval/rejection                      |
+| [08](docs/phases/08.md) | Exceptional cancellation and guarded refunds       |
+| [09](docs/phases/09.md) | Read-only visibility and user journeys             |
+| [10](docs/phases/10.md) | Recovery, reconciliation and release hardening     |
+| [11](docs/phases/11.md) | Deployment and hosted sandbox validation           |
+| [12](docs/phases/12.md) | MVP acceptance, documentation and demo             |
 
-Every phase contains prerequisites, task IDs, primary files, interface contracts, acceptance cases, verification commands, an end-to-end walkthrough, exit gates and required evidence. Update progress in the phase files; do not maintain a second task checklist here. All phases are not started.
+Every phase contains prerequisites, task IDs, primary files, interface contracts, acceptance cases, verification commands, an end-to-end walkthrough, exit gates and required evidence. Update progress in the phase files; do not maintain a second task checklist here. Current completion status and external blockers are recorded only in the phase index and numbered phase files.
 
 Implementation priority is risk-first within the dependency graph: prove the local/provider foundation and the GitHub → funding → verification → award path before dashboard polish, then complete review, cancellation, recovery, hosted validation and final acceptance. This is a sequencing tactic only; the complete MVP still requires every phase gate and W01–W16 evidence.
 
@@ -1004,36 +1052,37 @@ Implementation priority is risk-first within the dependency graph: prove the loc
 
 ## 12. Testing strategy
 
-| Layer | What |
-|---|---|
-| Unit | amount parsing, command grammar, link regex, `decide`, `allocate` (property), state guards per action, status mapping, permission decisions |
-| Integration | webhook fixtures + `nock` for GitHub/PayPal/Anthropic; assert DB rows, jobs, outbound calls |
-| Idempotency | replay every webhook twice; double confirm POST; repeated `/fund/return`; assert one capture/payout/refund and stable request keys |
-| Authorization | non-writer commands and confirms rejected; token reuse/expiry/stale version; dashboard scope via list, detail and SSE |
-| Lifecycle | abandoned checkout, OPEN cancel with approved order, capture pending/declined, refund pending/failed, verifier error, AWAITING_CLAIM cancel refused, payout ONHOLD/UNCLAIMED/FAILED, worker crash mid-payout, cancel vs merge race |
-| Cancellation protection | valid PR before cancellation; independent fix; evidence preservation; spam dismissal; operator conflicts; notice; stale approval; app uninstall; award retained after transfer failure; delayed webhooks |
-| Label independence | add/remove/rename/delete labels never change money or state beyond draft creation |
-| Verifier eval | `pnpm eval:verifier` |
-| E2E | seeded GitHub flow + manual PayPal steps on sandbox |
+| Layer                   | What                                                                                                                                                                                                                               |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unit                    | amount parsing, command grammar, link regex, `decide`, `allocate` (property), state guards per action, status mapping, permission decisions                                                                                        |
+| Integration             | webhook fixtures + `nock` for GitHub/PayPal/NVIDIA; assert DB rows, jobs, outbound calls                                                                                                                                           |
+| Idempotency             | replay every webhook twice; double confirm POST; repeated `/fund/return`; assert one capture/payout/refund and stable request keys                                                                                                 |
+| Authorization           | non-writer commands and confirms rejected; token reuse/expiry/stale version; dashboard scope via list, detail and SSE                                                                                                              |
+| Lifecycle               | abandoned checkout, OPEN cancel with approved order, capture pending/declined, refund pending/failed, verifier error, AWAITING_CLAIM cancel refused, payout ONHOLD/UNCLAIMED/FAILED, worker crash mid-payout, cancel vs merge race |
+| Cancellation protection | valid PR before cancellation; independent fix; evidence preservation; spam dismissal; operator conflicts; notice; stale approval; app uninstall; award retained after transfer failure; delayed webhooks                           |
+| Label independence      | add/remove/rename/delete labels never change money or state beyond draft creation                                                                                                                                                  |
+| Verifier eval           | `pnpm eval:verifier`                                                                                                                                                                                                               |
+| E2E                     | seeded GitHub flow + manual PayPal steps on sandbox                                                                                                                                                                                |
 
 ---
 
 ## 13. Demo video (≤ 3:00)
 
-| Time | Shot |
-|---|---|
-| 0:00–0:15 | "Paying open source contributors is manual. GitPay does it without leaving GitHub." |
-| 0:15–0:40 | Maintainer adds `bounty:$50`. Bot comment appears with **Fund $50.00**. Click → confirm → PayPal sandbox pays → comment flips to FUNDED |
-| 0:40–1:10 | Contributor opens PR. Check Run: "Resolves #12 · coverage 0.95 · confidence 0.9" with reasoning |
-| 1:10–1:30 | Fake-fix PR from another branch: "Does not resolve: test was skipped". No money moves |
-| 1:30–2:00 | Maintainer merges the real fix. Comment: "💸 Paid $50.00 to @contributor". Cut to sandbox account receiving it |
+| Time      | Shot                                                                                                                                                                                      |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0:00–0:15 | "Paying open source contributors is manual. GitPay does it without leaving GitHub."                                                                                                       |
+| 0:15–0:40 | Maintainer adds `bounty:$50`. Bot comment appears with **Fund $50.00**. Click → confirm → PayPal sandbox pays → comment flips to FUNDED                                                   |
+| 0:40–1:10 | Contributor opens PR. Check Run: "Resolves #12 · coverage 0.95 · confidence 0.9" with reasoning                                                                                           |
+| 1:10–1:30 | Fake-fix PR from another branch: "Does not resolve: test was skipped". No money moves                                                                                                     |
+| 1:30–2:00 | Maintainer merges the real fix. Comment: "💸 Paid $50.00 to @contributor". Cut to sandbox account receiving it                                                                            |
 | 2:00–2:30 | Second bounty in NEEDS_REVIEW: `/bounty approve` → confirm page with exact split → paid. Show a cancellation request blocked by an existing valid submission; mention reviewed exceptions |
-| 2:30–2:50 | Read-only dashboard: rows flip live, filter attention items, expand AI reasoning |
-| 2:50–3:00 | "GitHub + PayPal + Claude. Glue, not a platform." |
+| 2:30–2:50 | Read-only dashboard: rows flip live, filter attention items, expand AI reasoning                                                                                                          |
+| 2:50–3:00 | "GitHub + PayPal + NVIDIA. Glue, not a platform."                                                                                                                                         |
 
 ---
 
 ## 14. Security checklist
+
 - [ ] GitHub webhook HMAC on raw body; PayPal webhooks verified via API; both deduped
 - [ ] Labels and commands never move money directly; money actions only via confirm POST or deterministic policy
 - [ ] Comment commands: author permission checked at execution; bot authors and edited comments ignored
@@ -1058,31 +1107,32 @@ Operational limits: captured gross principal is the bounty amount. Provider fees
 
 Restore safety: an older DB backup may omit an operation already sent to PayPal. Keep workers and new financial POSTs disabled until provider activity since the backup is matched to restored intent history; missing identities remain blocked for investigation. Never infer "unsent" merely from absence in a restored database.
 
-| Pitfall | Handling |
-|---|---|
-| Payouts not enabled on sandbox app | Phase 0 test payout |
-| Payout status names | map `transaction_status` (`SUCCESS`, `ONHOLD`…), never webhook event names (`SUCCEEDED`, `HELD`…) |
-| Lost payout response | persisted `sender_batch_id`; behavior from Phase 0 probe; batch webhook reconciliation |
-| GitHub webhook 10 s timeout | handlers only enqueue |
-| Render free cold start / no free workers | paid instance or keep-alive; `WORKER_MODE=inline` |
-| PayPal cannot reach localhost | `poll_order`/`poll_payout`/`poll_refund` fallbacks |
-| Payout to non-PayPal email | UNCLAIMED; demo only with sandbox personal accounts |
-| `closingIssuesReferences` empty after merge | links persisted at open/sync; `/bounty link` fallback |
-| PR opened before funding | verify on FUNDED transition |
-| Contributor never connects | preserve committed award; delivery needs attention, never a maintainer refund |
-| Large diffs | filter, truncate, lower confidence, note in check |
-| Renamed logins/repos | key on `gh_id`/`repo_id` |
-| Label removed or mistyped | draft-only semantics; amount confirmed by paying |
-| User token expired | refresh token flow; re-login on failure |
-| Multiple PRs for one bounty | open competition; first qualifying merge by stable ordering, not first worker/claim; unresolved earlier decisions assessed first |
-| Maintainer cancels then merges | no direct funded cancellation; valid submission blocks refund; award persists before transfer |
-| App uninstalled or webhook missed | retain evidence, reconcile, freeze new refunds while visibility is unavailable |
-| Rounding | `allocate` largest remainder, property tested |
-| Prompt injection | delimited untrusted blocks, AI only lowers, CI gate, maintainer merge + confirm, eval scenario 4 |
+| Pitfall                                     | Handling                                                                                                                         |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Payouts not enabled on sandbox app          | Phase 0 test payout                                                                                                              |
+| Payout status names                         | map `transaction_status` (`SUCCESS`, `ONHOLD`…), never webhook event names (`SUCCEEDED`, `HELD`…)                                |
+| Lost payout response                        | persisted `sender_batch_id`; behavior from Phase 0 probe; batch webhook reconciliation                                           |
+| GitHub webhook 10 s timeout                 | handlers only enqueue                                                                                                            |
+| Render free cold start / no free workers    | paid instance or keep-alive; `WORKER_MODE=inline`                                                                                |
+| PayPal cannot reach localhost               | `poll_order`/`poll_payout`/`poll_refund` fallbacks                                                                               |
+| Payout to non-PayPal email                  | UNCLAIMED; demo only with sandbox personal accounts                                                                              |
+| `closingIssuesReferences` empty after merge | links persisted at open/sync; `/bounty link` fallback                                                                            |
+| PR opened before funding                    | verify on FUNDED transition                                                                                                      |
+| Contributor never connects                  | preserve committed award; delivery needs attention, never a maintainer refund                                                    |
+| Large diffs                                 | filter, truncate, lower confidence, note in check                                                                                |
+| Renamed logins/repos                        | key on `gh_id`/`repo_id`                                                                                                         |
+| Label removed or mistyped                   | draft-only semantics; amount confirmed by paying                                                                                 |
+| User token expired                          | refresh token flow; re-login on failure                                                                                          |
+| Multiple PRs for one bounty                 | open competition; first qualifying merge by stable ordering, not first worker/claim; unresolved earlier decisions assessed first |
+| Maintainer cancels then merges              | no direct funded cancellation; valid submission blocks refund; award persists before transfer                                    |
+| App uninstalled or webhook missed           | retain evidence, reconcile, freeze new refunds while visibility is unavailable                                                   |
+| Rounding                                    | `allocate` largest remainder, property tested                                                                                    |
+| Prompt injection                            | delimited untrusted blocks, AI only lowers, CI gate, maintainer merge + confirm, eval scenario 4                                 |
 
 ---
 
 ## 16. Submission checklist
+
 - [ ] Public repo, MIT license visible in About
 - [ ] README: setup, command reference, PayPal APIs used, AI tools and how they are used, sponsor tools
 - [ ] Hosted demo on Render + sandbox test accounts for judges

@@ -1,6 +1,6 @@
 # Contributing to GitPay
 
-GitPay is currently a documented design and repository foundation. Read [README.md](README.md), [AGENTS.md](AGENTS.md) and the relevant phase of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) and its [numbered phase file](docs/phases/README.md) before starting implementation. The phase plan is currently a review draft; execution begins after the user reviews the scope and proposed refinements.
+GitPay has completed Phase 0: the local foundation and scoped provider feasibility are verified. Product workflows remain future work. Read [README.md](README.md), [AGENTS.md](AGENTS.md) and the relevant phase of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) and its [numbered phase file](docs/phases/README.md) before starting implementation. Phase 0 is complete. Later phases require explicit scope authorization and their prerequisite gates.
 
 ## Workflow
 
@@ -12,18 +12,20 @@ GitPay is currently a documented design and repository foundation. Read [README.
 
 ## Checks
 
-There are no application scripts or dependencies yet. For the current documentation foundation, check relative links, file paths, whitespace and agreement between the README, plan and agent instructions. Run `git diff --check` for tracked edits, and inspect new files too.
+Use Node from `.node-version` and pnpm from `package.json`. Follow [setup](docs/setup.md), run `pnpm install --frozen-lockfile`, then `pnpm typecheck`, `pnpm lint`, `pnpm test` and `pnpm build`. `pnpm test` requires an explicitly exported local `TEST_DATABASE_URL` ending in `_test`; it never loads `.env`. Tests create unique schemas and drop only their own fixtures. Missing Postgres/configuration fails the suite rather than silently skipping tests. Unmatched external HTTP calls are blocked by Nock.
 
-Phase 0 must add reproducible dependency installation with a committed lockfile, linting, strict TypeScript checking and tests. After that, the phase gates are `pnpm typecheck`, `pnpm lint` and `pnpm test`; use the package manifest for actual available commands. Provider integration evidence must distinguish mocks from PayPal sandbox/GitHub calls.
+Check relative documentation links, actual paths, whitespace and agreement between the README, plan and agent instructions. Run `git diff --check` and inspect untracked files too. Provider integration evidence must distinguish mocks from actual PayPal sandbox/GitHub/NVIDIA calls.
 
 Financial changes must cover repeated events, unauthorized actors, stale confirmations, provider timeouts, concurrent allocation and cancellation abuse. Never claim a sandbox payout was verified based on a mocked test.
 
 ## Configuration and secrets
 
-`.env.example` is a template for the planned runtime, including a separate `TEST_DATABASE_URL`, payment-data encryption key and bounded provider/reconciliation settings. Copy it to `.env` only when setting up implementation, then populate credentials locally. `.env` files and private keys are ignored; examples remain tracked. Do not include credentials, contributor payment addresses or unredacted provider payloads in PRs.
+`.env.example` is a template for the runtime, including a separate `TEST_DATABASE_URL`, payment-data encryption key and bounded provider/reconciliation settings. Copy it to `.env` and populate credentials locally. `.env` files and private keys are ignored; examples remain tracked. Do not include credentials, contributor payment addresses or unredacted provider payloads in PRs.
 
 Keep PayPal sandbox-only. Phase 08 first enables cancellation only in the explicitly authorized isolated test deployment after local safety checks; wider enablement waits for real notice/refund evidence. Connecting a real repository, sending bot comments, creating payment operations, publishing or deploying requires the relevant task authorization; adding documentation does not perform those actions.
 
 ## Decisions
 
 The [decision records](docs/decisions/) explain policy choices. Keep historical decisions, mark them superseded when appropriate, and link their replacements. Runtime provider changes and changes to cancellation or reward-selection policy need explicit reasoning; they are not incidental refactors.
+
+Provider feasibility uses `pnpm preflight` (read-only), `--model-probe` for one Nemotron generation, and explicit `--sandbox-payment` for the persisted sandbox payout identity. Preflight validates only consumed provider settings; full application startup still requires webhook/OAuth configuration. See [setup](docs/setup.md) and [ADR 0003](docs/decisions/0003-nemotron-only-and-preflight-scope.md).

@@ -2,7 +2,7 @@
 
 ## Start with the requested work
 
-Read `README.md` for the current product status. For implementation, bug fixes, financial logic or architecture changes, read the relevant sections of `IMPLEMENTATION_PLAN.md` and `docs/phases/README.md`, then the numbered phase file before editing. The phase plan is a review draft until the user approves it; proposed refinements must be reconciled with the architecture before execution. For participation, award selection or refunds, also read `docs/decisions/0001-open-participation-and-cancellation.md`.
+Read `README.md` for the current product status. For implementation, bug fixes, financial logic or architecture changes, read the relevant sections of `IMPLEMENTATION_PLAN.md` and `docs/phases/README.md`, then the numbered phase file before editing. Phase 0 is authorized; later phases require their own scope authorization. Proposed refinements must be reconciled with the architecture before execution. For participation, award selection or refunds, also read `docs/decisions/0001-open-participation-and-cancellation.md`.
 
 The user's current request defines scope. The plan is a reference, not permission to execute all phases, publish changes or operate accounts. Implement authorized work without repeatedly seeking approval for routine choices within the agreed design. Discuss material changes to product policy or financial guarantees before implementing them.
 
@@ -10,28 +10,35 @@ The user's current request defines scope. The plan is a reference, not permissio
 
 ```text
 GitPay/
-├── README.md                       # Product overview and actual setup status
-├── IMPLEMENTATION_PLAN.md          # Canonical v4 plan; runtime work not started
-├── PLAN.md                         # Pointer to the canonical plan
-├── AGENTS.md                       # Canonical agent instructions (this file)
-├── Agent.md                        # Pointer; maintain instructions only here
-├── CONTRIBUTING.md                 # Contribution and verification workflow
-├── LICENSE                         # MIT
-├── .env.example                    # Planned configuration, no real credentials
-├── .gitignore                      # Secrets, dependencies and generated output
-├── .gitattributes                  # Text normalization
-├── .editorconfig                   # Shared whitespace conventions
-├── .github/pull_request_template.md
-├── docs/decisions/0001-open-participation-and-cancellation.md
-├── docs/phases/README.md           # MVP scope, review decisions and phase index
-├── docs/phases/review-todo.md      # Pre-build plan remediation checklist
-├── docs/phases/00.md … 12.md        # Reviewed tasks and gates; awaiting implementation authorization
-├── packages/server/README.md        # Ownership placeholder; no runtime yet
-├── packages/web/README.md           # Ownership placeholder; no runtime yet
-└── postman/README.md                # Collection placeholder; no collection yet
+├── README.md, IMPLEMENTATION_PLAN.md, PLAN.md
+├── AGENTS.md, Agent.md             # Canonical instructions and pointer
+├── CONTRIBUTING.md, LICENSE
+├── .env.example, .gitignore, .gitattributes, .editorconfig
+├── .node-version, .npmrc           # Pinned Node/pnpm requirements
+├── package.json, pnpm-workspace.yaml, pnpm-lock.yaml
+├── tsconfig.base.json, tsconfig.json, eslint.config.js, vitest.config.ts
+├── docker-compose.yml, drizzle.config.ts
+├── .github/{pull_request_template.md,workflows/ci.yml}
+├── docs/setup.md
+├── docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md,0003-nemotron-only-and-preflight-scope.md}
+├── docs/phases/{README.md,review-todo.md,00.md … 12.md}
+├── docs/evidence/{00-summary.md,00-preflight.md}
+├── packages/server/
+│   ├── README.md, package.json, tsconfig.json, tsconfig.build.json
+│   ├── src/{main.ts,env.ts,log.ts}
+│   ├── src/domain/types.ts
+│   ├── src/db/{client.ts,transaction.ts,schema.ts,migrate.ts,migrations/}
+│   ├── src/http/routes.ts
+│   ├── src/paypal/client.ts        # Sandbox feasibility adapter only
+│   ├── src/preflight/{run.ts,http.ts,state.ts}
+│   ├── src/models/nvidia.ts        # Bounded Nemotron structured output
+│   ├── scripts/{migrate.ts,preflight.ts}
+│   └── test/{helpers/,unit/,integration/}
+├── packages/web/README.md          # Dashboard placeholder
+└── postman/README.md               # Collection placeholder
 ```
 
-The current map describes existing files. The plan's target layout describes future modules. There is no package manifest, dependency lockfile, application, test suite or deployment yet. Create these in their authorized implementation phase; do not report nonexistent checks as passing.
+The current map describes tracked source and configuration; ignored local data/builds are omitted. The server owns configuration, health and database boundaries; `preflight/` owns isolated provider probes and durable local probe identity. Business actions, workers, authentication and the dashboard are future phases. See [server ownership](packages/server/README.md) and [setup](docs/setup.md).
 
 ## Keep instructions and documentation current
 
@@ -58,10 +65,10 @@ Keep these instructions concise. Put detailed module contracts in the plan or sc
 
 ## Implementation and verification
 
-Codex is the development assistant. Claude via Anthropic remains the planned runtime verifier; changing that provider is a separate design decision. Use official provider documentation or an available relevant MCP integration to verify API shapes, statuses and authentication. Do not assume tools or credentials are installed.
+Codex is the development assistant. NVIDIA-hosted Nemotron is the sole runtime model, as authorized in [ADR 0003](docs/decisions/0003-nemotron-only-and-preflight-scope.md). Preserve validated output and deterministic money policy when changing model behavior. Use official provider documentation or an available relevant MCP integration to verify API shapes, statuses and authentication. Do not assume tools or credentials are installed.
 
 Use TypeScript strict and boundary validation as specified in the plan. Keep business actions in the server domain modules; transports delegate to them. Database changes use reviewed migrations. Before editing, inspect the working tree and preserve unrelated user changes.
 
-Once Phase 0 creates scripts, run relevant tests and the phase checks (`pnpm typecheck`, `pnpm lint`, `pnpm test`). Money/authorization changes need meaningful negative, concurrency and idempotency cases. Report actual command results, mocked versus real integrations, and any unavailable sandbox verification. Documentation-only work needs path/link/consistency checks, not invented product tests.
+Run relevant tests and the phase checks (`pnpm typecheck`, `pnpm lint`, `pnpm test`). Money/authorization changes need meaningful negative, concurrency and idempotency cases. Report actual command results, mocked versus real integrations, and any unavailable sandbox verification. Documentation-only work needs path/link/consistency checks, not invented product tests.
 
-Mark a phase complete only when its definition of done is evidenced. Update task/phase status in the numbered phase file and keep the phase index accurate; do not duplicate progress in the architecture document. Evidence goes under `docs/evidence/` during implementation; update this map when that directory is created. Commit, push, create PRs or deploy only within the user's requested scope.
+Mark a phase complete only when its definition of done is evidenced. Update task/phase status in the numbered phase file and keep the phase index accurate; do not duplicate progress in the architecture document. Evidence goes under `docs/evidence/`. Commit, push, create PRs or deploy only within the user's requested scope.

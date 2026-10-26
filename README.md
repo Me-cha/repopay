@@ -6,7 +6,7 @@ GitPay is a planned GitHub App that connects issue bounties to PayPal. Maintaine
 
 The principle is **glue, not a platform**: development stays in GitHub, checkout and payouts use PayPal, and small authenticated pages handle confirmations. An dashboard (optional for users, required in the MVP) displays progress without becoming another place to manage the work.
 
-> **Project status:** repository foundation and implementation plan only. There is no running app, installed bot, verified payment integration or deployed demo yet. All product flows below describe the intended MVP. Payments will use PayPal sandbox only.
+> **Project status:** Phase 0 is complete and reviewed as of October 27, 2026. The local foundation, GitHub authentication, NVIDIA Nemotron output, and a $1 PayPal sandbox payout with duplicate/recovery checks and recipient receipt are verified. There is no installed bot, bounty workflow or deployed demo yet. Product flows below describe the intended MVP; payments are sandbox only.
 
 ## Intended flow
 
@@ -34,16 +34,16 @@ These rules prevent the normal recorded cancel-then-merge abuse path. They canno
 
 ## Planned commands
 
-| Command | Purpose |
-| --- | --- |
-| `/bounty create <amount>` | Create an unfunded USD bounty draft |
-| `/bounty fund` | Get an authenticated funding link |
-| `/bounty status` | View progress and request reconciliation |
-| `/bounty approve` | Preview and confirm payment for a review case |
-| `/bounty reject <reason>` | Reject a submission for award consideration; preserve its evidence |
+| Command                   | Purpose                                                                                                         |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `/bounty create <amount>` | Create an unfunded USD bounty draft                                                                             |
+| `/bounty fund`            | Get an authenticated funding link                                                                               |
+| `/bounty status`          | View progress and request reconciliation                                                                        |
+| `/bounty approve`         | Preview and confirm payment for a review case                                                                   |
+| `/bounty reject <reason>` | Reject a submission for award consideration; preserve its evidence                                              |
 | `/bounty cancel [reason]` | Cancel an unfunded draft, or request a reviewed exception for a funded bounty; funded requests require a reason |
-| `/bounty link #<pr>` | Explicitly link a same-repository PR |
-| `/bounty retry` | Retry verification of a PR's current revision |
+| `/bounty link #<pr>`      | Explicitly link a same-repository PR                                                                            |
+| `/bounty retry`           | Retry verification of a PR's current revision                                                                   |
 
 Maintainer commands require current repository write/maintain/admin permission; `/bounty status` is available to participants with access. Financial actions require confirmation or the deterministic settlement policy. Labels never fund or refund money.
 
@@ -55,7 +55,7 @@ flowchart LR
     PP[PayPal sandbox] -->|Verified events| API
     API --> DB[(Postgres state and jobs)]
     DB --> W[Worker]
-    W --> AI[Claude verifier]
+    W --> AI[Nemotron verifier]
     AI --> P[Deterministic payment policy]
     P --> DB
     W -->|Orders, payouts, reviewed refunds| PP
@@ -64,19 +64,19 @@ flowchart LR
     VIEW[Optional read-only dashboard] --> API
 ```
 
-| Concern | Planned choice |
-| --- | --- |
-| Development assistant | Codex, guided by `AGENTS.md` |
-| Runtime | Node.js 22, TypeScript strict, pnpm workspaces |
-| Backend and storage | Express 5, PostgreSQL 16, Drizzle, durable database jobs |
-| GitHub integration | GitHub App, Octokit, webhooks, Check Runs and OAuth |
-| Payments | PayPal sandbox Orders, capture, Payouts, refunds and webhooks |
-| Runtime AI | Claude via Anthropic API; structured verdicts validated with Zod |
-| Web | Server-rendered confirmation pages; React/Vite + AG Grid for the dashboard (optional for users, required in the MVP) |
-| Validation | Vitest, integration tests, property tests, verifier evaluations and sandbox walkthroughs |
-| Deployment target | Render; deployment configuration is not created yet |
+| Concern               | Planned choice                                                                           |
+| --------------------- | ---------------------------------------------------------------------------------------- |
+| Development assistant | Codex, guided by `AGENTS.md`                                                             |
+| Runtime               | Node.js 22, TypeScript strict, pnpm workspaces                                           |
+| Backend and storage   | Express 5, PostgreSQL 16, Drizzle, durable database jobs                                 |
+| GitHub integration    | GitHub App, Octokit, webhooks, Check Runs and OAuth                                      |
+| Payments              | PayPal sandbox Orders, capture, Payouts, refunds and webhooks                            |
+| Runtime AI            | NVIDIA API: Nemotron only; structured verdicts validated with Zod                        |
+| Web                   | Server-rendered confirmation pages; React/Vite + AG Grid for the optional dashboard      |
+| Validation            | Vitest, integration tests, property tests, verifier evaluations and sandbox walkthroughs |
+| Deployment target     | Render; deployment configuration is not created yet                                      |
 
-Codex is the coding assistant, while Claude is the planned runtime verifier. Neither receives unrestricted authority to move money.
+Codex is the coding assistant, while NVIDIA-hosted Nemotron is the selected runtime model. The model receives no unrestricted authority to move money. See [the provider decision](docs/decisions/0003-nemotron-only-and-preflight-scope.md).
 
 ## Start here
 
@@ -85,27 +85,29 @@ git clone https://github.com/Me-cha/GitPay.git
 cd GitPay
 ```
 
-Start with [the phased MVP review plan](docs/phases/README.md) and [Phase 00](docs/phases/00.md). Read [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the architecture and [AGENTS.md](AGENTS.md) for repository instructions. Phase 0 creates the executable workspace, dependencies, database setup and checks. There is currently no `package.json`, install command, dev server or test suite to run.
+Start with [the phased MVP review plan](docs/phases/README.md) and [Phase 00](docs/phases/00.md). Read [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the architecture and [AGENTS.md](AGENTS.md) for repository instructions. Phase 0 provides the executable server workspace. Follow [local setup and provider probes](docs/setup.md); see [Phase 0 evidence](docs/evidence/00-summary.md) for actual checks and remaining gates.
 
-The tracked [.env.example](.env.example) lists planned configuration. When implementing Phase 0, copy it to `.env`, fill in credentials locally, and implement validation before using it. Empty credentials and the model field are intentional. Do not paste secrets into issues, PRs or agent instructions.
+The tracked [.env.example](.env.example) lists validated configuration. Copy it to `.env` and fill in credentials locally. Credentials are intentionally blank; the Nemotron model is pinned. Startup and preflight validate their respective required settings. Do not paste secrets into issues, PRs or agent instructions.
 
-External setup will require a GitHub App and demo repository, PayPal sandbox accounts with Payouts access, and an Anthropic API key/model. Cancellation testing also needs an independent reviewer identity. Exact setup requirements are recorded in section 3 of the plan; verify provider documentation during implementation.
+External setup will require a GitHub App and demo repository, PayPal sandbox accounts with Payouts access, and a NVIDIA API key and model access. Cancellation testing also needs an independent reviewer identity. Exact setup requirements are recorded in section 3 of the plan; verify provider documentation during implementation.
 
 ## Repository guide
 
-| Path | Purpose |
-| --- | --- |
-| [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | Canonical architecture, state model, phases and acceptance criteria |
-| [PLAN.md](PLAN.md) | Link to the canonical plan |
-| [AGENTS.md](AGENTS.md) | Codex instructions and current folder map |
-| [Agent.md](Agent.md) | Pointer to `AGENTS.md` |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution and verification expectations |
-| [docs/phases/](docs/phases/) | Detailed MVP review plan: phases 00–12, task contracts and exit gates |
-| [docs/phases/review-todo.md](docs/phases/review-todo.md) | Completed pre-build review, findings, phase coverage and remaining external gates |
-| [docs/decisions/](docs/decisions/) | Product and architecture decisions with reasoning |
-| [packages/server/](packages/server/) | Planned API, workers and payment domain; documentation placeholder |
-| [packages/web/](packages/web/) | Planned dashboard (optional for users, required in the MVP); documentation placeholder |
-| [postman/](postman/) | Planned API/demo collection; documentation placeholder |
+| Path                                                     | Purpose                                                                                                |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)         | Canonical architecture, state model, phases and acceptance criteria                                    |
+| [PLAN.md](PLAN.md)                                       | Link to the canonical plan                                                                             |
+| [AGENTS.md](AGENTS.md)                                   | Codex instructions and current folder map                                                              |
+| [Agent.md](Agent.md)                                     | Pointer to `AGENTS.md`                                                                                 |
+| [CONTRIBUTING.md](CONTRIBUTING.md)                       | Contribution and verification expectations                                                             |
+| [docs/phases/](docs/phases/)                             | Phase status, task contracts and exit gates                                                            |
+| [docs/setup.md](docs/setup.md)                           | Local installation, configuration and explicit provider probes                                         |
+| [docs/evidence/](docs/evidence/)                         | Recorded local verification and external blockers                                                      |
+| [docs/phases/review-todo.md](docs/phases/review-todo.md) | Pre-build remediation checklist for the reviewed plan                                                  |
+| [docs/decisions/](docs/decisions/)                       | Product and architecture decisions with reasoning                                                      |
+| [packages/server/](packages/server/)                     | Executable health server, configuration, database and feasibility probes; product actions arrive later |
+| [packages/web/](packages/web/)                           | Planned optional dashboard; documentation placeholder                                                  |
+| [postman/](postman/)                                     | Planned API/demo collection; documentation placeholder                                                 |
 
 Folder changes must update the current map in `AGENTS.md`, affected README links and the plan's target layout in the same change. The PR template includes this requirement.
 
