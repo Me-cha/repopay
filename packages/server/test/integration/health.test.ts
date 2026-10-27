@@ -5,7 +5,7 @@ import { syntheticEnv } from '../helpers/env.js';
 import { createTestDatabase } from '../helpers/database.js';
 it('health_reports_ready, health_reports_unavailable, shutdown_closes_pool', async () => {
   const fixture = await createTestDatabase();
-  const runtime = await startServer(parseEnv(syntheticEnv()), fixture.database, 0);
+  const runtime = await startServer(parseEnv(syntheticEnv()), fixture.database, 0, {runWorker:false});
   try {
     const response = await fetch(runtime.url + '/healthz');
     expect(response.status).toBe(200);
@@ -20,7 +20,7 @@ it('health_reports_ready, health_reports_unavailable, shutdown_closes_pool', asy
 });
 it('shutdown closes an open pool and is safe to repeat', async () => {
   const fixture = await createTestDatabase();
-  const runtime = await startServer(parseEnv(syntheticEnv()), fixture.database, 0);
+  const runtime = await startServer(parseEnv(syntheticEnv()), fixture.database, 0, {runWorker:false});
   await runtime.close();
   await runtime.close();
   await expect(fixture.database.health()).rejects.toThrow();

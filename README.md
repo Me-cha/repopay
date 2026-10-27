@@ -6,11 +6,11 @@ GitPay is a planned GitHub App that connects issue bounties to PayPal. Maintaine
 
 The principle is **glue, not a platform**: development stays in GitHub, checkout and payouts use PayPal, and small authenticated pages handle confirmations. An dashboard (optional for users, required in the MVP) displays progress without becoming another place to manage the work.
 
-> **Project status:** Phase 0 is complete and reviewed as of October 27, 2026. The local foundation, GitHub authentication, NVIDIA Nemotron output, and a $1 PayPal sandbox payout with duplicate/recovery checks and recipient receipt are verified. There is no installed bot, bounty workflow or deployed demo yet. Product flows below describe the intended MVP; payments are sandbox only.
+> **Project status:** Phase 0 is complete and reviewed as of October 27, 2026. The local foundation, GitHub authentication, NVIDIA Nemotron output, and a $1 PayPal sandbox payout with duplicate/recovery checks and recipient receipt are verified. Phase 1 is complete: draft intake, workers, bot projections and per-command status replies are tested; the installed demo App passes live authorization, replay, crash-recovery and access-loss checks. See [Phase 1 evidence](docs/evidence/01-summary.md). Product flows below describe the intended MVP; payments are sandbox only.
 
 ## Intended flow
 
-1. A maintainer comments `/bounty create 50` on an issue, or adds `bounty:$50`. This creates an **unfunded draft** when GitPay is implemented and installed.
+1. A maintainer comments `/bounty create 50` on an issue, or adds `bounty:$50`. This creates an **unfunded draft** when the App is installed and its receiver is running.
 2. The bot posts a funding link. The maintainer signs in, confirms the amount and pays through PayPal checkout. Only confirmed capture makes the bounty funded.
 3. Anyone with repository access can submit a linked PR, such as `Fixes #12`. There is no exclusive acceptance or reservation.
 4. The runtime AI verifier assesses the changes and reports its reasoning in a GitHub Check Run. CI and deterministic policy constrain the result.
@@ -69,7 +69,7 @@ flowchart LR
 | Development assistant | Codex, guided by `AGENTS.md`                                                             |
 | Runtime               | Node.js 22, TypeScript strict, pnpm workspaces                                           |
 | Backend and storage   | Express 5, PostgreSQL 16, Drizzle, durable database jobs                                 |
-| GitHub integration    | GitHub App, Octokit, webhooks, Check Runs and OAuth                                      |
+| GitHub integration    | GitHub App, bounded REST adapter, webhooks, Check Runs and OAuth                                      |
 | Payments              | PayPal sandbox Orders, capture, Payouts, refunds and webhooks                            |
 | Runtime AI            | NVIDIA API: Nemotron only; structured verdicts validated with Zod                        |
 | Web                   | Server-rendered confirmation pages; React/Vite + AG Grid for the optional dashboard      |
@@ -105,7 +105,7 @@ External setup will require a GitHub App and demo repository, PayPal sandbox acc
 | [docs/evidence/](docs/evidence/)                         | Recorded local verification and external blockers                                                      |
 | [docs/phases/review-todo.md](docs/phases/review-todo.md) | Pre-build remediation checklist for the reviewed plan                                                  |
 | [docs/decisions/](docs/decisions/)                       | Product and architecture decisions with reasoning                                                      |
-| [packages/server/](packages/server/)                     | Executable health server, configuration, database and feasibility probes; product actions arrive later |
+| [packages/server/](packages/server/)                     | Health/webhook server, durable workers, unfunded drafts and feasibility probes |
 | [packages/web/](packages/web/)                           | Planned optional dashboard; documentation placeholder                                                  |
 | [postman/](postman/)                                     | Planned API/demo collection; documentation placeholder                                                 |
 

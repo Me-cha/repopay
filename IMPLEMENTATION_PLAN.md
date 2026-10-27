@@ -308,7 +308,7 @@ GitPay/
 │  │  ├─ preflight/{run.ts,http.ts,state.ts}
 │  │  ├─ models/nvidia.ts
 │  │  ├─ jobs/{queue.ts,runner.ts,kinds.ts}
-│  │  ├─ github/{app.ts,handlers.ts,commands.ts,labels.ts,linking.ts,reconciliation.ts,checks.ts,comments.ts,permissions.ts,oauth.ts}
+│  │  ├─ github/{app.ts,handlers.ts,commands.ts,linking.ts,reconciliation.ts,checks.ts,comments.ts,permissions.ts,oauth.ts}
 │  │  ├─ actions/{create.ts,fund.ts,cancel.ts,cancellation-review.ts,approve.ts,reject.ts,link.ts,retry.ts,status.ts,guards.ts,activity.ts}
 │  │  ├─ paypal/{client.ts,orders.ts,payouts.ts,refunds.ts,webhooks.ts,status-map.ts}
 │  │  ├─ verifier/{collect.ts,prompt.ts,schema.ts,verify.ts}
@@ -801,7 +801,7 @@ Webhook **event names** differ from item statuses (`PAYMENT.PAYOUTS-ITEM.SUCCEED
 
 ### 10.2 `github/`
 
-- Webhook route: raw body, `app.webhooks.verifyAndReceive`, insert `deliveries('github', X-GitHub-Delivery)` (skip duplicates), dispatch, return 200. Handlers only enqueue.
+- Webhook route: bounded raw body, constant-time HMAC-SHA256 verification before parsing, atomically insert `deliveries('github', X-GitHub-Delivery)` (skip duplicates) and normalized jobs, return 202 after commit. Handlers only enqueue. Phase 1 reuses the bounded REST transport with Zod validation instead of introducing Octokit; label badge operations live in `app.ts`.
 
 | Event                                                             | Action                                                                                                                          |
 | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
@@ -816,9 +816,9 @@ Webhook **event names** differ from item statuses (`PAYMENT.PAYOUTS-ITEM.SUCCEED
 
 - `reconciliation.ts`: periodically rescan relevant open and closed PRs and recover failed webhook deliveries. Before any refund, reconcile live state and stored evidence. Missing webhooks or a 404 cannot establish absence of claims; unavailable evidence blocks authorization.
 - `linking.ts`: GraphQL `closingIssuesReferences(first: 100, after: cursor)` with complete pagination; fallback regex `/\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)\b/gi` on PR body. Same-repo issues only. Snapshot stable PR identity, SHA, observed timeline and merge time in `submission_evidence`; retain closed/rejected submissions for exception review. Persist at open/sync time; never delete `source='command'` links on refresh.
-- `permissions.ts`: `commentAuthorCanWrite(installationOctokit, repo, login)` via `repos.getCollaboratorPermissionLevel` (`admin|maintain|write`); `userCanWrite(userOctokit, repo)` via `GET /repos/{owner}/{repo}` → `permissions`.
+- `permissions.ts`: current stable actor ID resolved to login, then REST collaborator permission lookup (`admin|maintain|write`); `userCanWrite(userOctokit, repo)` via `GET /repos/{owner}/{repo}` → `permissions`.
 - `checks.ts`: Check Run `GitPay · Bounty verification`; `in_progress` then `success` for RESOLVES, `neutral` otherwise (never `failure`; the app must not block merges). Summary: verdict, coverage, confidence, reasoning, unmet requirements, proposed split, CI state, truncation note, bounty state.
-- `comments.ts`: accept reconciliation markers only on comments authored by this GitHub App; user-authored matching markers cannot substitute for a notice or receipt. Status comment (section 4.1) via marker; settlement result comment on the PR via `<!-- gitpay:settle:{bountyId}:{pr} -->`; command replies. Never include emails.
+- `comments.ts`: accept reconciliation markers only on comments authored by this GitHub App; user-authored matching markers cannot substitute for a notice or receipt. Status comment (section 4.1) via marker; each `/bounty status` command also receives a fresh per-command reply, deduplicated across delivery/job retries; settlement result comment on the PR via `<!-- gitpay:settle:{bountyId}:{pr} -->`; command replies. Never include emails.
 - `oauth.ts`: start flow → random nonce + browser-binding cookie → `oauth_states` row → GitHub authorize URL with signed state. Callback: verify signature, binding, expiry, single use, local `return_to`; exchange code; `GET /user`; create `sessions` row with encrypted tokens; set cookie (`httpOnly`, `secure`, `sameSite=lax`). Serialize refresh per session and compare-and-swap token generations; delete a session on confirmed refresh failure only if its generation is still current. Logout invalidates pending refresh results.
 
 ### 10.3 `actions/` (single source of business logic)

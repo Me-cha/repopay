@@ -28,4 +28,6 @@ Keep PayPal sandbox-only. Phase 08 first enables cancellation only in the explic
 
 The [decision records](docs/decisions/) explain policy choices. Keep historical decisions, mark them superseded when appropriate, and link their replacements. Runtime provider changes and changes to cancellation or reward-selection policy need explicit reasoning; they are not incidental refactors.
 
-Provider feasibility uses `pnpm preflight` (read-only), `--model-probe` for one Nemotron generation, and explicit `--sandbox-payment` for the persisted sandbox payout identity. Preflight validates only consumed provider settings; full application startup still requires webhook/OAuth configuration. See [setup](docs/setup.md) and [ADR 0003](docs/decisions/0003-nemotron-only-and-preflight-scope.md).
+Provider feasibility uses `pnpm preflight` (read-only), `--model-probe` for one Nemotron generation, and explicit `--sandbox-payment` for the persisted sandbox payout identity. Preflight validates only consumed provider settings; Phase 1 startup validates its consumed GitHub/database/worker settings. Full `parseEnv` remains strict for later capabilities. See [setup](docs/setup.md) and [ADR 0003](docs/decisions/0003-nemotron-only-and-preflight-scope.md).
+
+Phase 1 worker commands: `pnpm dev:worker` and `pnpm start:worker` (after build). Set `WORKER_MODE=separate` on the HTTP server when using them. See [setup](docs/setup.md#phase-1-demo-and-workers).

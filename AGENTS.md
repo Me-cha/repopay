@@ -2,7 +2,7 @@
 
 ## Start with the requested work
 
-Read `README.md` for the current product status. For implementation, bug fixes, financial logic or architecture changes, read the relevant sections of `IMPLEMENTATION_PLAN.md` and `docs/phases/README.md`, then the numbered phase file before editing. Phase 0 is authorized; later phases require their own scope authorization. Proposed refinements must be reconciled with the architecture before execution. For participation, award selection or refunds, also read `docs/decisions/0001-open-participation-and-cancellation.md`.
+Read `README.md` for the current product status. For implementation, bug fixes, financial logic or architecture changes, read the relevant sections of `IMPLEMENTATION_PLAN.md` and `docs/phases/README.md`, then the numbered phase file before editing. Phases 0 and 1 are authorized; later phases require their own scope authorization. Proposed refinements must be reconciled with the architecture before execution. For participation, award selection or refunds, also read `docs/decisions/0001-open-participation-and-cancellation.md`.
 
 The user's current request defines scope. The plan is a reference, not permission to execute all phases, publish changes or operate accounts. Implement authorized work without repeatedly seeking approval for routine choices within the agreed design. Discuss material changes to product policy or financial guarantees before implementing them.
 
@@ -22,12 +22,15 @@ GitPay/
 ├── docs/setup.md
 ├── docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md,0003-nemotron-only-and-preflight-scope.md}
 ├── docs/phases/{README.md,review-todo.md,00.md … 12.md}
-├── docs/evidence/{00-summary.md,00-preflight.md}
+├── docs/evidence/{00-summary.md,00-preflight.md,01-summary.md}
 ├── packages/server/
 │   ├── README.md, package.json, tsconfig.json, tsconfig.build.json
-│   ├── src/{main.ts,env.ts,log.ts}
+│   ├── src/{main.ts,worker.ts,env.ts,log.ts}
 │   ├── src/domain/types.ts
 │   ├── src/db/{client.ts,transaction.ts,schema.ts,migrate.ts,migrations/}
+│   ├── src/github/{app.ts,handlers.ts,commands.ts,permissions.ts,comments.ts}
+│   ├── src/jobs/{queue.ts,runner.ts,kinds.ts}
+│   ├── src/actions/{create.ts,status.ts}
 │   ├── src/http/routes.ts
 │   ├── src/paypal/client.ts        # Sandbox feasibility adapter only
 │   ├── src/preflight/{run.ts,http.ts,state.ts}
@@ -38,7 +41,7 @@ GitPay/
 └── postman/README.md               # Collection placeholder
 ```
 
-The current map describes tracked source and configuration; ignored local data/builds are omitted. The server owns configuration, health and database boundaries; `preflight/` owns isolated provider probes and durable local probe identity. Business actions, workers, authentication and the dashboard are future phases. See [server ownership](packages/server/README.md) and [setup](docs/setup.md).
+The current map describes tracked source and configuration; ignored local data/builds are omitted. The server owns configuration, health and database boundaries; `preflight/` owns isolated provider probes and durable local probe identity. `github/` owns signed intake and bounded provider access; `jobs/` owns leases and execution; `actions/` owns unfunded drafts and status. Authentication and the dashboard remain future phases. See [server ownership](packages/server/README.md) and [setup](docs/setup.md).
 
 ## Keep instructions and documentation current
 

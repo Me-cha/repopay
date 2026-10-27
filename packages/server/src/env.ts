@@ -58,3 +58,23 @@ export function parseEnv(input: Record<string, string | undefined>): Env {
   if (!result.success) throw new Error('Invalid configuration: ' + [...new Set(result.error.issues.map(issue => issue.path.join('.')))].join(', '));
   return result.data;
 }
+
+// Phase 01 consumes GitHub and database settings only. Full payment/application
+// validation above remains mandatory when those capabilities are introduced.
+const githubRuntimeSchema = z.object({
+ NODE_ENV: schema.shape.NODE_ENV, PORT: schema.shape.PORT, PUBLIC_URL: schema.shape.PUBLIC_URL,
+ DATABASE_URL: schema.shape.DATABASE_URL, WORKER_MODE: schema.shape.WORKER_MODE,
+ GH_APP_ID: schema.shape.GH_APP_ID, GH_APP_SLUG: schema.shape.GH_APP_SLUG,
+ GH_PRIVATE_KEY: schema.shape.GH_PRIVATE_KEY, GH_CLIENT_ID: schema.shape.GH_CLIENT_ID,
+ GH_WEBHOOK_SECRET: schema.shape.GH_WEBHOOK_SECRET, WEBHOOK_BODY_MAX_BYTES: schema.shape.WEBHOOK_BODY_MAX_BYTES,
+ PROVIDER_TIMEOUT_MS: schema.shape.PROVIDER_TIMEOUT_MS, PROVIDER_RESPONSE_MAX_BYTES: schema.shape.PROVIDER_RESPONSE_MAX_BYTES,
+ MAX_BOUNTY_CENTS: schema.shape.MAX_BOUNTY_CENTS, JOB_LEASE_SEC: schema.shape.JOB_LEASE_SEC,
+ POLL_INTERVAL_MS: schema.shape.POLL_INTERVAL_MS, RECONCILIATION_MAX_ATTEMPTS: schema.shape.RECONCILIATION_MAX_ATTEMPTS,
+ RECONCILIATION_PAGE_LIMIT: schema.shape.RECONCILIATION_PAGE_LIMIT,
+});
+export type GitHubRuntimeEnv = z.infer<typeof githubRuntimeSchema>;
+export function parseGitHubRuntimeEnv(input:Record<string,string|undefined>):GitHubRuntimeEnv {
+ const result=githubRuntimeSchema.safeParse(input);
+ if(!result.success)throw new Error('Invalid configuration: '+[...new Set(result.error.issues.map(issue=>issue.path.join('.')))].join(', '));
+ return result.data;
+}

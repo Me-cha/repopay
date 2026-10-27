@@ -1,6 +1,6 @@
 # Local setup and provider feasibility
 
-Phase 0 provides a health server and database foundation. Bounty creation, authentication pages, workers, funding and product payouts are later phases. See [phase status](phases/00.md) and [verification evidence](evidence/00-summary.md).
+Phase 1 adds signed GitHub intake, leased workers and unfunded bounty drafts to the Phase 0 foundation. Authentication pages, funding and product payouts remain later phases. See [phase status](phases/00.md) and [verification evidence](evidence/00-summary.md).
 
 ## Install and run locally
 
@@ -47,7 +47,7 @@ Missing database configuration fails integration tests. Nock rejects unmatched e
 
 ## Configure provider accounts
 
-1. **GitHub:** create the App/demo installation described in [architecture section 3](../IMPLEMENTATION_PLAN.md#3-external-setup-human-does-this-codex-documents-it-in-readme). Put its App ID, slug, private key, client ID/secret and webhook secret in `.env`. The Phase 0 probe signs a JWT and reads `/app`; installation access and user OAuth are verified in later phases. No bot comments are posted.
+1. **GitHub:** create the App/demo installation described in [architecture section 3](../IMPLEMENTATION_PLAN.md#3-external-setup-human-does-this-codex-documents-it-in-readme). Put its App ID, slug, private key, client ID/secret and webhook secret in `.env`. The Phase 0 probe signs a JWT and reads `/app`; installation access and user OAuth are verified in later phases. The Phase 0 probe posts no bot comments. The Phase 1 worker does post comments on its installed repositories.
 2. **PayPal:** use a sandbox REST app and business account with Payouts enabled and sufficient sandbox balance. Set `PP_CLIENT_ID`, `PP_SECRET`, `PP_WEBHOOK_ID`; keep the exact sandbox `PP_BASE`. Prepare a personal sandbox recipient account. A successful OAuth token alone does not establish Payouts capability.
 3. **NVIDIA:** set `NVIDIA_API_KEY`. The template pins `NVIDIA_MODEL=nvidia/nemotron-3-ultra-550b-a55b`, and `NVIDIA_BASE=https://integrate.api.nvidia.com/v1`. See [ADR 0003](decisions/0003-nemotron-only-and-preflight-scope.md). The current application does not read Anthropic credentials.
 
@@ -65,7 +65,7 @@ pnpm preflight --model-only --model-probe
 pnpm preflight --model-probe
 ```
 
-Full provider preflight uses `parsePreflightEnv`: GitHub App ID/slug/client ID/private key, PayPal sandbox client credentials, NVIDIA settings and provider limits. It does not consume or require `PP_WEBHOOK_ID`, `GH_WEBHOOK_SECRET`, `GH_CLIENT_SECRET`, database settings or local application keys. Leave unregistered webhook IDs blank; never insert placeholders to pass a probe. Full application startup still uses strict `parseEnv` and requires those settings.
+Full provider preflight uses `parsePreflightEnv`: GitHub App ID/slug/client ID/private key, PayPal sandbox client credentials, NVIDIA settings and provider limits. It does not consume or require `PP_WEBHOOK_ID`, `GH_WEBHOOK_SECRET`, `GH_CLIENT_SECRET`, database settings or local application keys. Leave unregistered webhook IDs blank; never insert placeholders to pass a probe. Phase 1 startup uses `parseGitHubRuntimeEnv`, requiring only consumed database/GitHub and worker limits; strict `parseEnv` remains available for later capabilities.
 
 The explicit model probe calls **Nemotron once**, with synthetic text only. It uses OpenAI-compatible Chat Completions, `response_format.type=json_schema`, non-streaming output, temperature 1 and top_p 0.95. Nemotron enables thinking, but raw reasoning is not returned/logged. `NVIDIA_MAX_TOKENS` bounds generated output (template: 2048); `NVIDIA_TIMEOUT_MS` bounds each attempt (template: 120000 ms). The probe requires a completed, non-refused response from the requested model whose content parses to exactly `{confirmed:true}`. It exits nonzero if the model fails. A listed model alone does not establish inference or structured-output capability.
 
@@ -99,3 +99,15 @@ Record redacted request/batch/item IDs, HTTP statuses, actual duplicate response
 - [PayPal create payout and deduplication](https://developer.paypal.com/api/payments.payouts-batch/v1/payouts-post), [batch lookup](https://developer.paypal.com/api/payments.payouts-batch/v1/payouts-get), and [official OpenAPI schema](https://github.com/paypal/paypal-rest-api-specifications/blob/main/openapi/payments_payouts_batch_v1.json).
 - [NVIDIA Nemotron API](https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3-ultra-550b-a55b-infer).
 - [Drizzle migrations](https://orm.drizzle.team/docs/migrations).
+
+## Phase 1 demo and workers
+
+The isolated demo is [deepakA18/gitpay-demo-http](https://github.com/deepakA18/gitpay-demo-http), an independent MIT-licensed copy of PayPal's archived HTTP client. It has no upstream remote or GitHub fork relationship. Preserve source attribution and LICENSE. Do all demo issues, labels and bot comments there.
+
+Register a private GitHub App under deepakA18 with Issues read/write and mandatory Metadata read-only. Subscribe to Issues and Issue comment events; installation lifecycle events are delivered automatically. Install only on the demo repository. Configure an HTTPS webhook URL ending `/webhooks/github` and a matching local `GH_WEBHOOK_SECRET`; update App ID/client ID/slug/private key locally. Never copy credentials into evidence. App `gitpay-demo-deepak` is configured and installed only on the demo repository. The live draft/status/replay/label walkthrough passed; see [Phase 1 evidence](evidence/01-summary.md). The current callback uses a temporary Cloudflare Quick Tunnel to local port 3107. Keep the server and tunnel running for deliveries; update the App callback whenever the tunnel URL changes.
+
+Run `pnpm db:migrate`, then `pnpm dev` with `WORKER_MODE=inline`. For separate processes use `WORKER_MODE=separate pnpm dev` plus `pnpm dev:worker`; compiled equivalents are `pnpm start` and `pnpm start:worker`. Both workers use the same handlers, leases and configured retry limits. Stop gracefully before changing App credentials.
+
+Supported commands are `/bounty create 50` and `/bounty status`; `bounty:$50` also creates a draft for a current writer. Other commands explain that their phase is unavailable. Labels never fund, resize or cancel drafts. Failed jobs retain a generic reason; restore App access/provider availability, then request `/bounty status` to enqueue a fresh projection. Inspect exhausted command jobs before explicit redelivery; do not delete delivery identities to force retries. Scheduled recovery arrives in Phase 10.
+
+Each new `/bounty status` comment receives its own visible status reply, including for read-only participants. Replayed deliveries and job retries reconcile the same per-command reply. The canonical bounty summary is refreshed separately.

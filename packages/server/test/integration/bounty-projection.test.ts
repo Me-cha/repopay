@@ -1,0 +1,46 @@
+import { expect, it } from 'vitest';
+import { githubFixture, createWork, testEnv } from '../helpers/github.js';
+import { handleJob } from '../../src/jobs/runner.js';
+import { claimJob, finishJob } from '../../src/jobs/queue.js';
+import { bounties } from '../../src/db/schema.js';
+import { syncBounty, withProjectionLock } from '../../src/github/comments.js';
+it('lost comment response reconciles by trusted marker, ignoring forged user marker',async()=>{
+ const f=await githubFixture();try{
+  const a=await f.job(createWork());await handleJob(f.database,f.api,testEnv,a);await finishJob(f.database,a);
+  const [bounty]=await f.database.orm.select().from(bounties);if(!bounty)throw new Error('missing bounty');
+  f.comments.push({id:'8',body:`<!-- gitpay:bounty:${bounty.id} -->`,user:{id:'4',type:'User'}});
+  const job=await claimJob(f.database,'sync',120);if(!job)throw new Error('missing sync');
+  f.state.lostResponse=true;await expect(syncBounty(f.database,f.api,testEnv,job,bounty.id)).rejects.toThrow('lost');
+  await syncBounty(f.database,f.api,testEnv,job,bounty.id);
+  expect(f.comments).toHaveLength(2);expect(f.api.createComment).toHaveBeenCalledTimes(1);expect(f.api.updateComment).toHaveBeenCalledTimes(1);
+  expect(f.comments[1]?.body).toContain('$50.00 USD');expect(f.comments[1]?.body).not.toContain('Fund $');
+  expect(f.api.createComment).toHaveBeenCalledWith('1',{id:'2',full_name:'owner/repo',archived:false},12,expect.any(String));
+ }finally{await f.close();}
+});
+it('projection lock serializes workers across connections',async()=>{
+ const f=await githubFixture();try{await withProjectionLock(f.database,'same-bounty',async()=>{await expect(withProjectionLock(f.database,'same-bounty',async()=>{})).rejects.toThrow('busy');});await expect(withProjectionLock(f.database,'same-bounty',()=>Promise.resolve(true))).resolves.toBe(true);}finally{await f.close();}
+});
+it('each read-only status command gets a reply, while retries reconcile the same reply',async()=>{
+ const f=await githubFixture();try{
+  const create=await f.job(createWork());await handleJob(f.database,f.api,testEnv,create);await finishJob(f.database,create);
+  const projection=await claimJob(f.database,'sync',120);if(!projection)throw new Error('missing sync');
+  await handleJob(f.database,f.api,testEnv,projection);await finishJob(f.database,projection);
+  f.state.permission='read';
+  for(const commentId of ['21','22']) {
+   const job=await f.job(createWork({commentId,command:{kind:'status'}}));
+   if(commentId==='21'){
+    f.state.lostResponse=true;
+    await expect(handleJob(f.database,f.api,testEnv,job)).rejects.toThrow('lost');
+   }
+   await handleJob(f.database,f.api,testEnv,job);
+   await handleJob(f.database,f.api,testEnv,job);
+   await finishJob(f.database,job);
+   const sync=await claimJob(f.database,'sync',120);if(!sync)throw new Error('missing status sync');
+   await handleJob(f.database,f.api,testEnv,sync);await finishJob(f.database,sync);
+  }
+  const replies=f.comments.filter(c=>c.body?.includes('gitpay:reply:'));
+  expect(replies).toHaveLength(2);
+  for(const reply of replies){expect(reply.body).toContain('$50.00 USD');expect(reply.body).toContain('OPEN');expect(reply.body).toContain('No money has been collected');}
+  expect(f.comments.filter(c=>c.body?.includes('gitpay:bounty:'))).toHaveLength(1);
+ }finally{await f.close();}
+});

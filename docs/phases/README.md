@@ -1,8 +1,7 @@
 # GitPay MVP — phase plan
 
-**Status:** Phase 00 COMPLETE — October 27, 2026; verification and final review are complete. Local checks, GitHub authentication, Nemotron output and PayPal payout/duplicate/recovery/receipt are evidenced. Later phases are not started or authorized. See [Phase 00](00.md) and [provider evidence](../evidence/00-preflight.md).
+**Status:** Phase 00 COMPLETE — October 27, 2026; verification and final review are complete. Local checks, GitHub authentication, Nemotron output and PayPal payout/duplicate/recovery/receipt are evidenced. Phase 01 COMPLETE — October 27, 2026; 110 automated tests pass; live draft/status/replay/label, crash recovery, access suspension/restoration and second-account rejection pass, with evidence recorded. See [Phase 01 evidence](../evidence/01-summary.md). See [Phase 00](00.md) and [provider evidence](../evidence/00-preflight.md).
 
-This is the execution plan for the MVP described in [IMPLEMENTATION_PLAN.md](../../IMPLEMENTATION_PLAN.md). It breaks the existing design into **13 phases and 57 reviewable tasks**, including negative paths and operations. The [cancellation decision](../decisions/0001-open-participation-and-cancellation.md) remains the accepted product policy. The refinements below are the accepted pre-build contract and are reconciled into the master architecture.
 This is the execution plan for the MVP described in [IMPLEMENTATION_PLAN.md](../../IMPLEMENTATION_PLAN.md). It breaks the existing design into **13 phases and 57 reviewable tasks**, including negative paths and operations. The [cancellation decision](../decisions/0001-open-participation-and-cancellation.md) remains the accepted product policy. The refinements below are the accepted pre-build contract and are reconciled into the master architecture.
 
 ## What the MVP delivers
