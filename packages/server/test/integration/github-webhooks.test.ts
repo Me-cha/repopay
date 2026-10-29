@@ -4,6 +4,7 @@ import { createTestDatabase } from '../helpers/database.js';
 import { migrateDatabase } from '../../src/db/migrate.js';
 import { jobs, deliveries } from '../../src/db/schema.js';
 import { ingestGitHub } from '../../src/github/handlers.js';
+import { testEnv } from '../helpers/github.js';
 const secret = 'w'.repeat(32);
 export const event = { action: 'created', installation: { id: 1 }, repository: { id: 2 }, issue: { number: 12 }, comment: { id: 3, body: '/bounty create 50', user: { id: 4, type: 'User' } } };
 function signed(body: Buffer, deliveryId = 'delivery-1') { return { event: 'issue_comment', deliveryId, signature: 'sha256=' + createHmac('sha256', secret).update(body).digest('hex') }; }
@@ -48,5 +49,16 @@ it('unsafe numeric IDs are rejected and payloads retain only normalized command 
   const unsafe=Buffer.from(JSON.stringify({...event,installation:{id:9007199254740992}}));await expect(ingestGitHub(f.database,secret,3,unsafe,signed(unsafe))).rejects.toThrow();
   const good=Buffer.from(JSON.stringify({...event,sensitive:'do not retain',comment:{...event.comment,body:'/bounty create 50\nprivate context'}}));await ingestGitHub(f.database,secret,3,good,signed(good));
   const [job]=await f.database.orm.select().from(jobs);expect(JSON.stringify(job?.payload)).not.toContain('private context');expect(job?.payload).not.toHaveProperty('sensitive');
+ }finally{await f.close();}
+});
+it('queues same-repository pull request updates and ignores GitPay check-run recursion',async()=>{
+ const f=await createTestDatabase();try{
+  await migrateDatabase(f.database);
+  const pull={action:'synchronize',installation:{id:1},repository:{id:2},pull_request:{number:42,base:{repo:{id:2}}}};
+  const raw=Buffer.from(JSON.stringify(pull));await ingestGitHub(f.database,secret,3,raw,{...signed(raw),event:'pull_request'});
+  const [job]=await f.database.orm.select().from(jobs);expect(job?.kind).toBe('sync_pull_request');expect(job?.payload).toMatchObject({repoId:'2',prNumber:42});
+  const check={action:'completed',installation:{id:1},repository:{id:2},check_run:{head_sha:'a'.repeat(40),app:{id:testEnv.GH_APP_ID}}};
+  const checkRaw=Buffer.from(JSON.stringify(check));await ingestGitHub(f.database,secret,3,checkRaw,{...signed(checkRaw,'our-check'),event:'check_run'},testEnv.GH_APP_ID);
+  expect(await f.database.orm.select().from(jobs)).toHaveLength(1);
  }finally{await f.close();}
 });

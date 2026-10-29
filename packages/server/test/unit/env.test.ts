@@ -16,7 +16,7 @@ describe('configuration boundary', () => {
     { PAYMENT_DATA_ENC_KEY: Buffer.alloc(32, 1).toString('base64') },
     { PORT: '0' }, { PORT: '3000.5' }, { JOB_LEASE_SEC: '-1' },
     { PROVIDER_TIMEOUT_MS: 'Infinity' }, { POLICY_CI_REQUIRED: 'yes' },
-    { RECONCILIATION_PAGE_LIMIT: '10000000' }, { NVIDIA_MODEL: '' },
+    { RECONCILIATION_PAGE_LIMIT: '10000000' },
     { TEST_DATABASE_URL: 'postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay' },
   ])('rejects invalid configuration %j', (change) => {
     expect(() => parseEnv({ ...syntheticEnv(), ...change })).toThrow();
@@ -28,7 +28,7 @@ describe('configuration boundary', () => {
 });
 
 it('validates preflight scope without webhook, OAuth, database or application secrets', () => {
-  const unrelated = new Set(['PP_WEBHOOK_ID', 'GH_WEBHOOK_SECRET', 'GH_CLIENT_SECRET', 'DATABASE_URL', 'TEST_DATABASE_URL', 'SESSION_SECRET', 'TOKEN_ENC_KEY', 'PAYMENT_DATA_ENC_KEY']);
+  const unrelated = new Set(['COPILOT_GITHUB_TOKEN', 'COPILOT_MODEL', 'COPILOT_BILLING_OWNER_ID', 'PP_WEBHOOK_ID', 'GH_WEBHOOK_SECRET', 'GH_CLIENT_SECRET', 'DATABASE_URL', 'TEST_DATABASE_URL', 'SESSION_SECRET', 'TOKEN_ENC_KEY', 'PAYMENT_DATA_ENC_KEY']);
   const input = Object.fromEntries(Object.entries(syntheticEnv()).filter(([key]) => !unrelated.has(key)));
   expect(parsePreflightEnv(input).PP_BASE).toBe('https://api-m.sandbox.paypal.com');
   expect(parsePreflightEnv(input)).not.toHaveProperty('PP_WEBHOOK_ID');
@@ -36,7 +36,7 @@ it('validates preflight scope without webhook, OAuth, database or application se
 });
 it.each([
   { PP_BASE: 'https://api-m.paypal.com' }, { PP_SECRET: '' }, { GH_PRIVATE_KEY: '' },
-  { GH_CLIENT_ID: '' }, { NVIDIA_API_KEY: '' }, { PROVIDER_TIMEOUT_MS: '0' },
+  { GH_CLIENT_ID: '' }, { PROVIDER_TIMEOUT_MS: '0' },
 ])('preflight still validates every consumed credential and boundary: %j', change => {
   expect(() => parsePreflightEnv({ ...syntheticEnv(), ...change })).toThrow();
 });

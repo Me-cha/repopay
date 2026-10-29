@@ -1,6 +1,6 @@
 # Contributing to GitPay
 
-GitPay has completed Phase 0: the local foundation and scoped provider feasibility are verified. Product workflows remain future work. Read [README.md](README.md), [AGENTS.md](AGENTS.md) and the relevant phase of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) and its [numbered phase file](docs/phases/README.md) before starting implementation. Phase 0 is complete. Later phases require explicit scope authorization and their prerequisite gates.
+GitPay has completed Phases 0 and 1; Phases 2–3 are implemented locally with outstanding live gates. Phases 4–5 were authorized on October 29, 2026; consult their evidence for local coverage and remaining browser/Copilot acceptance. Read [README.md](README.md), [AGENTS.md](AGENTS.md) and the relevant phase of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) and its [numbered phase file](docs/phases/README.md) before starting implementation. Later phases require explicit scope authorization and prerequisite gates.
 
 ## Workflow
 
@@ -14,9 +14,9 @@ GitPay has completed Phase 0: the local foundation and scoped provider feasibili
 
 Use Node from `.node-version` and pnpm from `package.json`. Follow [setup](docs/setup.md), run `pnpm install --frozen-lockfile`, then `pnpm typecheck`, `pnpm lint`, `pnpm test` and `pnpm build`. `pnpm test` requires an explicitly exported local `TEST_DATABASE_URL` ending in `_test`; it never loads `.env`. Tests create unique schemas and drop only their own fixtures. Missing Postgres/configuration fails the suite rather than silently skipping tests. Unmatched external HTTP calls are blocked by Nock.
 
-Check relative documentation links, actual paths, whitespace and agreement between the README, plan and agent instructions. Run `git diff --check` and inspect untracked files too. Provider integration evidence must distinguish mocks from actual PayPal sandbox/GitHub/NVIDIA calls.
+Check relative documentation links, actual paths, whitespace and agreement between the README, plan and agent instructions. Run `git diff --check` and inspect untracked files too. Provider integration evidence must distinguish mocks from actual PayPal sandbox/GitHub/Copilot calls.
 
-Financial changes must cover repeated events, unauthorized actors, stale confirmations, provider timeouts, concurrent allocation and cancellation abuse. Never claim a sandbox payout was verified based on a mocked test.
+Financial changes must cover repeated events, unauthorized actors, stale confirmations, provider timeouts, concurrent allocation and cancellation abuse. Never claim a sandbox payout or capture was verified based on a mocked test. Funding tests cover persisted request keys, no POST after retry expiry, exact terms/merchant/amount binding, capture/cancellation races and read-only return routes.
 
 ## Configuration and secrets
 
@@ -28,6 +28,10 @@ Keep PayPal sandbox-only. Phase 08 first enables cancellation only in the explic
 
 The [decision records](docs/decisions/) explain policy choices. Keep historical decisions, mark them superseded when appropriate, and link their replacements. Runtime provider changes and changes to cancellation or reward-selection policy need explicit reasoning; they are not incidental refactors.
 
-Provider feasibility uses `pnpm preflight` (read-only), `--model-probe` for one Nemotron generation, and explicit `--sandbox-payment` for the persisted sandbox payout identity. Preflight validates only consumed provider settings; Phase 1 startup validates its consumed GitHub/database/worker settings. Full `parseEnv` remains strict for later capabilities. See [setup](docs/setup.md) and [ADR 0003](docs/decisions/0003-nemotron-only-and-preflight-scope.md).
+Provider feasibility uses `pnpm preflight` (read-only), `--model-only` for Copilot model listing, `--model-probe` for an explicit sponsored Copilot generation, and explicit `--sandbox-payment` for the persisted sandbox payout identity. Preflight validates only consumed provider settings; HTTP and worker startup validate GitHub/database/session and Phase 3 sandbox funding settings using `parseFundingEnv`. Full `parseEnv` remains strict for later capabilities. See [setup](docs/setup.md) and [ADR 0005](docs/decisions/0005-copilot-verifier.md).
 
 Phase 1 worker commands: `pnpm dev:worker` and `pnpm start:worker` (after build). Set `WORKER_MODE=separate` on the HTTP server when using them. See [setup](docs/setup.md#phase-1-demo-and-workers).
+
+For stable local GitHub OAuth and webhook callbacks, set the account-assigned `NGROK_DOMAIN` and matching HTTPS `PUBLIC_URL`, then run `pnpm tunnel` beside `pnpm dev`. See [stable local tunnel setup](docs/setup.md#stable-local-tunnel).
+
+Copilot tests inject a fake runtime; they do not spend credits. Live SDK generation needs an explicitly consenting sponsor credential and selected model. Keep prior provider evidence historical, and never rewrite saved funded terms when changing providers.

@@ -1,6 +1,6 @@
 import { Writable } from 'node:stream';
 import { expect, it } from 'vitest';
-import { parseEnv } from '../../src/env.js';
+import { parseEnv, parseCopilotEnv } from '../../src/env.js';
 import { createLogger } from '../../src/log.js';
 import { syntheticEnv } from '../helpers/env.js';
 it('redaction_removes_nested_secrets and safe errors', () => {
@@ -25,9 +25,15 @@ it('redacts child bindings and setBindings', () => {
 it('redacts API key fields and configured key values in messages', () => {
   let output = '';
   const stream = new Writable({ write(chunk: Buffer, _encoding, done) { output += chunk.toString(); done(); } });
-  const env = parseEnv(syntheticEnv());
+  const env = parseCopilotEnv(syntheticEnv());
   const log = createLogger(env, stream);
-  log.info({ NVIDIA_API_KEY: env.NVIDIA_API_KEY, nested: { 'x-api-key': 'arbitrary-api-key' } }, `echo ${env.NVIDIA_API_KEY}`);
-  expect(output).not.toContain(env.NVIDIA_API_KEY);
+  log.info({ COPILOT_GITHUB_TOKEN: env.COPILOT_GITHUB_TOKEN, nested: { 'x-api-key': 'arbitrary-api-key' } }, `echo ${env.COPILOT_GITHUB_TOKEN}`);
+  expect(output).not.toContain(env.COPILOT_GITHUB_TOKEN);
   expect(output).not.toContain('arbitrary-api-key');
+});
+it('redacts action URLs, OAuth callback codes and CSRF values',()=>{
+ let output='';const stream=new Writable({write(chunk:Buffer,_encoding,done){output+=chunk.toString();done();}});
+ const log=createLogger(parseEnv(syntheticEnv()),stream);
+ log.info({url:'/a/private-action?csrf=private-csrf',returnTo:'%2Fa%2Fencoded-action',code:'private-code',state:'private-state'},'GET /oauth/github/callback?code=callback-code&state=callback-state');
+ for(const secret of ['private-action','private-csrf','encoded-action','private-code','private-state','callback-code','callback-state'])expect(output).not.toContain(secret);
 });

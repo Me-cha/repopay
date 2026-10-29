@@ -4,20 +4,20 @@
 
 GitPay is a planned GitHub App that connects issue bounties to PayPal. Maintainers fund an issue, contributors submit pull requests, AI assesses the proposed solution, and a qualifying merge triggers payment through a deterministic policy.
 
-The principle is **glue, not a platform**: development stays in GitHub, checkout and payouts use PayPal, and small authenticated pages handle confirmations. An dashboard (optional for users, required in the MVP) displays progress without becoming another place to manage the work.
+The principle is **glue, not a platform**: development stays in GitHub, checkout and payouts use PayPal, and small authenticated pages handle confirmations. A dashboard (optional for users, required in the MVP) displays progress without becoming another place to manage the work.
 
-> **Project status:** Phase 0 is complete and reviewed as of October 27, 2026. The local foundation, GitHub authentication, NVIDIA Nemotron output, and a $1 PayPal sandbox payout with duplicate/recovery checks and recipient receipt are verified. Phase 1 is complete: draft intake, workers, bot projections and per-command status replies are tested; the installed demo App passes live authorization, replay, crash-recovery and access-loss checks. See [Phase 1 evidence](docs/evidence/01-summary.md). Product flows below describe the intended MVP; payments are sandbox only.
+> **Project status:** Phase 0 is complete and reviewed as of October 27, 2026. The local foundation, GitHub authentication, historical NVIDIA Nemotron output (before the Copilot migration), and a $1 PayPal sandbox payout with duplicate/recovery checks and recipient receipt are verified. Phase 1 is complete: draft intake, workers, bot projections and per-command status replies are tested; the installed demo App passes live authorization, replay, crash-recovery and access-loss checks. See [Phase 1 evidence](docs/evidence/01-summary.md). Phase 2 authentication and draft cancellation are implemented; the live collaborator-revocation check was deferred by the user. Phase 3 sandbox funding is implemented locally; its real capture walkthrough remains pending. Phase 4 is complete: the contributor signed in through GitHub, connected the configured sandbox destination, and saw only its masked form; local checks pass. Phase 5's PR linking, evidence collection, advisory Copilot verifier, Check Runs, per-repository attempt caps and persisted SDK usage telemetry are implemented locally. Organization sponsorship, sponsor-revocation handling, fixed-model inference, semantic evaluation and several acceptance cases remain open. See [Phase 4 evidence](docs/evidence/04-summary.md), [Phase 5 evidence](docs/evidence/05-summary.md), [Phase 3 evidence](docs/evidence/03-summary.md), [Phase 2 evidence](docs/evidence/02-summary.md) and [the Copilot research](docs/copilot-verifier-research.md). Phase 5 is not declared fully complete. Product flows below describe the intended MVP; payments are sandbox only.
 
 ## Intended flow
 
 1. A maintainer comments `/bounty create 50` on an issue, or adds `bounty:$50`. This creates an **unfunded draft** when the App is installed and its receiver is running.
-2. The bot posts a funding link. The maintainer signs in, confirms the amount and pays through PayPal checkout. Only confirmed capture makes the bounty funded.
+2. The repository owner connects a Copilot sponsor account with the fixed model enabled. The maintainer signs in, reviews frozen criteria/model/sponsor, confirms the amount and pays through PayPal checkout. Only confirmed capture makes the bounty funded.
 3. Anyone with repository access can submit a linked PR, such as `Fixes #12`. There is no exclusive acceptance or reservation.
 4. The runtime AI verifier assesses the changes and reports its reasoning in a GitHub Check Run. CI and deterministic policy constrain the result.
 5. The first qualifying merged PR under the funded terms earns the bounty. A review case requires an authenticated maintainer decision before payment.
 6. Eligible contributors connect their PayPal details. A committed award remains theirs while payment details or transfer problems are resolved.
 
-Typing a command or adding a label on GitHub today does not create a payment. GitPay must first be implemented, installed and configured.
+Typing a command or adding a label on GitHub today does not create a payment. The App must be installed, configured and running; checkout requires authenticated confirmation.
 
 ## Fair participation and cancellation
 
@@ -32,7 +32,9 @@ Funded bounties are commitments. A maintainer may **request** cancellation for a
 
 These rules prevent the normal recorded cancel-then-merge abuse path. They cannot force a maintainer to merge, prevent off-platform copying, or guarantee discovery of unseen work. Read [the cancellation decision and its limitations](docs/decisions/0001-open-participation-and-cancellation.md).
 
-## Planned commands
+## Commands (full MVP target)
+
+Currently available: `/bounty create`, `/bounty status`, `/bounty fund`, and `/bounty cancel` for an unfunded draft. Cancellation opens an authenticated preview; the comment itself cannot cancel the draft. Sandbox funding requires merchant, trusted CI and an explicit Copilot model configuration. Funded cancellation remains unavailable.
 
 | Command                   | Purpose                                                                                                         |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------- |
@@ -55,7 +57,7 @@ flowchart LR
     PP[PayPal sandbox] -->|Verified events| API
     API --> DB[(Postgres state and jobs)]
     DB --> W[Worker]
-    W --> AI[Nemotron verifier]
+    W --> AI[Copilot SDK verifier]
     AI --> P[Deterministic payment policy]
     P --> DB
     W -->|Orders, payouts, reviewed refunds| PP
@@ -71,12 +73,12 @@ flowchart LR
 | Backend and storage   | Express 5, PostgreSQL 16, Drizzle, durable database jobs                                 |
 | GitHub integration    | GitHub App, bounded REST adapter, webhooks, Check Runs and OAuth                                      |
 | Payments              | PayPal sandbox Orders, capture, Payouts, refunds and webhooks                            |
-| Runtime AI            | NVIDIA API: Nemotron only; structured verdicts validated with Zod                        |
+| Runtime AI            | Copilot SDK with repository-owner/organization sponsorship; Zod validation                        |
 | Web                   | Server-rendered confirmation pages; React/Vite + AG Grid for the optional dashboard      |
 | Validation            | Vitest, integration tests, property tests, verifier evaluations and sandbox walkthroughs |
 | Deployment target     | Render; deployment configuration is not created yet                                      |
 
-Codex is the coding assistant, while NVIDIA-hosted Nemotron is the selected runtime model. The model receives no unrestricted authority to move money. See [the provider decision](docs/decisions/0003-nemotron-only-and-preflight-scope.md).
+Codex is the coding assistant; Copilot SDK is the selected runtime verifier provider. The model receives no unrestricted authority to move money. See [the provider decision](docs/decisions/0005-copilot-verifier.md).
 
 ## Start here
 
@@ -87,9 +89,9 @@ cd GitPay
 
 Start with [the phased MVP review plan](docs/phases/README.md) and [Phase 00](docs/phases/00.md). Read [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the architecture and [AGENTS.md](AGENTS.md) for repository instructions. Phase 0 provides the executable server workspace. Follow [local setup and provider probes](docs/setup.md); see [Phase 0 evidence](docs/evidence/00-summary.md) for actual checks and remaining gates.
 
-The tracked [.env.example](.env.example) lists validated configuration. Copy it to `.env` and fill in credentials locally. Credentials are intentionally blank; the Nemotron model is pinned. Startup and preflight validate their respective required settings. Do not paste secrets into issues, PRs or agent instructions.
+The tracked [.env.example](.env.example) lists validated configuration. Copy it to `.env` and fill in credentials locally. Credentials are intentionally blank; choose an explicit accessible Copilot model before new funding or model generation. Startup and preflight validate their respective required settings. Do not paste secrets into issues, PRs or agent instructions.
 
-External setup will require a GitHub App and demo repository, PayPal sandbox accounts with Payouts access, and a NVIDIA API key and model access. Cancellation testing also needs an independent reviewer identity. Exact setup requirements are recorded in section 3 of the plan; verify provider documentation during implementation.
+External setup will require a GitHub App and demo repository, PayPal sandbox accounts with Payouts access, and a consenting repository-owner or organization Copilot sponsor with model access. Later funded-cancellation testing also needs an independent reviewer identity; unfunded draft cancellation does not. Exact setup requirements are recorded in section 3 of the plan; verify provider documentation during implementation.
 
 ## Repository guide
 
@@ -105,7 +107,7 @@ External setup will require a GitHub App and demo repository, PayPal sandbox acc
 | [docs/evidence/](docs/evidence/)                         | Recorded local verification and external blockers                                                      |
 | [docs/phases/review-todo.md](docs/phases/review-todo.md) | Pre-build remediation checklist for the reviewed plan                                                  |
 | [docs/decisions/](docs/decisions/)                       | Product and architecture decisions with reasoning                                                      |
-| [packages/server/](packages/server/)                     | Health/webhook server, durable workers, unfunded drafts and feasibility probes |
+| [packages/server/](packages/server/)                     | Health/webhook server, workers, OAuth sessions, draft confirmations and provider probes |
 | [packages/web/](packages/web/)                           | Planned optional dashboard; documentation placeholder                                                  |
 | [postman/](postman/)                                     | Planned API/demo collection; documentation placeholder                                                 |
 
@@ -120,3 +122,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Product behavior, credentials and integr
 ## License
 
 [MIT](LICENSE), as selected in the implementation plan.
+
+The Copilot provider migration and local PR review pipeline are implemented. Three non-payment Auto probes reported `gpt-6-luna`; they do not establish fixed-model access or real review quality. Personal-repository sponsor OAuth, sponsor-bound fixed-model terms, per-repository attempt caps and persisted SDK usage telemetry are implemented locally, but organization billing, sponsor-revocation handling, fixed-model inference and semantic evaluation remain open. SDK usage units are not a monetary budget. See [ADR 0006](docs/decisions/0006-fixed-lightweight-copilot-and-sponsorship.md), [migration evidence](docs/evidence/copilot-migration.md), [Phase 5 evidence](docs/evidence/05-summary.md) and [feasibility research](docs/copilot-verifier-research.md). Native Copilot reviews do not authorize payment.

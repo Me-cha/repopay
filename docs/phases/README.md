@@ -1,6 +1,6 @@
 # GitPay MVP — phase plan
 
-**Status:** Phase 00 COMPLETE — October 27, 2026; verification and final review are complete. Local checks, GitHub authentication, Nemotron output and PayPal payout/duplicate/recovery/receipt are evidenced. Phase 01 COMPLETE — October 27, 2026; 110 automated tests pass; live draft/status/replay/label, crash recovery, access suspension/restoration and second-account rejection pass, with evidence recorded. See [Phase 01 evidence](../evidence/01-summary.md). See [Phase 00](00.md) and [provider evidence](../evidence/00-preflight.md).
+**Status:** Phases 0, 1 and 4 are complete. Phase 2 has one deferred live permission-revocation check; Phase 3's real capture walkthrough is pending. Phase 5's local implementation is in place, but its live model, organization sponsorship and quality gates remain open. See [Phase 4 evidence](../evidence/04-summary.md) and [Phase 5 evidence](../evidence/05-summary.md), alongside [Phase 3](../evidence/03-summary.md) and [Phase 2](../evidence/02-summary.md).
 
 This is the execution plan for the MVP described in [IMPLEMENTATION_PLAN.md](../../IMPLEMENTATION_PLAN.md). It breaks the existing design into **13 phases and 57 reviewable tasks**, including negative paths and operations. The [cancellation decision](../decisions/0001-open-participation-and-cancellation.md) remains the accepted product policy. The refinements below are the accepted pre-build contract and are reconciled into the master architecture.
 
@@ -10,7 +10,7 @@ GitPay connects GitHub issues/PRs to PayPal sandbox. Maintainers fund a publishe
 
 Every main user workflow is in scope, including inability to proceed safely. The product must explain failed/pending payments, lost repository access, unconnected recipients, stale confirmations and unresolved disputes rather than pretending these states do not exist.
 
-The development assistant remains Codex. The runtime verifier uses NVIDIA-hosted Nemotron only, per [ADR 0003](../decisions/0003-nemotron-only-and-preflight-scope.md). Exclusive contributor assignment, dashboard mutations and live-money deployment remain outside scope.
+The development assistant remains Codex. The runtime verifier uses repository-sponsored Copilot SDK, per [ADR 0005](../decisions/0005-copilot-verifier.md). Three non-payment Auto samples passed live on October 29; they do not establish fixed-model access or PR review quality. Repository-owner OAuth sponsorship, fixed-model v3 funding terms, submission/evidence collection, advisory verifier/Check Run code, per-repository attempt caps and persisted SDK usage telemetry are implemented locally. Organization billing, sponsor-revocation handling, live evaluation and remaining acceptance coverage are open under [ADR 0006](../decisions/0006-fixed-lightweight-copilot-and-sponsorship.md). Exclusive contributor assignment, dashboard mutations and live-money deployment remain outside scope.
 
 ## Review decisions
 
@@ -34,7 +34,7 @@ Keep partial awards, changing funded amounts, third-party funding, live money, K
 
 | Phase                                             | Deliverable                                                    | Depends on  | Main review checkpoint                                                        |
 | ------------------------------------------------- | -------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------- |
-| [00 — Foundation and provider feasibility](00.md) | Reproducible workspace, DB, tests, sandbox capability evidence | Plan review | Can we actually use GitHub auth, NVIDIA structured output and PayPal Payouts? |
+| [00 — Foundation and provider feasibility](00.md) | Reproducible workspace, DB, tests, sandbox capability evidence | Plan review | Historical GitHub/Nemotron/PayPal feasibility; Copilot requires new evidence |
 | [01 — GitHub App, events and drafts](01.md)       | Durable webhook/jobs flow and visible unfunded bounties        | 00          | Replayed events cannot create duplicate bounties                              |
 | [02 — Authentication and confirmations](02.md)    | Login, permission checks and safe draft cancellation           | 01          | Money actions cannot be authorized by a label, GET or replayed token          |
 | [03 — Funding and capture](03.md)                 | Checkout, immutable funded terms and confirmed capture         | 02          | Funded means captured, including after worker failure                         |
@@ -104,7 +104,7 @@ Real-money reversals, disputes outside the recorded protocol and forced acceptan
 
 ## Execution contract
 
-1. **Scope first.** Phase 00 is authorized. The plan does not authorize later phases or external account operations; follow the current user request.
+1. **Scope first.** Phases 00–05 have been authorized through the user's October 29 request. The plan does not authorize later phases or external account operations; follow the current user request.
 2. **Existing references.** Read AGENTS.md, the relevant architecture section and the phase before implementing. User instructions take precedence. If approved, these phase contracts refine the v4 schema sketches; reconcile the master architecture with approved refinements before implementing Phase 00.
 3. **Task size.** Each numbered task owns a reviewable contract and approximately 3–5 primary files. Split framework boilerplate into a small prerequisite task if required; do not balloon a task into multiple unrelated subsystems.
 4. **Tests and evidence.** For behavior changes use meaningful failing cases, implement, then verify. Config/docs need direct validation, not tests that mirror the config. External probes and browser walkthroughs require observations; mocks do not prove provider integration.
@@ -176,7 +176,7 @@ GitHub event acknowledgement requires delivery receipt and job creation in the s
 
 - **GitHub:** owner-controlled App/demo repository and separate maintainer/contributor identities. Add an independent reviewer with evidence access for cancellation. Account creation, secret values and collaborator invitations require the owner's action/authorization.
 - **PayPal:** sandbox business platform account, maintainer and contributor personal sandbox accounts, Payouts capability and sufficient sandbox balance. A second contributor account is needed to evidence a two-author award. Feasibility is not assumed from credentials existing.
-- **NVIDIA:** a permitted API key and access to the selected Nemotron model. Probe its capability and evaluate it before automatic verification. Record the exact profile and failures; model listing alone does not prove inference capability.
+- **Copilot SDK:** an eligible consenting repository-owner or organization sponsor, explicit token and fixed model. Prove authenticated structured output, then evaluate the exact model/profile before settlement. Durable grants and budget controls precede background verification; model listing alone does not prove inference.
 - **Hosting:** account, region/plan and durable Postgres/worker capability must be verified in 11. Never invent a working deployment URL or free-worker guarantee.
 - **Independent review:** someone must actually operate the exception process. Without that person, funded refunds remain disabled and full W10 acceptance is blocked. Development can establish local correctness, but it cannot invent operating capacity.
 - **Notice:** the planned 72-hour real notice may determine earliest live-refund test timing. Schedule a legitimate test request early once Phase 08 is ready; use test clocks only for labelled automated/simulated cases.
@@ -198,4 +198,4 @@ These checks inform the design; they do not prove an integration is configured:
 - [ ] Independent reviewer responsibility and the proposed notice duration are acceptable.
 - [x] We agree on the first implementation slice: Phase 00, with external capability evidence clearly separated from local checks. Authorized October 26, 2026.
 
-The review remediation is tracked in [review-todo.md](review-todo.md). Phase 00 is complete with scoped provider evidence. Phase 01 is ready for its own scope authorization; it has not started. These documents do not authorize all phases.
+The review remediation is tracked in [review-todo.md](review-todo.md). Phase 00 is complete with scoped provider evidence. Phase 01 is complete. Phase 02's deferred live permission-revocation gate and Phase 03's sandbox capture gate are tracked in their evidence files. Phase 04 local work is complete; its real contributor browser walkthrough remains. Phase 05 local pipeline work, request caps and SDK usage telemetry are present, but organization sponsorship, sponsor-revocation handling and live model evaluation remain open. These documents do not authorize later phases.

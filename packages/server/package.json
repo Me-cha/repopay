@@ -7,8 +7,9 @@
     "build": "tsc -p tsconfig.build.json && mkdir -p dist/db/migrations && cp -R src/db/migrations/. dist/db/migrations/"
   },
   "dependencies": {
-    "express": "5.3.0",
+    "@github/copilot-sdk": "1.0.28",
     "drizzle-orm": "0.45.4",
+    "express": "5.3.0",
     "pg": "8.23.1",
     "pino": "10.4.0",
     "zod": "4.6.7"

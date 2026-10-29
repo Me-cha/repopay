@@ -9,6 +9,6 @@ export function syntheticEnv(): Record<string, string> {
     GH_APP_ID: '9007199254740993', GH_APP_SLUG: 'gitpay-test', GH_PRIVATE_KEY: 'test-private-key',
     GH_WEBHOOK_SECRET: 'w'.repeat(32), GH_CLIENT_ID: 'test-client', GH_CLIENT_SECRET: 'test-client-secret',
     PP_CLIENT_ID: 'test-paypal-client', PP_SECRET: 'test-paypal-secret', PP_WEBHOOK_ID: 'test-webhook',
-    NVIDIA_API_KEY: 'test-nvidia-key',
+    COPILOT_GITHUB_TOKEN: 'ghu_synthetic', COPILOT_BILLING_OWNER_ID: '4', COPILOT_MODEL: 'test-model',
   };
 }
