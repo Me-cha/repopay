@@ -19,7 +19,9 @@ export async function collectVerification(input:{github:GitHub;env:FundingEnv;in
  const prBody=(pr.body??'').slice(0,8000);
  let diff='',truncated=!files.complete||!commits.complete||(pr.body??'').length>8000;const limit=Math.min(terms.policy.maxDiffChars,env.MAX_DIFF_CHARS);
  for(const file of files.files){
-  if(ignored(file.filename))continue;
+  // A path exclusion is not proof that its changes are irrelevant to the issue.
+  // Preserve the omission as incomplete evidence instead of silently auto-paying.
+  if(ignored(file.filename)){truncated=true;continue;}
   if(file.patch===null){truncated=true;continue;}
   const chunk=`\n### ${file.filename} (${file.status}; +${String(file.additions)} -${String(file.deletions)})\n${file.patch}`;
   const remaining=limit-diff.length;if(remaining<=0){truncated=true;break;}

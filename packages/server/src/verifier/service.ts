@@ -40,14 +40,17 @@ export function createPhase5(db:Database,github:GitHub,env:FundingEnv,auth:AuthS
   const { enqueue }=await import('../jobs/queue.js');
   await db.withTransaction(async tx=>{
    const [sub]=await tx.select().from(submissions).where(eq(submissions.id,submissionId));if(!sub)return;
-   const [bounty]=await tx.select().from(bounties).where(eq(bounties.id,sub.bountyId));if(!bounty||bounty.status!=='FUNDED'||bounty.fundingHold)return;
+   const [bounty]=await tx.select().from(bounties).where(eq(bounties.id,sub.bountyId));if(!bounty||!['FUNDED','NEEDS_REVIEW'].includes(bounty.status)||bounty.fundingHold)return;
    await enqueue(tx,{kind:'verify_submission',payload:{submissionId,headSha},dedupeKey:key,maxAttempts:5});
   });
  }
  async function syncPullRequest(installationId:string,repoId:string,prNumber:number) {
   const {repo}=await currentAccess(github,installationId,repoId);
   const linked=await refreshPrLinks(db,github,installationId,repo,prNumber);
-  for(const result of linked.results)if(result.changed)await scheduleVerification(result.submission.id,result.submission.headSha,`verify:${result.submission.id}:${result.submission.headSha}:${String(result.submission.evidenceVersion)}`);
+  // Metadata is verifier evidence even when the source revision is unchanged.
+  // Identical events share a job key; collection also deduplicates saved evidence.
+  const metadataHash=createHash('sha256').update(JSON.stringify([linked.pullRequest.title,linked.pullRequest.body])).digest('hex');
+  for(const result of linked.results)await scheduleVerification(result.submission.id,result.submission.headSha,`verify:${result.submission.id}:${result.submission.headSha}:${String(result.submission.evidenceVersion)}:${metadataHash}`);
  }
  async function manualLink(installationId:string,repoId:string,issueNumber:number,prNumber:number) {
   const {repo}=await currentAccess(github,installationId,repoId);
@@ -105,7 +108,7 @@ export function createPhase5(db:Database,github:GitHub,env:FundingEnv,auth:AuthS
    acquired=(await client.query<{locked:boolean}>('select pg_try_advisory_lock(hashtext($1)) as locked',[lock])).rows[0]?.locked===true;
    if(!acquired)throw new Error('Verification already running');
    const [sub]=await db.orm.select().from(submissions).where(eq(submissions.id,submissionId));if(!sub)return;
-   const [bounty]=await db.orm.select().from(bounties).where(eq(bounties.id,sub.bountyId));if(!bounty||bounty.status!=='FUNDED'||bounty.fundingHold)return;
+   const [bounty]=await db.orm.select().from(bounties).where(eq(bounties.id,sub.bountyId));if(!bounty||!['FUNDED','NEEDS_REVIEW'].includes(bounty.status)||bounty.fundingHold)return;
    const {installation,repo}=await currentAccess(github,bounty.installationId,bounty.repoId);
    const terms=bounty.fundedTerms;if(!terms||!isSponsoredTerms(terms))throw new Error('Funded verifier profile is unsupported; maintainer review is required');
    let evidence:VerifyInput;

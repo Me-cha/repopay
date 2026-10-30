@@ -1,3 +1,4 @@
+import type { Phase6 } from '../settlement/service.js';
 import type { FundingService } from '../settlement/funding.js';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -13,7 +14,7 @@ import { parseUsd } from '../github/commands.js';
 import { reply, syncBounty } from '../github/comments.js';
 import { createDraft } from '../actions/create.js';
 import { retryClaims } from '../settlement/claims.js';
-import { bountyStatus } from '../actions/status.js';
+import { bountyStatus,awardStatusText } from '../actions/status.js';
 import { bounties, bountyActivity, installations, submissions } from '../db/schema.js';
 import { REVIEW_UNAVAILABLE_REASON } from '../domain/types.js';
 import { workFor, type LeasedJob } from './kinds.js';
@@ -24,9 +25,9 @@ export interface Phase5Jobs {
  manualLink:(installationId:string,repoId:string,issueNumber:number,prNumber:number)=>Promise<void>;
  verifySubmission:(submissionId:string,headSha:string,force?:boolean,lease?:LeasedJob)=>Promise<void>;
 }
-export async function handleJob(db:Database,github:GitHub,env:GitHubRuntimeEnv,job:LeasedJob,funding?:FundingService,phase5?:Phase5Jobs):Promise<void> {
+export async function handleJob(db:Database,github:GitHub,env:GitHubRuntimeEnv,job:LeasedJob,funding?:FundingService,phase5?:Phase5Jobs,phase6?:Phase6):Promise<void> {
  const work=workFor(job);
- if(work.kind==='retry_claims'){await retryClaims(work.ghId,work.connectionVersion);return;}
+ if(work.kind==='retry_claims'){await retryClaims(work.ghId,work.connectionVersion);await phase6?.retryClaims(work.ghId,work.connectionVersion);return;}
  if(work.kind==='sync_pull_request'){if(!phase5)throw new Error('Submission worker unavailable');await phase5.syncPullRequest(work.installationId,work.repoId,work.prNumber);return;}
  if(work.kind==='refresh_verification_sha'){if(!phase5)throw new Error('Verification worker unavailable');await phase5.refreshVerificationSha(work.installationId,work.repoId,work.sha);return;}
  if(work.kind==='verify_submission'){if(!phase5)throw new Error('Verification worker unavailable');await phase5.verifySubmission(work.submissionId,work.headSha,work.force,job);return;}
@@ -59,7 +60,7 @@ export async function handleJob(db:Database,github:GitHub,env:GitHubRuntimeEnv,j
    await db.withTransaction(async tx=>{await assertLease(tx,job);if(bounty.currentFundingAttemptId)await enqueue(tx,{kind:'reconcile_funding',payload:{attemptId:bounty.currentFundingAttemptId},dedupeKey:`funding-status:${job.id}`,maxAttempts:env.RECONCILIATION_MAX_ATTEMPTS});await enqueue(tx,{kind:'sync_bounty',payload:{bountyId:bounty.id},dedupeKey:`status:${job.id}`,maxAttempts:env.RECONCILIATION_MAX_ATTEMPTS});});
    const amount=`${String(Math.floor(bounty.amountCents/100))}.${String(bounty.amountCents%100).padStart(2,'0')}`;
    await reply(db,github,env,job,work.installationId,repo,work.issueNumber,
-    `**GitPay status · $${amount} USD · ${bounty.status}**\n\n${bounty.status==='CANCELLED'?'Draft cancelled. No payment or refund was sent.':bounty.status==='OPEN'?(bounty.currentFundingAttemptId?'Checkout pending. Review funding status before starting a payment.':'Unfunded draft. No money has been collected. Review funding to start checkout.'):bounty.status==='FUNDED'?(bounty.fundingHold?'Funding confirmed, but disbursement is frozen pending reconciliation.':'Funding confirmed. The first qualifying merged PR wins under the frozen terms; anyone may submit work.'):'Capture pending or unknown. Do not start another payment; draft cancellation is unavailable.'}`);
+    `**GitPay status · $${amount} USD · ${bounty.status}**\n\n${awardStatusText(bounty.status,env.PUBLIC_URL)??(bounty.status==='CANCELLED'?'Draft cancelled. No payment or refund was sent.':bounty.status==='OPEN'?(bounty.currentFundingAttemptId?'Checkout pending. Review funding status before starting a payment.':'Unfunded draft. No money has been collected. Review funding to start checkout.'):bounty.status==='FUNDED'?(bounty.fundingHold?'Funding confirmed, but disbursement is frozen pending reconciliation.':'Funding confirmed. The first qualifying merged PR wins under the frozen terms; anyone may submit work.'):'Capture pending or unknown. Do not start another payment; draft cancellation is unavailable.')}`);
   }
   else await reply(db,github,env,job,work.installationId,repo,work.issueNumber,'No bounty exists for this issue. A maintainer can use `/bounty create <USD amount>`.');return;
  }
@@ -103,15 +104,15 @@ async function markAttention(db:Database,job:LeasedJob) {
   if(changed.length)await tx.insert(bountyActivity).values(changed.map(b=>({bountyId:b.id,source:'worker',action:'github_job_failed',metadata:{jobId:job.id}})));
  });
 }
-export async function runOnce(db:Database,github:GitHub,env:GitHubRuntimeEnv,owner:string,funding?:FundingService,phase5?:Phase5Jobs):Promise<boolean> {
+export async function runOnce(db:Database,github:GitHub,env:GitHubRuntimeEnv,owner:string,funding?:FundingService,phase5?:Phase5Jobs,phase6?:Phase6):Promise<boolean> {
  const job=await claimJob(db,owner,env.JOB_LEASE_SEC);if(!job)return false;
  const timer=setInterval(()=>{void heartbeat(db,job,env.JOB_LEASE_SEC).catch(()=>false);},Math.max(100,Math.floor(env.JOB_LEASE_SEC*1000/3)));
- try{await handleJob(db,github,env,job,funding,phase5);await finishJob(db,job);}
+ try{await handleJob(db,github,env,job,funding,phase5,phase6);await finishJob(db,job);}
  catch(error){createLogger(env).warn({event:'job_failed',jobId:job.id,kind:job.kind,attempt:job.attempts,maxAttempts:job.maxAttempts,failureClass:error instanceof GitHubError?'GITHUB_ACCESS_OR_PROVIDER':error instanceof AuthError?'AUTHORIZATION':'OPERATION_UNAVAILABLE',...((error instanceof GitHubError||error instanceof AuthError)?{httpStatus:error.status}:{})});await markAttention(db,job).catch(()=>undefined);await finishJob(db,job,true);}
  finally{clearInterval(timer);}return true;
 }
-export function startWorker(db:Database,github:GitHub,env:GitHubRuntimeEnv,onError:()=>void=()=>{},funding?:FundingService,phase5?:Phase5Jobs) {
+export function startWorker(db:Database,github:GitHub,env:GitHubRuntimeEnv,onError:()=>void=()=>{},funding?:FundingService,phase5?:Phase5Jobs,phase6?:Phase6) {
  const abort=new AbortController();const owner=randomUUID();
- const done=(async()=>{while(!abort.signal.aborted){try{await funding?.tick();if(await runOnce(db,github,env,owner,funding,phase5))continue;}catch{onError();}await delay(env.POLL_INTERVAL_MS,undefined,{signal:abort.signal}).catch(()=>undefined);}})();
+ const done=(async()=>{while(!abort.signal.aborted){try{await funding?.tick();await phase6?.tick();if(await runOnce(db,github,env,owner,funding,phase5,phase6))continue;}catch{onError();}await delay(env.POLL_INTERVAL_MS,undefined,{signal:abort.signal}).catch(()=>undefined);}})();
  return {async close(){abort.abort();await done;}};
 }

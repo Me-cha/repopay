@@ -6,7 +6,7 @@ GitPay is a planned GitHub App that connects issue bounties to PayPal. Maintaine
 
 The principle is **glue, not a platform**: development stays in GitHub, checkout and payouts use PayPal, and small authenticated pages handle confirmations. A dashboard (optional for users, required in the MVP) displays progress without becoming another place to manage the work.
 
-> **Project status (October 30, 2026):** Phases 0, 1 and 4 have recorded completion evidence. Phase 2 has a deferred live revocation check. Phase 3 has a recorded $40 sandbox capture, with receipt/recovery acceptance still open. Phase 5 is advisory and incomplete: Copilot **Auto** is the accepted profile, but its pilot matched 14/18 expected verdicts and does not pass the evaluation gate. The latest [Phases 0–5 review](docs/evidence/00-05-review.md) records fixes and remaining blockers. Phase 6 has started with tested deterministic policy and exact-cent allocation; awards and payouts are not implemented. See [Phase 6 evidence](docs/evidence/06-summary.md).
+> **Project status (October 30, 2026):** Phases 0, 1 and 4 have recorded completion evidence. Phase 2 has a deferred live revocation check. Phase 3 has a recorded $40 sandbox capture, with receipt/recovery acceptance still open. Phase 5 is advisory and incomplete: Copilot **Auto** is the accepted profile, and the current v2 application-adapter evaluation passed 18/18; the live funded competing-PR/retry walkthrough is still open. The latest [Phases 0–5 review](docs/evidence/00-05-review.md) records fixes and remaining blockers. Phase 6 now has local award selection, immutable payout intents, item reconciliation and claim resumption. Automatic award selection remains disabled pending accepted Phase 5 live evidence; real payout acceptance is still open. See [Phase 6 evidence](docs/evidence/06-summary.md).
 
 ## Intended flow
 
@@ -16,6 +16,8 @@ The principle is **glue, not a platform**: development stays in GitHub, checkout
 4. The runtime AI verifier assesses the changes and reports its reasoning in a GitHub Check Run. CI and deterministic policy constrain the result.
 5. The first qualifying merged PR under the funded terms earns the bounty. A review case requires an authenticated maintainer decision before payment.
 6. Eligible contributors connect their PayPal details. A committed award remains theirs while payment details or transfer problems are resolved.
+
+The `bounty-open` label means submissions remain open, including after funding. Read the bot comment for the funding status.
 
 Typing a command or adding a label on GitHub today does not create a payment. The App must be installed, configured and running; checkout requires authenticated confirmation.
 

@@ -51,7 +51,7 @@ export function createFunding(db:Database,env:FundingEnv,provider:Orders,clock:C
    const common={orderId:o.id,approvalUrl:o.approvalUrl,nextReconcileAt:next(),updatedAt:clock.now()};
    if(capture?.status==='COMPLETED'&&!b.fundingHold) {
     await tx.update(fundingAttempts).set({...common,captureId:capture.id,status:'COMPLETED',attention:null}).where(eq(fundingAttempts.id,a.id));
-    if(b.status!=='FUNDED') {
+    if(['OPEN','CAPTURING'].includes(b.status)&&!b.fundedAt) {
      await tx.update(bounties).set({status:'FUNDED',captureId:capture.id,captureRequestKey:a.captureRequestKey,fundedAt:clock.now(),fundedTerms:a.terms,fundingActorGhId:a.actorGhId,version:sql`${bounties.version}+1`,needsAttention:false,attentionReason:null,updatedAt:clock.now()}).where(eq(bounties.id,b.id));
      await tx.insert(bountyActivity).values({bountyId:b.id,actorGhId:a.actorGhId,source:'paypal',action:'funded',metadata:{attemptId:a.id,captureId:capture.id,termsHash:a.termsHash,grossCents:capture.amountCents,feeCents:capture.feeCents??null,netCents:capture.netCents??null,currency:capture.currency}});await projection(tx,a);
      const linked=await tx.select({id:submissions.id,headSha:submissions.headSha}).from(submissions).where(eq(submissions.bountyId,b.id));
@@ -63,7 +63,7 @@ export function createFunding(db:Database,env:FundingEnv,provider:Orders,clock:C
    } else if(capture&&!['PENDING','DECLINED','FAILED','COMPLETED'].includes(capture.status)) {
     await tx.update(fundingAttempts).set({...common,status:'HOLD',attention:'Unknown capture status'}).where(eq(fundingAttempts.id,a.id));
     await tx.update(bounties).set({fundingHold:true,needsAttention:true,attentionReason:'Unknown capture status; disbursement frozen'}).where(eq(bounties.id,b.id));await projection(tx,a);
-   } else if(b.status==='FUNDED') {
+   } else if(b.fundedAt||b.status==='FUNDED') {
     // A later-arriving nonterminal observation cannot undo confirmed funding.
     await tx.update(fundingAttempts).set({nextReconcileAt:next()}).where(eq(fundingAttempts.id,a.id));
    } else if(capture) {

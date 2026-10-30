@@ -1,7 +1,7 @@
 import { afterEach,describe,expect,it,vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { githubFixture,testEnv } from '../helpers/github.js';
-import { bounties,installations,submissions,submissionEvidence,bountyActivity,verifications } from '../../src/db/schema.js';
+import { bounties,installations,submissions,submissionEvidence,bountyActivity,verifications,jobs } from '../../src/db/schema.js';
 import { runOnce } from '../../src/jobs/runner.js';
 import { enqueue } from '../../src/jobs/queue.js';
 import { required } from '../helpers/auth.js';
@@ -161,5 +161,22 @@ it('an expired worker lease cannot collect evidence or write a verification',asy
   expect(await f.database.orm.select().from(submissionEvidence)).toHaveLength(0);
   expect(await f.database.orm.select().from(verifications)).toHaveLength(0);
   expect(f.api.pullRequest).not.toHaveBeenCalled();
+ }finally{await f.close();}
+});
+
+it('schedules changed PR descriptions at the same SHA and deduplicates identical metadata',async()=>{
+ const f=await intentFixture();
+ try{
+  const bounty=required((await f.database.orm.update(bounties).set({status:'FUNDED',fundedTerms:f.terms}).where(eq(bounties.id,f.bounty.id)).returning())[0]);
+  const pr:PullRequest={id:'501',number:42,state:'open',title:'Fix parser',body:'Original description',merged_at:null,closed_at:null,user:{id:'8',login:'contributor',type:'User'},head:{sha:'a'.repeat(40)},base:{sha:'b'.repeat(40),repo:{id:'2'}}};
+  await linkPr(f.database,bounty,pr);
+  vi.mocked(f.api.pullRequest).mockResolvedValue({...pr,body:'Fixes #12'});
+  const service=createPhase5(f.database,f.api,f.env,f.auth,vi.fn());
+  await service.syncPullRequest('1','2',42);await service.syncPullRequest('1','2',42);
+  const queued=await f.database.orm.select().from(jobs).where(eq(jobs.kind,'verify_submission'));
+  expect(queued).toHaveLength(1);expect(queued[0]?.payload).toMatchObject({headSha:pr.head.sha});
+  vi.mocked(f.api.pullRequest).mockResolvedValue({...pr,body:'Fixes #12. Additional evidence.'});
+  await service.syncPullRequest('1','2',42);
+  expect(await f.database.orm.select().from(jobs).where(eq(jobs.kind,'verify_submission'))).toHaveLength(2);
  }finally{await f.close();}
 });

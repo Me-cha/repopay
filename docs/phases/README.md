@@ -1,6 +1,6 @@
 # GitPay MVP — phase plan
 
-**Status (October 30, 2026):** Phases 0, 1 and 4 have recorded completion evidence. Phase 2 retains a deferred live revocation check; Phase 3 has a real capture with receipt/recovery gates open. Phase 5 is incomplete under Copilot Auto (ADR 0007). Phase 6 implementation has started: pure policy/allocation (06.01) is present; awards/payouts are not. See [review findings](../evidence/00-05-review.md) and [Phase 6 evidence](../evidence/06-summary.md).
+**Status (October 30, 2026):** Phases 0, 1 and 4 have recorded completion evidence. Phase 2 retains a deferred live revocation check; Phase 3 has a real capture with receipt/recovery gates open. Phase 5 Auto v2 passed its 18/18 live evaluation; the funded competing-PR/retry walkthrough remains incomplete (ADR 0007). Phase 6 has local policy, award selection, payout reconciliation and delayed claims; automatic selection is disabled pending Phase 5 live acceptance and the Phase 6 sandbox walkthrough is outstanding. See [review findings](../evidence/00-05-review.md) and [Phase 6 evidence](../evidence/06-summary.md).
 
 This is the execution plan for the MVP described in [IMPLEMENTATION_PLAN.md](../../IMPLEMENTATION_PLAN.md). It breaks the existing design into **13 phases and 57 reviewable tasks**, including negative paths and operations. The [cancellation decision](../decisions/0001-open-participation-and-cancellation.md) remains the accepted product policy. The refinements below are the accepted pre-build contract and are reconciled into the master architecture.
 
@@ -10,7 +10,7 @@ GitPay connects GitHub issues/PRs to PayPal sandbox. Maintainers fund a publishe
 
 Every main user workflow is in scope, including inability to proceed safely. The product must explain failed/pending payments, lost repository access, unconnected recipients, stale confirmations and unresolved disputes rather than pretending these states do not exist.
 
-The development assistant remains Codex. Runtime PR review uses separately consented repository-sponsored Copilot **Auto**, frozen in v4 terms, with concrete serving-model provenance ([ADR 0007](../decisions/0007-copilot-auto-model.md)). Legacy terms remain intact. The 14/18 pilot is not an acceptance pass. Organization sponsorship, complete sponsor-revocation handling and application-adapter evaluation remain open; attempt caps and SDK usage metrics are not a monetary budget.
+The development assistant remains Codex. Runtime PR review uses separately consented repository-sponsored Copilot **Auto**, frozen in v4 terms, with concrete serving-model provenance ([ADR 0007](../decisions/0007-copilot-auto-model.md)). Legacy terms remain intact. The historical 14/18 pilot and v1 17/18 run failed; the current v2 application-adapter run passed 18/18. Organization sponsorship is deferred and live workflow/revocation acceptance remains open; attempt caps and SDK usage metrics are not a monetary budget.
 
 ## Review decisions
 

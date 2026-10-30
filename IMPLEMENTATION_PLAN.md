@@ -248,7 +248,7 @@ Unauthorized or invalid-state commands get a short reply explaining why and what
 ### 4.3 Labels
 
 - `bounty:$<amount>` with `/^bounty:\$(\d{1,6})(?:\.(\d{2}))?$/i` → create OPEN draft if no active bounty exists for the issue. If one exists, reply with its amount and state; never change it.
-- App-managed badge labels `bounty-open`, `bounty-funded`, `bounty-paid` are best-effort projections written by `sync_bounty`.
+- App-managed badge labels are best-effort projections written by `sync_bounty`. `bounty-open` means open for submissions and remains on OPEN, CAPTURING, FUNDED and NEEDS_REVIEW bounties; it is removed after an award or cancellation. It does not assert funding. The bot comment supplies authoritative funding/delivery status. Separate `bounty-funded` and `bounty-paid` badges remain planned.
 - Any unlabel/rename/delete: no financial effect. Optional reply hint: "Labels don't affect funds. Use `/bounty cancel`."
 
 ### 4.4 Confirm pages (`/a/:token`)
@@ -312,7 +312,7 @@ GitPay/
 │  │  ├─ paypal/{client.ts,orders.ts,payouts.ts,refunds.ts,webhooks.ts,status-map.ts}
 │  │  ├─ verifier/{collect.ts,prompt.ts,schema.ts,verify.ts,service.ts,evaluation.ts,evaluate.ts}
 │  │  ├─ policy/{decide.ts,allocate.ts}
-│  │  ├─ settlement/{funding.ts,claims.ts,settle.ts,payout.ts,refund.ts}
+│  │  ├─ settlement/{funding.ts,claims.ts,candidates.ts,settle.ts,payout.ts,service.ts,refund.ts}
 │  │  ├─ http/{routes.ts,confirm.ts,fund.ts,connect.ts,retry.ts,sponsor.ts,auth.ts,session.ts,api.ts,sse.ts}
 │  │  ├─ domain/{types.ts,funded-terms.ts}
 │  │  ├─ cancellation/{evidence.ts,authorization.ts}

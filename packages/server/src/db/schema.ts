@@ -34,7 +34,7 @@ export const bounties = pgTable('bounties', {
  captureRequestKey:text('capture_request_key'),captureId:text('capture_id'),fundedAt:timestamp('funded_at',{withTimezone:true}),
  currentFundingAttemptId:stringBigint('current_funding_attempt_id'),fundedTerms:jsonb('funded_terms').$type<FundedTerms>(),fundingActorGhId:stringBigint('funding_actor_gh_id'),fundingHold:boolean('funding_hold').notNull().default(false),
  createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),updatedAt:timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
-},t=>[uniqueIndex('one_active_bounty_per_issue').on(t.repoId,t.issueNumber).where(sql`${t.status}<>'CANCELLED'`),check('bounty_amount_check',sql`${t.amountCents}>0 and ${t.currency}='USD'`),check('bounty_status_check',sql`${t.status} in ('OPEN','CANCELLED','CAPTURING','FUNDED')`),check('bounty_source_check',sql`${t.createdVia} in ('label','command')`)]);
+},t=>[uniqueIndex('one_active_bounty_per_issue').on(t.repoId,t.issueNumber).where(sql`${t.status}<>'CANCELLED'`),check('bounty_amount_check',sql`${t.amountCents}>0 and ${t.currency}='USD'`),check('bounty_status_check',sql`${t.status} in ('OPEN','CANCELLED','CAPTURING','FUNDED','NEEDS_REVIEW','AWAITING_CLAIM','PAYING','PAID')`),check('bounty_source_check',sql`${t.createdVia} in ('label','command')`)]);
 export const bountyActivity = pgTable('bounty_activity', {
  id:stringSerial('id').primaryKey(),bountyId:stringBigint('bounty_id').notNull().references(()=>bounties.id),actorGhId:stringBigint('actor_gh_id'),source:text('source').notNull(),action:text('action').notNull(),metadata:jsonb('metadata').$type<Record<string,unknown>>().notNull().default({}),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
 });
@@ -60,7 +60,7 @@ export const contributors = pgTable('contributors', {
 },t=>[check('contributors_connection_version_check',sql`${t.connectionVersion}>0`)]);
 
 export const submissions = pgTable('submissions', {
- id:stringSerial('id').primaryKey(),bountyId:stringBigint('bounty_id').notNull().references(()=>bounties.id),repoId:stringBigint('repo_id').notNull(),prId:stringBigint('pr_id').notNull(),prNumber:integer('pr_number').notNull(),authorGhId:stringBigint('author_gh_id').notNull(),authorLogin:text('author_login').notNull(),status:text('status').notNull().default('OPEN'),headSha:text('head_sha').notNull(),baseSha:text('base_sha').notNull(),mergedAt:timestamp('merged_at',{withTimezone:true}),closedAt:timestamp('closed_at',{withTimezone:true}),observedAt:timestamp('observed_at',{withTimezone:true}).notNull().defaultNow(),evidenceVersion:integer('evidence_version').notNull().default(0),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),updatedAt:timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
+ id:stringSerial('id').primaryKey(),bountyId:stringBigint('bounty_id').notNull().references(()=>bounties.id),repoId:stringBigint('repo_id').notNull(),prId:stringBigint('pr_id').notNull(),prNumber:integer('pr_number').notNull(),authorGhId:stringBigint('author_gh_id').notNull(),authorLogin:text('author_login').notNull(),status:text('status').notNull().default('OPEN'),mergeSha:text('merge_sha'),headSha:text('head_sha').notNull(),baseSha:text('base_sha').notNull(),mergedAt:timestamp('merged_at',{withTimezone:true}),closedAt:timestamp('closed_at',{withTimezone:true}),observedAt:timestamp('observed_at',{withTimezone:true}).notNull().defaultNow(),evidenceVersion:integer('evidence_version').notNull().default(0),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),updatedAt:timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
 },t=>[uniqueIndex('submission_bounty_pr_unique').on(t.bountyId,t.prId),check('submission_status_check',sql`${t.status} in ('OPEN','CLOSED','MERGED')`)]);
 export type Submission=typeof submissions.$inferSelect;
 export const submissionEvidence = pgTable('submission_evidence', {
@@ -100,3 +100,18 @@ export const fundingAttempts=pgTable('funding_attempts',{
  nextReconcileAt:timestamp('next_reconcile_at',{withTimezone:true}).notNull().defaultNow(),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),updatedAt:timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
 },t=>[uniqueIndex('one_active_funding_attempt').on(t.bountyId).where(sql`${t.active}`),uniqueIndex('funding_attempt_number').on(t.bountyId,t.attemptNumber),check('funding_amount_check',sql`${t.amountCents}>0 and ${t.currency}='USD'`),check('funding_status_check',sql`${t.status} in ('NEW','CREATED','APPROVED','CAPTURING','PENDING','COMPLETED','VOIDED','DECLINED','HOLD')`)]);
 export type FundingIntent=typeof fundingAttempts.$inferSelect;
+
+// Immutable entitlement. Delivery changes never update or delete this row.
+export const awards=pgTable('awards',{
+ id:stringSerial('id').primaryKey(),bountyId:stringBigint('bounty_id').notNull().unique().references(()=>bounties.id),submissionId:stringBigint('submission_id').notNull().references(()=>submissions.id),evidenceId:stringBigint('evidence_id').notNull().references(()=>submissionEvidence.id),verificationId:stringBigint('verification_id').notNull().references(()=>verifications.id),
+ headSha:text('head_sha').notNull(),baseSha:text('base_sha').notNull(),mergeSha:text('merge_sha').notNull(),mergedAt:timestamp('merged_at',{withTimezone:true}).notNull(),scanHash:text('scan_hash').notNull(),
+ amountCents:integer('amount_cents').notNull(),allocation:jsonb('allocation').$type<{ghId:string;login:string;cents:number}[]>().notNull(),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
+},t=>[check('award_amount_check',sql`${t.amountCents}>0`)]);
+export type Award=typeof awards.$inferSelect;
+
+export const payoutBatches=pgTable('payout_batches',{
+ id:stringSerial('id').primaryKey(),awardId:stringBigint('award_id').notNull().unique().references(()=>awards.id),senderBatchId:text('sender_batch_id').notNull().unique(),accountHash:text('account_hash').notNull(),providerBatchId:text('provider_batch_id').unique(),submissionBoundaryAt:timestamp('submission_boundary_at',{withTimezone:true}),safeRetryUntil:timestamp('safe_retry_until',{withTimezone:true}),observationVersion:integer('observation_version').notNull().default(0),nextReconcileAt:timestamp('next_reconcile_at',{withTimezone:true}).notNull().defaultNow(),attention:text('attention'),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
+});
+export const payoutItems=pgTable('payout_items',{
+ id:stringSerial('id').primaryKey(),batchId:stringBigint('batch_id').notNull().references(()=>payoutBatches.id),awardId:stringBigint('award_id').notNull().references(()=>awards.id),ghId:stringBigint('gh_id').notNull(),amountCents:integer('amount_cents').notNull(),senderItemId:text('sender_item_id').notNull().unique(),destinationEnc:text('destination_enc').notNull(),connectionVersion:integer('connection_version').notNull(),providerItemId:text('provider_item_id').unique(),status:text('status').notNull().default('RESERVED'),updatedAt:timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
+},t=>[uniqueIndex('one_payout_per_award_recipient').on(t.awardId,t.ghId),check('payout_item_amount_check',sql`${t.amountCents}>0`)]);

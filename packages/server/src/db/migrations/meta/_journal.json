@@ -71,6 +71,27 @@
       "when": 1793294512951,
       "tag": "0009_auto_copilot_sponsor",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793350465417,
+      "tag": "0010_awards",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793350609588,
+      "tag": "0011_payouts",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793350750128,
+      "tag": "0012_payout_account",
+      "breakpoints": true
     }
   ]
 }

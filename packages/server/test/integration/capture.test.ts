@@ -113,3 +113,11 @@ it('discards a connection when funding lock acquisition has an unknown outcome',
  try{await expect(f.service.reconcile(f.attempt.id)).rejects.toThrow('query timed out');expect(release).toHaveBeenCalledWith(true);}
  finally{vi.restoreAllMocks();await f.close();}
 });
+it.each(['AWAITING_CLAIM','PAYING','PAID','NEEDS_REVIEW'])('capture polling preserves later state %s',async status=>{
+ const f=await fixture();try{
+  await f.service.reconcile(f.attempt.id);f.order.status='APPROVED';await f.service.reconcile(f.attempt.id);
+  await f.database.orm.update(bounties).set({status}).where(eq(bounties.id,f.bounty.id));
+  await f.service.reconcile(f.attempt.id);expect((await f.getBounty()).status).toBe(status);
+  const cap=required(f.order.captures[0]);cap.status='PENDING';await f.service.reconcile(f.attempt.id);expect((await f.getBounty()).status).toBe(status);
+ }finally{await f.close();}
+});

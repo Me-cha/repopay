@@ -4,9 +4,9 @@ import { bounties,submissions } from '../db/schema.js';
 import type { GitHub,Repository } from './app.js';
 import { linkPr } from '../actions/link.js';
 
-function issueReferences(text:string,fullName:string):number[] {
+export function issueReferences(text:string,fullName:string):number[] {
  const escaped=fullName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
- const pattern=new RegExp(`\\b(?:close[sd]?|fix(?:es|ed)?|resolve[sd]?)\\s+(?:${escaped}#)?#?(\\d+)\\b`,'gi');
+ const pattern=new RegExp(`\\b(?:close[sd]?|fix(?:es|ed)?|resolve[sd]?)\\s+(?:${escaped}#|#)(\\d+)\\b`,'gi');
  return [...new Set([...text.matchAll(pattern)].map(match=>Number(match[1])).filter(value=>Number.isSafeInteger(value)&&value>0))];
 }
 export async function refreshPrLinks(db:Database,github:GitHub,installationId:string,repo:Repository,prNumber:number,forcedIssue?:number) {

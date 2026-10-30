@@ -1,3 +1,4 @@
+import { createPhase6 } from './settlement/service.js';
 import { createFunding } from './settlement/funding.js';
 import { createOrders,type Orders } from './paypal/orders.js';
 import { createPayPalIntake } from './paypal/webhooks.js';
@@ -27,7 +28,7 @@ export async function startServer(env: AuthEnv|FundingEnv, database: Database, p
   } catch (error) { await database.close(); throw error; }
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('No listening address');
-  const worker=options.runWorker!==false && env.WORKER_MODE==='inline'?startWorker(database,github,env,()=> { createLogger(env).error({event:'worker_poll_failed'}); },funding,phase5):undefined;
+  const worker=options.runWorker!==false && env.WORKER_MODE==='inline'?startWorker(database,github,env,()=> { createLogger(env).error({event:'worker_poll_failed'}); },funding,phase5,fundingEnv?createPhase6(database,github,fundingEnv):undefined):undefined;
   let closing: Promise<void> | undefined;
   return { url: `http://127.0.0.1:${String(address.port)}`, close(): Promise<void> {
     closing ??= (async () => {

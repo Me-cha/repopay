@@ -32,3 +32,14 @@ it('a public repo outside this installation is not authorized by a readable meta
  const app=createGitHub(env);token();nock('https://api.github.com').get('/repositories/2').reply(200,{...repo,id:2}).get('/repos/owner/repo/installation').reply(200,{id:99});
  await expect(app.repository('1','2')).rejects.toThrow();
 });
+it('paginates authoritative closing references and excludes issues in other repositories',async()=>{
+ const app=createGitHub(env);token();
+ const page=(hasNextPage:boolean,endCursor:string|null,n:number)=>({data:{repository:{nameWithOwner:'owner/repo',pullRequest:{fullDatabaseId:'9007199254740993',closingIssuesReferences:{nodes:[{number:n,repository:{nameWithOwner:'owner/repo'}},{number:999,repository:{nameWithOwner:'other/repo'}}],pageInfo:{hasNextPage,endCursor}}}}}});
+ nock('https://api.github.com').post('/graphql',body=>(body as {variables:{after:unknown}}).variables.after===null).reply(200,page(true,'next',12));
+ nock('https://api.github.com').post('/graphql',body=>(body as {variables:{after:unknown}}).variables.after==='next').reply(200,page(false,null,13));
+ expect(await app.closingIssues('1',repo,42)).toEqual({prId:'9007199254740993',issueNumbers:[12,13],complete:true});
+});
+it('partial GraphQL data with provider errors is never a complete candidate scan',async()=>{
+ const app=createGitHub(env);token();nock('https://api.github.com').post('/graphql').reply(200,{errors:[{message:'resource inaccessible'}]});
+ await expect(app.closingIssues('1',repo,42)).rejects.toThrow();
+});

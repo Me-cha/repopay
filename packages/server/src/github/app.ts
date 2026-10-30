@@ -9,7 +9,7 @@ const installationSchema=z.object({id:apiId,app_id:apiId,account,suspended_at:z.
 const repoSchema=z.object({id:apiId,full_name:z.string().regex(/^[\w.-]+\/[\w.-]+$/),archived:z.boolean(),private:z.boolean().optional(),disabled:z.boolean().optional()});
 const issueSchema=z.object({number:z.number().int().positive(),pull_request:z.unknown().optional()});
 const commentSchema=z.object({id:apiId,body:z.string().nullable(),user:z.object({id:apiId,type:z.string()}),performed_via_github_app:z.object({id:apiId}).nullable().optional()});
-const pullRequestSchema=z.object({id:apiId,number:z.number().int().positive(),state:z.enum(['open','closed']),draft:z.boolean().optional(),title:z.string().max(1000),body:z.string().nullable(),merged_at:z.string().nullable(),closed_at:z.string().nullable(),user:z.object({id:apiId,login:z.string().min(1).max(100),type:z.string()}),head:z.object({sha:z.string().regex(/^[a-f0-9]{40,64}$/i)}),base:z.object({sha:z.string().regex(/^[a-f0-9]{40,64}$/i),repo:z.object({id:apiId}).nullable()})});
+const pullRequestSchema=z.object({id:apiId,number:z.number().int().positive(),state:z.enum(['open','closed']),draft:z.boolean().optional(),title:z.string().max(1000),body:z.string().nullable(),merged_at:z.string().nullable(),merge_commit_sha:z.string().regex(/^[a-f0-9]{40,64}$/i).nullable().optional(),closed_at:z.string().nullable(),user:z.object({id:apiId,login:z.string().min(1).max(100),type:z.string()}),head:z.object({sha:z.string().regex(/^[a-f0-9]{40,64}$/i)}),base:z.object({sha:z.string().regex(/^[a-f0-9]{40,64}$/i),repo:z.object({id:apiId}).nullable()})});
 const pullFileSchema=z.object({filename:z.string().max(1024),status:z.string(),additions:z.number().int().nonnegative(),deletions:z.number().int().nonnegative(),patch:z.string().nullable()});
 const commitSchema=z.object({sha:z.string().regex(/^[a-f0-9]{40,64}$/i),author:z.object({id:apiId,login:z.string().min(1).max(100),type:z.string()}).nullable()});
 const checkRunSchema=z.object({id:apiId,external_id:z.string().nullable().optional(),name:z.string().max(200),head_sha:z.string().regex(/^[a-f0-9]{40,64}$/i),status:z.enum(['queued','in_progress','completed']),conclusion:z.string().nullable(),app:z.object({id:apiId,name:z.string().nullable().optional()}).nullable()});
@@ -31,6 +31,8 @@ export interface GitHub {
  createComment:(installationId:string,repo:Repository,number:number,body:string)=>Promise<Comment>;
  updateComment:(installationId:string,repo:Repository,id:string,body:string)=>Promise<void>;
  badge:(installationId:string,repo:Repository,number:number,status?:string)=>Promise<void>;
+ closingIssues:(installationId:string,repo:Repository,number:number)=>Promise<{prId:string;issueNumbers:number[];complete:boolean}>;
+ pullRequests:(installationId:string,repo:Repository)=>Promise<{pulls:PullRequest[];complete:boolean}>;
  pullRequest:(installationId:string,repo:Repository,number:number)=>Promise<PullRequest>;
  pullRequestFiles:(installationId:string,repo:Repository,number:number)=>Promise<{files:PullRequestFile[];complete:boolean}>;
  pullRequestCommits:(installationId:string,repo:Repository,number:number)=>Promise<{authors:{ghId:string;login:string;type:string}[];complete:boolean}>;
@@ -72,7 +74,39 @@ export function createGitHub(env: GitHubRuntimeEnv): GitHub {
   async comments(inst,repo,number) {const result:Comment[]=[];for(let page=1;page<=env.RECONCILIATION_PAGE_LIMIT;page++){const rows=z.array(commentSchema).parse(await call(inst,`${prefix(repo)}/issues/${String(number)}/comments?per_page=100&page=${String(page)}`));result.push(...rows);if(rows.length<100)return result;}throw new Error('Comment pagination incomplete; no write attempted');},
   async createComment(inst,repo,number,body){return commentSchema.parse(await call(inst,`${prefix(repo)}/issues/${String(number)}/comments`,'POST',{body}));},
   async updateComment(inst,repo,id,body){await call(inst,`${prefix(repo)}/issues/comments/${id}`,'PATCH',{body});},
-  async badge(inst,repo,number,status='OPEN'){if(status!=='OPEN'){try{await call(inst,`${prefix(repo)}/issues/${String(number)}/labels/bounty-open`,'DELETE');}catch(error){if(!(error instanceof GitHubError&&error.status===404))throw error;}return;}try{await call(inst,`${prefix(repo)}/labels/bounty-open`);}catch(error){if(!(error instanceof GitHubError&&error.status===404))throw error;try{await call(inst,`${prefix(repo)}/labels`,'POST',{name:'bounty-open',color:'6f42c1',description:'Unfunded GitPay bounty draft'});}catch(error){if(!(error instanceof GitHubError&&error.status===422))throw error;}}await call(inst,`${prefix(repo)}/issues/${String(number)}/labels`,'POST',{labels:['bounty-open']});},
+  async badge(inst,repo,number,status='OPEN'){
+   const label='bounty-open',description='Open GitPay bounty; see the bot comment for funding status';
+   const acceptingSubmissions=['OPEN','CAPTURING','FUNDED','NEEDS_REVIEW'].includes(status);
+   if(!acceptingSubmissions){
+    try{await call(inst,`${prefix(repo)}/issues/${String(number)}/labels/${label}`,'DELETE');}
+    catch(error){if(!(error instanceof GitHubError&&error.status===404))throw error;}
+    return;
+   }
+   try{
+    const current=z.object({description:z.string().nullable().optional()}).parse(await call(inst,`${prefix(repo)}/labels/${label}`));
+    if(current.description!==description)await call(inst,`${prefix(repo)}/labels/${label}`,'PATCH',{description});
+   }catch(error){
+    if(!(error instanceof GitHubError&&error.status===404))throw error;
+    try{await call(inst,`${prefix(repo)}/labels`,'POST',{name:label,color:'6f42c1',description});}
+    catch(error){if(!(error instanceof GitHubError&&error.status===422))throw error;}
+   }
+   await call(inst,`${prefix(repo)}/issues/${String(number)}/labels`,'POST',{labels:[label]});
+  },
+  async closingIssues(inst,repo,number){
+   const [owner,name]=repo.full_name.split('/');let after:string|null=null,prId='';const issueNumbers:number[]=[];
+   const query='query($owner:String!,$name:String!,$number:Int!,$after:String){repository(owner:$owner,name:$name){nameWithOwner pullRequest(number:$number){fullDatabaseId closingIssuesReferences(first:100,after:$after){nodes{number repository{nameWithOwner}} pageInfo{hasNextPage endCursor}}}}}';
+   const shape=z.object({errors:z.array(z.unknown()).optional(),data:z.object({repository:z.object({nameWithOwner:z.string(),pullRequest:z.object({fullDatabaseId:apiId,closingIssuesReferences:z.object({nodes:z.array(z.object({number:z.number().int().positive(),repository:z.object({nameWithOwner:z.string()})})),pageInfo:z.object({hasNextPage:z.boolean(),endCursor:z.string().max(1000).nullable()})})})})}).optional()});
+   for(let page=0;page<env.RECONCILIATION_PAGE_LIMIT;page++){
+    const response=shape.parse(await call(inst,'/graphql','POST',{query,variables:{owner,name,number,after}}));
+    const data=response.data?.repository;if(response.errors?.length||!data||data.nameWithOwner!==repo.full_name)throw new Error('Closing-reference evidence unavailable');
+    const pr=data.pullRequest;if(prId&&prId!==pr.fullDatabaseId)throw new Error('Pull request identity changed');prId=pr.fullDatabaseId;
+    for(const issue of pr.closingIssuesReferences.nodes)if(issue.repository.nameWithOwner===repo.full_name)issueNumbers.push(issue.number);
+    const info=pr.closingIssuesReferences.pageInfo;if(!info.hasNextPage)return {prId,issueNumbers:[...new Set(issueNumbers)],complete:true};
+    if(!info.endCursor||info.endCursor===after)throw new Error('Closing-reference pagination did not advance');after=info.endCursor;
+   }
+   return {prId,issueNumbers:[...new Set(issueNumbers)],complete:false};
+  },
+  async pullRequests(inst,repo){const pulls:PullRequest[]=[];for(let page=1;page<=env.RECONCILIATION_PAGE_LIMIT;page++){const rows=z.array(pullRequestSchema).parse(await call(inst,`${prefix(repo)}/pulls?state=all&sort=created&direction=asc&per_page=100&page=${String(page)}`));pulls.push(...rows);if(rows.length<100)return {pulls,complete:true};}return {pulls,complete:false};},
   async pullRequest(inst,repo,number){const pr=pullRequestSchema.parse(await call(inst,`${prefix(repo)}/pulls/${String(number)}`));if(pr.number!==number||pr.base.repo?.id!==repo.id)throw new GitHubError(403);return pr;},
   async pullRequestFiles(inst,repo,number){const files:PullRequestFile[]=[];for(let page=1;page<=env.RECONCILIATION_PAGE_LIMIT;page++){const rows=z.array(pullFileSchema).parse(await call(inst,`${prefix(repo)}/pulls/${String(number)}/files?per_page=100&page=${String(page)}`));files.push(...rows);if(rows.length<100)return {files,complete:true};}return {files,complete:false};},
   async pullRequestCommits(inst,repo,number){const authors:{ghId:string;login:string;type:string}[]=[];for(let page=1;page<=env.RECONCILIATION_PAGE_LIMIT;page++){const rows=z.array(commitSchema).parse(await call(inst,`${prefix(repo)}/pulls/${String(number)}/commits?per_page=100&page=${String(page)}`));for(const row of rows)if(row.author)authors.push({ghId:row.author.id,login:row.author.login,type:row.author.type});if(rows.length<100)return {authors,complete:true};}return {authors,complete:false};},

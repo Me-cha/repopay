@@ -14,6 +14,8 @@ export function fakeGitHub() {
  const api:GitHub={
   installation:vi.fn<GitHub['installation']>(()=>Promise.resolve(state.installation)),repository:vi.fn<GitHub['repository']>(()=>Promise.resolve(repo)),issue:vi.fn(async()=>{}),permission:vi.fn<GitHub['permission']>(()=>Promise.resolve(state.permission)),
   issueTerms:vi.fn(()=>Promise.resolve({title:'Fix parser',body:'Must reject invalid input',updatedAt:'2026-10-28T00:00:00Z'})),
+  closingIssues:vi.fn(()=>Promise.resolve({prId:'501',issueNumbers:[],complete:true})),
+  pullRequests:vi.fn(()=>Promise.resolve({pulls:[],complete:true})),
   pullRequest:vi.fn<GitHub['pullRequest']>((_inst,_repo,number)=>Promise.resolve({id:'501',number,state:'open',draft:false,title:'Fix parser',body:'Fixes #12',merged_at:null,closed_at:null,user:{id:'8',login:'contributor',type:'User'},head:{sha:'a'.repeat(40)},base:{sha:'b'.repeat(40),repo:{id:'2'}}})),
   pullRequestFiles:vi.fn<GitHub['pullRequestFiles']>(()=>Promise.resolve({files:[],complete:true})),pullRequestCommits:vi.fn<GitHub['pullRequestCommits']>(()=>Promise.resolve({authors:[],complete:true})),checkRuns:vi.fn<GitHub['checkRuns']>(()=>Promise.resolve({runs:[],complete:true})),
   createCheckRun:vi.fn<GitHub['createCheckRun']>(()=>Promise.resolve('900')),updateCheckRun:vi.fn<GitHub['updateCheckRun']>(async()=>{}),
