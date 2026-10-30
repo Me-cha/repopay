@@ -1,0 +1,107 @@
+{
+  "info": {
+    "name": "GitPay local inspection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Read-only inspection plus an opt-in loopback synthetic ping. No payment actions. Keep cookies and signature in local state; never export secrets."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:3000"
+    },
+    {
+      "key": "bountyId",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/healthz"
+      }
+    },
+    {
+      "name": "Current user",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/me"
+      }
+    },
+    {
+      "name": "Bounties",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/bounties"
+      }
+    },
+    {
+      "name": "Bounty detail",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/bounties/{{bountyId}}"
+      }
+    },
+    {
+      "name": "Payouts",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/payouts"
+      }
+    },
+    {
+      "name": "Synthetic signed ping \u2014 disabled by default",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const base = pm.variables.get('baseUrl');",
+              "if (!/^http:\\/\\/(127\\.0\\.0\\.1|localhost)(:[0-9]+)?$/.test(base) || pm.environment.get('allowSyntheticWebhooks') !== 'true') {",
+              "  pm.execution.skipRequest();",
+              "}",
+              "const signature = pm.environment.get('syntheticSignature');",
+              "if (!/^sha256=[a-f0-9]{64}$/.test(signature || '')) { pm.execution.skipRequest(); }",
+              "pm.variables.set('localSignature', signature);",
+              "pm.variables.set('deliveryId', pm.variables.replaceIn('{{$guid}}'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-GitHub-Event",
+            "value": "ping"
+          },
+          {
+            "key": "X-GitHub-Delivery",
+            "value": "{{deliveryId}}"
+          },
+          {
+            "key": "X-Hub-Signature-256",
+            "value": "{{localSignature}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"zen\":\"GitPay synthetic local ping\"}"
+        },
+        "url": "{{baseUrl}}/webhooks/github",
+        "description": "Local-only inert ping. See README for generating the signature locally without exporting the webhook secret. No issue, command, payment or PR data."
+      }
+    }
+  ]
+}

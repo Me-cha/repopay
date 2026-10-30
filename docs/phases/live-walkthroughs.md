@@ -75,12 +75,22 @@ Local preparation: [Phase 11 summary](../evidence/11-summary.md). No hosted depl
 - [ ] Configure hosted callback/webhooks, run read-only preflight, then explicitly authorize activation and bounded live tests.
 - [ ] Complete the role, restart, access-loss and missing-intent restore evidence in [11-hosted.md](../evidence/11-hosted.md).
 
-## Later phases — expand during implementation
+## Phase 12 — final acceptance
 
-These are planned walkthroughs, not claims that implementation is complete.
+Handoff materials are prepared locally; final acceptance and recording remain pending.
 
 | Phase | Final-session work | Setup/dependency |
 | --- | --- | --- |
 | [12](12.md) | Complete evidence matrix, reproduce setup/demo, verify negative paths and obtain final acceptance. | Resolve or explicitly document all remaining blockers. |
 
 Before the final session, consolidate accounts, eligible roles, sandbox balances, recipient connections, supported attribution, scopes, callback/webhook URLs, hosting and bounded Copilot request allowances. Record issue/PR/award/batch/item IDs and outcomes without credentials, tokens or recipient emails. Earlier Phase 2–3 deferred items must also be reconciled from their own evidence before final MVP claims.
+
+## Final-session order
+
+1. Resolve identities first: second eligible contributor, an independent cancellation operator, and supported revision-bound co-author attribution. Organization sponsorship remains separately blocked. More time alone does not solve these implementation/account gaps.
+2. Review the [acceptance matrix](../evidence/12-acceptance.md), agree fresh issue IDs, exact sandbox amounts, scopes, hosting costs and bounded model allowance. Preserve the completed $50 award. Reconcile Phase 2 collaborator revocation and Phase 3 abandoned checkout/restart/receipt cases.
+3. When explicitly authorized, configure and validate held hosting before activation. Complete the hosted preflight/restore checklist. The [demo seeder](../demo.md) prepares ordinary issues only; its real execution/rerun and Postman GUI import remain manual checks.
+4. Begin the genuine cancellation case early: new v5 funding, independent reviewer and confirmed public notice. Wait the full real 72 hours; run the other approved scenarios during this period. Never shorten funded terms or modify timestamps to finish a recording.
+5. Complete competing PR/retry/CI, delayed claim, supported split and manual review/rejection scenarios; inspect recipient receipts and immutable identities. Demonstrate valid-work cancellation protection and actual-role dashboard access.
+6. Finish genuine refund and provider recovery/hosted restore evidence. Record safe issue/PR/award/provider identifiers and observed outcomes in the matrix; retain pending results as pending.
+7. Record the <=3-minute outline and separate genuine-refund evidence. Review privacy and claims; verify official event rules before any submission; request final user acceptance. This checklist does not itself authorize live operations or publication.

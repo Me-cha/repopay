@@ -27,7 +27,8 @@
     "db:check": "tsx --env-file-if-exists=.env packages/server/scripts/check-migrations.ts",
     "start:hosted": "node packages/server/dist/main.js",
     "start:worker:hosted": "node packages/server/dist/worker.js",
-    "db:migrate:hosted": "tsx packages/server/scripts/migrate.ts"
+    "db:migrate:hosted": "tsx packages/server/scripts/migrate.ts",
+    "demo:seed": "tsx packages/server/scripts/demo-seed.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

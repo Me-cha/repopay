@@ -2,7 +2,7 @@
 
 **Fund an issue. Merge a qualifying solution. Pay the contributor.**
 
-GitPay is a planned GitHub App that connects issue bounties to PayPal. Maintainers fund an issue, contributors submit pull requests, AI assesses the proposed solution, and a qualifying merge triggers payment through a deterministic policy.
+GitPay is a GitHub App under sandbox validation that connects issue bounties to PayPal. Maintainers fund an issue, contributors submit pull requests, AI assesses the proposed solution, and a qualifying merge triggers payment through a deterministic policy.
 
 The principle is **glue, not a platform**: development stays in GitHub, checkout and payouts use PayPal, and small authenticated pages handle confirmations. A dashboard (optional for users, required in the MVP) displays progress without becoming another place to manage the work.
 
@@ -11,6 +11,8 @@ The principle is **glue, not a platform**: development stays in GitHub, checkout
 Phases 7–10 now have local implementations and automated verification. Their live walkthroughs, along with outstanding Phase 5–6 cases, remain on the [final live checklist](docs/phases/live-walkthroughs.md). See [Phase 10 evidence](docs/evidence/10-summary.md). Build with `pnpm build`, then open `/dashboard/` on the running server and sign in.
 
 Phase 11 deployment preparation and local restore safeguards are implemented. Render has **not** been provisioned or validated live. See [deployment instructions](docs/deployment.md) and [Phase 11 evidence](docs/evidence/11-summary.md).
+
+Phase 12 handoff tooling and the [final acceptance matrix](docs/evidence/12-acceptance.md) are prepared locally. **Full MVP acceptance remains pending**; see the [demo outline](docs/demo.md) and [verification record](docs/evidence/12-summary.md).
 
 ## Intended flow
 
@@ -38,7 +40,7 @@ Funded bounties are commitments. A maintainer may **request** cancellation for a
 
 These rules prevent the normal recorded cancel-then-merge abuse path. They cannot force a maintainer to merge, prevent off-platform copying, or guarantee discovery of unseen work. Read [the cancellation decision and its limitations](docs/decisions/0001-open-participation-and-cancellation.md).
 
-## Commands (full MVP target)
+## Commands
 
 Currently available: `/bounty create`, `/bounty status`, `/bounty fund`, and `/bounty cancel` for an unfunded draft. Cancellation opens an authenticated preview; the comment itself cannot cancel the draft. Sandbox funding requires merchant, trusted CI and an explicit Copilot model configuration. Funded cancellation remains disabled in the current deployment and all legacy funded terms. Phase 8 adds a locally verified, independently reviewed exception flow for explicitly scoped new version 5 terms; its real 72-hour refund walkthrough is deferred.
 
@@ -79,10 +81,10 @@ flowchart LR
 | Backend and storage   | Express 5, PostgreSQL 16, Drizzle, durable database jobs                                 |
 | GitHub integration    | GitHub App, bounded REST adapter, webhooks, Check Runs and OAuth                                      |
 | Payments              | PayPal sandbox Orders, capture, Payouts, refunds and webhooks                            |
-| Runtime AI            | Copilot SDK with repository-owner/organization sponsorship; Zod validation                        |
+| Runtime AI            | Copilot SDK with personal-repository owner sponsorship; Zod validation                        |
 | Web                   | Server-rendered confirmation pages; React/Vite + AG Grid for the optional dashboard      |
 | Validation            | Vitest, integration tests, property tests, verifier evaluations and sandbox walkthroughs |
-| Deployment target     | Render; deployment configuration is not created yet                                      |
+| Deployment target     | Render Blueprint prepared; not deployed or accepted                                      |
 
 Codex is the coding assistant; Copilot SDK is the selected runtime verifier provider. The model receives no unrestricted authority to move money. See [the provider decision](docs/decisions/0005-copilot-verifier.md).
 
@@ -93,11 +95,30 @@ git clone https://github.com/Me-cha/GitPay.git
 cd GitPay
 ```
 
+For a credential-free local verification rehearsal, install Node **22.23.4**, pnpm **10.29.3** and Docker Compose, then run:
+
+```sh
+pnpm install --frozen-lockfile
+docker compose up -d postgres
+# Wait for postgres to be healthy. Once per new volume:
+docker compose exec -T postgres createdb -U gitpay gitpay_test
+export TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm build
+pnpm exec playwright install chromium
+pnpm test:e2e
+pnpm demo:seed
+```
+
+An existing `gitpay_test` database can be retained. Tests create isolated schemas and use fake providers; the browser harness starts its own local server. These checks do not load `.env`, spend Copilot allowance or send payments. They do require PostgreSQL and Docker for restore tests. Live application startup additionally needs credentials and migrations from [setup](docs/setup.md); do not overwrite an existing `.env`. The seeder is a dry run unless explicitly executed as described in [the demo guide](docs/demo.md).
+
 Start with [the phased MVP review plan](docs/phases/README.md) and [Phase 00](docs/phases/00.md). Read [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the architecture and [AGENTS.md](AGENTS.md) for repository instructions. Phase 0 provides the executable server workspace. Follow [local setup and provider probes](docs/setup.md); see [Phase 0 evidence](docs/evidence/00-summary.md) for actual checks and remaining gates.
 
 The tracked [.env.example](.env.example) lists validated configuration. Copy it to `.env` and fill in credentials locally. Credentials are intentionally blank; choose an explicit accessible Copilot model before new funding or model generation. Startup and preflight validate their respective required settings. Do not paste secrets into issues, PRs or agent instructions.
 
-External setup will require a GitHub App and demo repository, PayPal sandbox accounts with Payouts access, and a consenting repository-owner or organization Copilot sponsor with model access. Later funded-cancellation testing also needs an independent reviewer identity; unfunded draft cancellation does not. Exact setup requirements are recorded in section 3 of the plan; verify provider documentation during implementation.
+External setup will require a GitHub App and demo repository, PayPal sandbox accounts with Payouts access, and a consenting personal-repository owner Copilot sponsor with Auto access (organization support remains blocked). Later funded-cancellation testing also needs an independent reviewer identity; unfunded draft cancellation does not. Exact setup requirements are recorded in section 3 of the plan; verify provider documentation during implementation.
 
 ## Repository guide
 
@@ -115,7 +136,7 @@ External setup will require a GitHub App and demo repository, PayPal sandbox acc
 | [docs/decisions/](docs/decisions/)                       | Product and architecture decisions with reasoning                                                      |
 | [packages/server/](packages/server/)                     | Health/webhook server, workers, OAuth sessions, draft confirmations and provider probes |
 | [packages/web/](packages/web/)                           | Read-only React/Vite dashboard with AG Grid Community                                                  |
-| [postman/](postman/)                                     | Planned API/demo collection; documentation placeholder                                                 |
+| [postman/](postman/)                                     | Read-only API collection and opt-in local synthetic ping                                                 |
 
 Folder changes must update the current map in `AGENTS.md`, affected README links and the plan's target layout in the same change. The PR template includes this requirement.
 
@@ -129,7 +150,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Product behavior, credentials and integr
 
 [MIT](LICENSE), as selected in the implementation plan.
 
-The runtime uses repository-owner-sponsored Copilot Auto in v4 funded terms, preserving legacy terms and recording the concrete serving model for each review ([ADR 0007](docs/decisions/0007-copilot-auto-model.md)). Reviews remain advisory pending accepted live evaluation and settlement implementation. Organization sponsorship and complete sponsor-revocation handling remain open. SDK usage units and attempt caps do not provide a monetary budget.
+The runtime uses repository-owner-sponsored Copilot Auto in v4 funded terms, preserving legacy terms and recording the concrete serving model for each review ([ADR 0007](docs/decisions/0007-copilot-auto-model.md)). Auto v2 passed its recorded live evaluation and the scoped $50 sandbox settlement succeeded. Broader activation remains gated by the deferred acceptance cases. Organization sponsorship remains blocked; real owner revocation/reconnection is recorded. SDK usage units and attempt caps do not provide a monetary budget.
 
 Phase 7 maintainer review is implemented locally with a shared award guard, exact confirmation and immutable rejection history. Live acceptance remains pending; see [Phase 7 evidence](docs/evidence/07-summary.md).
 

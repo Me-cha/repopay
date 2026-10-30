@@ -1,6 +1,6 @@
 # Local setup and provider feasibility
 
-Phase 1 adds signed GitHub intake, leased workers and unfunded bounty drafts to the Phase 0 foundation. Phase 2 adds GitHub login, confirmation pages and unfunded draft cancellation. Phase 3 adds sandbox funding; contributor payouts remain later phases. See [phase status](phases/03.md) and [verification evidence](evidence/03-summary.md).
+The local application includes GitHub workflows, sandbox funding and payouts, reviewed cancellation, and a read-only dashboard. Provider/hosted acceptance is incomplete; use the [acceptance matrix](evidence/12-acceptance.md) for verified behavior and blockers. For a credential-free clean install, follow the verification commands in [README](../README.md#start-here).
 
 ## Install and run locally
 
@@ -257,3 +257,10 @@ Apply migration 0016 with `pnpm db:migrate`. Leave `RECONCILIATION_DISCOVERY_ENA
 Hosted commands `pnpm start:hosted`, `pnpm start:worker:hosted` and `pnpm db:migrate:hosted` use environment settings directly, without requiring a local `.env`. Build first. The single web pre-deploy process migrates, then the same worker release starts after compatibility verification. Nothing is provisioned by these files alone; follow [deployment](deployment.md).
 
 The deploy-compatibility test rehearses PostgreSQL 16 dump/restore only in a generated schema of the validated local test database. Locally it uses the existing Docker Compose `postgres` service; CI uses a matching PostgreSQL 16 client container against its local test service. Docker must be available. No personal credentials or actual providers are used.
+
+
+## Final demo tooling
+
+`pnpm demo:seed` previews two preparation issues without credentials or writes. Explicit issue creation is restricted to the isolated detached demo repository and requires the confirmation flags in [the demo guide](demo.md). It creates fresh ordinary issues, never a payment. No new environment variables are needed; GitHub CLI authentication is separate from the application and runtime sponsor.
+
+Import the [Postman collection](../postman/gitpay.postman_collection.json) for read-only local inspection. Its optional signed ping is inert, loopback-only and disabled by default; follow [the collection guide](../postman/README.md). Do not export a populated environment or cookies. Remaining live exercises stay deferred in the [final checklist](phases/live-walkthroughs.md).

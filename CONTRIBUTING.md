@@ -61,3 +61,7 @@ Run `pnpm typecheck`, `pnpm lint`, `TEST_DATABASE_URL=postgresql://gitpay:gitpay
 ## Phase 11 release compatibility
 
 Run `pnpm db:check` after migrations. Runtime health requires the exact migration history for the release. `deploy-compatibility.test.ts` uses Docker/PostgreSQL 16 dump/restore with synthetic data in a generated test schema and proves recovery hold prevents a replacement operation when a backup omits a provider-accepted intent. Keep hosted resources and live callbacks unchanged until deployment authorization; [deployment.md](docs/deployment.md) contains the prepared rollout and rollback procedure.
+
+## Final handoff tooling
+
+Run `pnpm demo:seed` for a provider-free preview. Execution creates ordinary issues only, requires exact repository confirmation, and is a separate live action; see [demo instructions](docs/demo.md). Seeder unit tests use a fake CLI; no real issue creation is part of CI. The [Postman guide](postman/README.md) documents the disabled synthetic ping. No new application environment variables are required. Keep final workflow acceptance in [the matrix](docs/evidence/12-acceptance.md), not inferred from test counts.

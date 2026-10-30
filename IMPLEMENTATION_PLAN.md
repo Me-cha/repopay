@@ -298,7 +298,7 @@ GitPay/
 ├─ docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md,0003-nemotron-only-and-preflight-scope.md,0004-funding-recovery.md,0005-copilot-verifier.md}
 ├─ docs/phases/{README.md,review-todo.md,copilot-migration.md,00.md,...,12.md} (task source of truth; status in phase index)
 ├─ docker-compose.yml (Phase 0)  render.yaml (prepared hosted sandbox Blueprint)
-├─ postman/README.md  gitpay.postman_collection.json (Phase 12)
+├─ postman/README.md  gitpay.postman_collection.json
 ├─ packages/
 │  ├─ server/{README.md,package.json,tsconfig.json,tsconfig.build.json}
 │  ├─ server/src/
@@ -319,7 +319,7 @@ GitPay/
 │  │  ├─ read-models/{bounties.ts,payouts.ts}  operations/attention.ts
 │  │  └─ util/{money.ts,crypto.ts,parse.ts}
 │  ├─ server/test/{helpers/,unit/,integration/,fixtures/,e2e/}
-│  ├─ server/scripts/{migrate.ts,preflight.ts,demo-seed.ts,eval-verifier.ts}
+│  ├─ server/scripts/{migrate.ts,preflight.ts,demo-seed.ts,eval-verifier.ts,retry-job.ts,check-migrations.ts}
 │  └─ web/src/{main.tsx,App.tsx,Detail.tsx,grid/,api.ts,styles.css}
 └─ packages/web/{README.md,package.json,index.html,tsconfig.json,vite.config.ts,vitest.config.ts,test/}; playwright.config.ts at root
 ```
@@ -1178,3 +1178,5 @@ Dashboard ownership and scope refinement: [ADR 0011](docs/decisions/0011-scoped-
 Recovery ownership refinement: [ADR 0012](docs/decisions/0012-recovery-checkpoints.md) maps durable scheduling to `jobs/scheduler.ts`, PR discovery to `github/reconciliation.ts`, safe retry to `operations/attention.ts` and `scripts/retry-job.ts`, and checkpoints to migration 0016. Existing settlement due-time services remain authoritative for financial recovery. Discovery activation is explicit and default-off; scope/rate bounds are work limits, not a provider HTTP or money budget.
 
 Deployment ownership refinement: [ADR 0013](docs/decisions/0013-deployment-and-restore-hold.md) adds `db/compatibility.ts`, `scripts/check-migrations.ts`, the held Render Blueprint and `docs/deployment.md`. Phase progress and hosted evidence remain in their own files.
+
+Final handoff ownership: `docs/demo.md` describes the sandbox recording; `docs/evidence/12-acceptance.md` traces workflow acceptance. `scripts/demo-seed.ts` defaults to a dry run and requires exact isolated repository confirmation to create ordinary unfunded preparation issues; it has no financial or merge authority. `postman/gitpay.postman_collection.json` contains scoped reads and a guarded loopback synthetic ping. These tools do not replace live acceptance.
