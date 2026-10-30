@@ -1,3 +1,4 @@
+import { detailSchema } from '../../src/read-models/contracts.js';
 import { expect,it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { authFixture,csrfFrom,form,prepare,required } from '../helpers/auth.js';
@@ -35,11 +36,11 @@ it('wrong action, missing CSRF and cross-origin requests do not consume the toke
  expect((await f.database.orm.select().from(actionTokens))[0]?.usedAt).toBeNull();
  }finally{await f.close();}
 });
-it('repository text is escaped and status DTO contains no identity or token data',async()=>{
+it('repository text is escaped and status DTO contains only approved public fields and no token data',async()=>{
  const f=await authFixture();try{
  await f.database.orm.update(bounties).set({repoFullName:'<img src=x onerror=alert(1)>'}).where(eq(bounties.id,f.bounty.id));
  const html=await(await f.request(`/bounties/${f.bounty.id}/cancel`)).text();expect(html).not.toContain('<img');expect(html).toContain('&lt;img');
- const dto:unknown=await(await f.request('/api/bounties/'+f.bounty.id)).json();if(!dto||typeof dto!=='object')throw new Error('Missing DTO');expect(Object.keys(dto).sort()).toEqual(['amountCents','currency','id','needsAttention','status','version']);
+ const dto:unknown=await(await f.request('/api/bounties/'+f.bounty.id)).json();if(!dto||typeof dto!=='object')throw new Error('Missing DTO');expect(detailSchema.strict().safeParse(dto).success).toBe(true);expect(JSON.stringify(dto)).not.toMatch(/accessToken|csrfSecret|paypalEmail|destinationEnc/);
  }finally{await f.close();}
 });
 

@@ -1,0 +1,13 @@
+# ADR 0011 — scoped read-only dashboard
+
+Status: Accepted for local Phase 9 implementation, 2026-10-30. Live acceptance deferred by user direction.
+
+The dashboard uses the existing action authorization boundary: verify the App installation/repository binding and current user-token repository access for each candidate repository. This implements the same installation/user intersection as the planned installation enumeration without a second authorization implementation. It replaces the proposed 60-second permission cache with fresh checks per request. Operators receive no scope bypass; provider uncertainty fails closed.
+
+List endpoints scan 25 bounty candidates per page, returning only accessible rows and an opaque-in-use numeric continuation cursor. A page may be empty with a continuation. Filters and sorting apply to the current page. Payout rows distinguish committed awards from SUCCESS amounts; failed delivery does not cancel an award. Detail whitelists reasoning, decisions and public identities, excluding raw activity metadata, provider keys, credentials and payment destinations. Activity is paginated at 100 rows; review/decision histories currently return in full.
+
+One LISTEN connection per server app wakes browser subscribers. Migration 0015 sends only the schema name on transactional inserts; SSE sends only authorized bounty IDs and activity cursors. Sequence IDs are not commit order. Every heartbeat sends a full-refetch hint, and the browser independently refetches on its timer, reconnect and focus. Sessions and scope are rechecked on every refresh. Failures clear private browser state; no financial operation depends on event delivery. Scope collection is bounded to 100 repository/installation pairs; larger installations fail closed until a scalable scope implementation is added.
+
+React/Vite renders three read-only views, a separate accessible detail panel and AG Grid Community. Small screens use readable cards. Server-rendered pages own authenticated actions. Shared pure Zod DTO contracts contain no database/provider implementation. The built dashboard is served on the server origin at `/dashboard/`; no new CORS or token storage is introduced. The development Vite proxy is optional; authenticated validation uses the server origin.
+
+Tradeoffs: fresh scope checks increase GitHub API traffic; full histories and the Community grid bundle need monitoring for large repositories. SSE hints can duplicate and never replace authoritative refetch. Browser tests use isolated schemas and fake provider boundaries; their login shortcuts are confined to a test fixture outside production source. No live payments or model requests are part of these tests.

@@ -227,3 +227,17 @@ Apply migration 0013 using `pnpm db:migrate` after backing up the local database
 Apply migration 0014 after backing up Postgres and stopping workers, then restart. Keep `FUNDED_CANCELLATION_ENABLED=false`; no live refund exercise is authorized now. Future explicitly authorized isolated activation also requires `CANCELLATION_SANDBOX_REPO_ID` and independent `CANCELLATION_OPERATOR_GH_IDS`. Only new version 5 Auto terms disclose cancellation; existing terms/hashes stay intact. The notice is always 72 hours from confirmed publication. Local tests inject time and mock providers; they do not satisfy live notice/refund acceptance.
 
 Run `pnpm typecheck`, `pnpm lint`, `TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test pnpm test`, and `pnpm build` using the pinned Node version. Follow the cancellation operations guide for state inspection; never reset an uncertain refund or create a replacement key.
+
+## Phase 9 dashboard and local browser verification
+
+Run `pnpm install`, `pnpm db:migrate` (migration 0015), and `pnpm build`. Start the server normally and visit `/dashboard/` on `PUBLIC_URL`; sign in using GitHub. The dashboard uses the same session and repository authorization as confirmation pages. `pnpm dev` does not rebuild web assets; use `pnpm --filter @gitpay/web build` after web changes. `pnpm dev:web` is an optional Vite development proxy, not an alternate OAuth callback origin.
+
+`SSE_HEARTBEAT_SEC` defaults to 30 and controls permission refresh plus independent browser refetch. Access/provider failures hide private data. LISTEN/NOTIFY only wakes reads; all financial work remains durable server jobs. Keep cancellation and settlement activation scopes unchanged when testing visibility.
+
+For local browser tests, install Chromium once with `pnpm exec playwright install chromium`, then run:
+
+```sh
+TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test pnpm test:e2e
+```
+
+The harness builds web assets, binds loopback port 4317, migrates/seeds a unique test schema and mocks provider boundaries. It does not load `.env` or start a worker. Keep 4317 free. Traces and responsive screenshots are ignored under `test-results/`. Root `pnpm test` includes server and web DOM tests; `pnpm typecheck` and `pnpm build` include both packages. Live role/provider walkthroughs remain on the final checklist.

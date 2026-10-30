@@ -170,7 +170,7 @@ Design rules:
 - **Installation** grants the app access to selected repos: read issues, diffs, CI; receive webhooks; write comments, labels and Check Runs. Installation tokens power background work.
 - **User authorization** (GitHub OAuth through the same App) identifies a person on confirm pages, the connect page and the dashboard. It never grants authority by itself: each action rechecks the user's current repo permission.
 - Comment commands are authorized by the **comment author's** current permission (checked with the installation token via `repos.getCollaboratorPermissionLevel`).
-- Confirm pages and the dashboard are authorized with the **user token**: `GET /repos/{owner}/{repo}` → `permissions.{admin,maintain,push}`, and dashboard scope = `GET /user/installations` then `GET /user/installations/{installation_id}/repositories` (exactly the intersection of installation repos and user access).
+- Confirm pages and the dashboard are authorized with the **user token**: `GET /repos/{owner}/{repo}` → `permissions.{admin,maintain,push}`, and dashboard scope intersects the current App installation/repository binding with the current user-token repository permission for every candidate repository (ADR 0011).
 
 ---
 
@@ -313,15 +313,15 @@ GitPay/
 │  │  ├─ verifier/{collect.ts,prompt.ts,schema.ts,verify.ts,service.ts,evaluation.ts,evaluate.ts}
 │  │  ├─ policy/{decide.ts,allocate.ts}
 │  │  ├─ settlement/{funding.ts,claims.ts,candidates.ts,settle.ts,payout.ts,service.ts,profile.ts,award.ts,refund.ts}
-│  │  ├─ http/{routes.ts,confirm.ts,fund.ts,connect.ts,retry.ts,sponsor.ts,auth.ts,session.ts,api.ts,review.ts,cancellation.ts,sse.ts}
+│  │  ├─ http/{routes.ts,confirm.ts,fund.ts,connect.ts,retry.ts,sponsor.ts,auth.ts,session.ts,api.ts,review.ts,cancellation.ts,sse.ts,dashboard.ts}
 │  │  ├─ domain/{types.ts,funded-terms.ts}
 │  │  ├─ cancellation/{evidence.ts,authorization.ts,service.ts,runtime.ts}
 │  │  ├─ read-models/{bounties.ts,payouts.ts}  operations/attention.ts
 │  │  └─ util/{money.ts,crypto.ts,parse.ts}
-│  ├─ server/test/{helpers/,unit/,integration/,fixtures/}
+│  ├─ server/test/{helpers/,unit/,integration/,fixtures/,e2e/}
 │  ├─ server/scripts/{migrate.ts,preflight.ts,demo-seed.ts,eval-verifier.ts}
-│  └─ web/src/{main.tsx,App.tsx,grid/,api.ts}
-└─ packages/web/README.md (present; web runtime added in Phase 09)
+│  └─ web/src/{main.tsx,App.tsx,Detail.tsx,grid/,api.ts,styles.css}
+└─ packages/web/{README.md,package.json,index.html,tsconfig.json,vite.config.ts,vitest.config.ts,test/}; playwright.config.ts at root
 ```
 
 All business actions live in `actions/`. Comment commands, confirm POSTs and policy settlement call the same functions. HTTP and webhook layers never touch state directly.
@@ -1009,7 +1009,7 @@ Property tests (fast-check): sum equals `total`; deterministic; no negatives; ne
 | `GET /api/stream`                                          | SSE of scoped invalidation events; the client refetches authoritative DTOs                                                                                                                                                                  |
 | `GET /healthz`                                             | db ping + version                                                                                                                                                                                                                           |
 
-Repo scope for `/api/*` is cached per session for 60 s and recomputed from the user token.
+Repo scope for `/api/*` is checked on every request with the current installation binding and user token. No cross-request permission cache or operator bypass is used; see ADR 0011.
 
 SSE uses `bounty_activity.id` as an invalidation cursor (sequence order is not commit order) and PostgreSQL `LISTEN/NOTIFY` only as a wake-up signal. Every notification is scope-checked before delivery; reconnects with a missed cursor perform a full scoped refetch. A separate worker writes activity rows and emits a transactional notification on commit, so live updates do not depend on an in-memory event emitter or on the browser for financial execution. Periodic scoped full refetch at the configured heartbeat cadence, plus reconnect/tab-focus refetch, repairs out-of-order commits and missed hints; LISTEN/NOTIFY and sequence cursors are not an exactly-once event stream.
 
@@ -1172,3 +1172,5 @@ Confirmation and logout forms use same-origin CORS-mode fetch, retaining strict 
 Phase 7 implementation uses immutable `awards` plus append-only `review_decisions` for the conceptual decision model. `actions/approve.ts` owns preview/token/decision logic, `actions/reject.ts` owns the comment authorization adapter, `http/review.ts` owns browser review, and `settlement/award.ts` shares the final guard with automatic settlement. See [ADR 0009](docs/decisions/0009-maintainer-review-records.md); phase progress remains in the numbered phase documents.
 
 Deferred final live validation is tracked in [the live walkthrough checklist](docs/phases/live-walkthroughs.md). This scheduling record supplements numbered phase acceptance requirements; it does not waive them.
+
+Dashboard ownership and scope refinement: [ADR 0011](docs/decisions/0011-scoped-dashboard.md). Read DTOs live in `packages/server/src/read-models/{contracts,bounties,payouts}.ts`; migration 0015 supplies transactional wakeups. Progress remains in Phase 09.

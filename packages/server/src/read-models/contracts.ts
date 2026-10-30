@@ -1,0 +1,16 @@
+import { z } from 'zod';
+const id=z.string(),cents=z.number().int().nonnegative(),date=z.string().nullable();
+export const nextActionSchema=z.object({actor:z.string(),label:z.string(),href:z.string()});
+export const reviewSchema=z.object({id,status:z.string(),headSha:z.string(),verdict:z.string().nullable(),confidence:z.number().nullable(),coverage:z.number().nullable(),reasoning:z.string(),unmetRequirements:z.array(z.string()),errorCode:z.string().nullable(),createdAt:z.string()});
+export const bountySchema=z.object({id,repoId:id,repoFullName:z.string(),issueNumber:z.number(),title:z.string(),amountCents:cents,currency:z.literal('USD'),status:z.string(),version:z.number(),needsAttention:z.boolean(),attentionReason:z.string().nullable(),fundedAt:date,githubUrl:z.string(),createdByGhId:id,nextAction:nextActionSchema,cancellation:z.object({id,stage:z.string(),noticeEndsAt:date,nextUpdateAt:date}).nullable(),award:z.object({id,amountCents:cents,paidCents:cents,unpaidCents:cents,allocation:z.array(z.object({ghId:id,login:z.string(),cents}))}).nullable(),latestReview:reviewSchema.nullable()});
+export const payoutSchema=z.object({id,bountyId:id,repoFullName:z.string(),issueNumber:z.number(),ghId:id,login:z.string(),amountCents:cents,paidCents:cents,status:z.string(),nextAction:nextActionSchema,githubUrl:z.string()});
+export const activitySchema=z.object({id,action:z.string(),actorGhId:id.nullable(),createdAt:z.string()});
+export const decisionSchema=z.object({id,kind:z.string(),actorGhId:id,reason:z.string(),createdAt:z.string()});
+export const detailSchema=bountySchema.extend({criteria:z.string(),verifications:z.array(reviewSchema),reviews:z.array(decisionSchema),cancellationDecisions:z.array(decisionSchema),refunds:z.array(z.object({id,status:z.string(),amountCents:cents,attention:z.string().nullable()})),payouts:z.array(payoutSchema),activity:z.array(activitySchema),historyNextCursor:z.string().nullable()});
+export const bountyPageSchema=z.object({items:z.array(bountySchema),nextCursor:z.string().nullable()});
+export const payoutPageSchema=z.object({items:z.array(payoutSchema),nextCursor:z.string().nullable()});
+export const meSchema=z.object({id,login:z.string(),operator:z.boolean(),heartbeatSeconds:z.number()});
+export type BountyDto=z.infer<typeof bountySchema>;
+export type PayoutDto=z.infer<typeof payoutSchema>;
+export type DetailDto=z.infer<typeof detailSchema>;
+export type ReviewDto=z.infer<typeof reviewSchema>;

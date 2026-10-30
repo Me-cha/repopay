@@ -1,0 +1,4 @@
+import { expect,it,vi } from 'vitest';
+import { subscribe } from '../src/api.js';
+import { FakeEvents } from './fixtures.js';
+it('disconnect reconnect, repeated hints and focus all refetch; independent heartbeat repairs missed/lower IDs',()=>{vi.useFakeTimers();vi.stubGlobal('EventSource',FakeEvents);const refresh=vi.fn(),clear=vi.fn(),stop=subscribe(refresh,clear,1000);try{FakeEvents.latest.emit('invalidate');FakeEvents.latest.emit('invalidate');expect(refresh).toHaveBeenCalledTimes(2);FakeEvents.latest.emit('error');expect(clear).toHaveBeenCalledTimes(1);FakeEvents.latest.emit('open');expect(refresh).toHaveBeenCalledTimes(3);window.dispatchEvent(new Event('focus'));expect(refresh).toHaveBeenCalledTimes(4);vi.advanceTimersByTime(1000);expect(refresh).toHaveBeenCalledTimes(5);FakeEvents.latest.emit('access-lost');expect(FakeEvents.latest.closed).toBe(true);}finally{stop();vi.useRealTimers();}});

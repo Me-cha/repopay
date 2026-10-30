@@ -89,6 +89,7 @@ export function parseGitHubRuntimeEnv(input:Record<string,string|undefined>):Git
 }
 
 const authSchema = githubRuntimeSchema.extend({
+ SSE_HEARTBEAT_SEC:integer(1,300).default(30),
  GH_CLIENT_SECRET: text, SESSION_SECRET: schema.shape.SESSION_SECRET,
  TOKEN_ENC_KEY: key, PAYMENT_DATA_ENC_KEY:key, ACTION_TOKEN_TTL_SEC: schema.shape.ACTION_TOKEN_TTL_SEC,
  SESSION_TTL_SEC: integer(300, 2592000), OAUTH_STATE_TTL_SEC: integer(60, 900),

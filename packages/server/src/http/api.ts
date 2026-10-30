@@ -1,20 +1,17 @@
-import { eq } from 'drizzle-orm';
-import { awards,payoutItems,reviewDecisions } from '../db/schema.js';
 import type { Express } from 'express';
 import type { AuthenticationDependencies } from './auth.js';
 import { AuthError } from '../github/oauth.js';
-import { findBounty,authorizeAction } from '../actions/guards.js';
 import { requireSession } from './session.js';
-export function mountApi(app:Express,deps:AuthenticationDependencies) {
- app.get('/api/bounties/:id',async(request,response)=>{
-  try{
-   const session=await requireSession(deps.auth,request);const bounty=await findBounty(deps.database,request.params.id);
-   await authorizeAction(deps.auth,deps.github,session,bounty,'read');
-   const [award]=await deps.database.orm.select().from(awards).where(eq(awards.bountyId,bounty.id));
-   const items=award?await deps.database.orm.select({cents:payoutItems.amountCents,status:payoutItems.status}).from(payoutItems).where(eq(payoutItems.awardId,award.id)):[];
-   const paidCents=items.filter(i=>i.status==='SUCCESS').reduce((sum,i)=>sum+i.cents,0);
-   const reviews=await deps.database.orm.select({id:reviewDecisions.id,kind:reviewDecisions.kind,actorGhId:reviewDecisions.actorGhId,reason:reviewDecisions.reason,submissionId:reviewDecisions.submissionId,headSha:reviewDecisions.headSha,createdAt:reviewDecisions.createdAt}).from(reviewDecisions).where(eq(reviewDecisions.bountyId,bounty.id));
-   response.json({...((reviews.length)?{reviews}:{}),...(award?{award:{id:award.id,amountCents:award.amountCents,allocation:award.allocation,paidCents,unpaidCents:award.amountCents-paidCents}}:{}),id:bounty.id,amountCents:bounty.amountCents,currency:bounty.currency,status:bounty.status,version:bounty.version,needsAttention:bounty.needsAttention});
-  }catch(error){response.status(error instanceof AuthError?error.status:503).json({error:error instanceof AuthError?error.message:'Repository access could not be verified.'});}
- });
+import { cursor,readModels } from '../read-models/bounties.js';
+import { payoutRows } from '../read-models/payouts.js';
+export function mountApi(app:Express,deps:AuthenticationDependencies){
+ const models=readModels(deps);
+ const routes=['/api/me','/api/bounties','/api/payouts','/api/bounties/:id'];
+ for(const route of routes)app.get(route,async(req,res)=>{try{const s=await requireSession(deps.auth,req);
+  if(route==='/api/me'){res.json({id:s.ghId,login:s.ghLogin,operator:'CANCELLATION_OPERATOR_GH_IDS' in deps.env&&Array.isArray(deps.env.CANCELLATION_OPERATOR_GH_IDS)&&deps.env.CANCELLATION_OPERATOR_GH_IDS.includes(s.ghId),heartbeatSeconds:deps.env.SSE_HEARTBEAT_SEC});return;}
+  if(route==='/api/bounties/:id'){res.json(await models.detail(s,typeof req.params.id==='string'?req.params.id:'',req.query.before===undefined?undefined:cursor(req.query.before)));return;}
+  const after=cursor(req.query.cursor);
+  if(route==='/api/bounties'){res.json(await models.list(s,after));return;}
+  const page=await models.candidates(s,after);res.json({items:(await Promise.all(page.rows.map(b=>payoutRows(deps.database,b)))).flat(),nextCursor:page.nextCursor});
+ }catch(e){res.status(e instanceof AuthError?e.status:503).json({error:e instanceof AuthError?e.message:'Repository access could not be verified.'});}});
 }

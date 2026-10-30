@@ -8,6 +8,7 @@
     "packages/server/test/**/*.ts",
     "packages/server/scripts/**/*.ts",
     "vitest.config.ts",
-    "drizzle.config.ts"
+    "drizzle.config.ts",
+    "playwright.config.ts"
   ]
 }

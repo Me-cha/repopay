@@ -49,3 +49,7 @@ Phase 7 review regression coverage is in `packages/server/test/integration/revie
 Apply migration 0014 after backing up Postgres and stopping workers, then restart. Keep `FUNDED_CANCELLATION_ENABLED=false`; no live refund exercise is authorized now. Future explicitly authorized isolated activation also requires `CANCELLATION_SANDBOX_REPO_ID` and independent `CANCELLATION_OPERATOR_GH_IDS`. Only new version 5 Auto terms disclose cancellation; existing terms/hashes stay intact. The notice is always 72 hours from confirmed publication. Local tests inject time and mock providers; they do not satisfy live notice/refund acceptance.
 
 Run `pnpm typecheck`, `pnpm lint`, `TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test pnpm test`, and `pnpm build` using the pinned Node version. Follow the cancellation operations guide for state inspection; never reset an uncertain refund or create a replacement key.
+
+## Phase 9 dashboard verification
+
+`pnpm typecheck`, `pnpm test` and `pnpm build` now cover server and web. Run `pnpm exec playwright install chromium` once, then `TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test pnpm test:e2e` for isolated browser journeys on port 4317. Provider boundaries are mocked; no `.env`, live model request or payment is used. Test-only login routes must remain outside production `src/`. Rebuild web assets to preview changes on the server's `/dashboard/` route. See [dashboard setup](docs/setup.md#phase-9-dashboard-and-local-browser-verification).

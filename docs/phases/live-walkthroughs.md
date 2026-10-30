@@ -47,13 +47,21 @@ Local verification: 57 files / 303 tests, typecheck, lint and build passed; migr
 - [ ] Verify the original capture's full-principal refund, provider completion, CANCELLED status and payer receipt, with one operation. Inspect pending/uncertain recovery without replacement keys.
 - [ ] Verify stale review/new objection/access-loss behavior and public status links. Keep cross-service race limitations explicit.
 
+## Phase 9 — visibility and role journeys
+
+Local scoped API/stream, DOM and Chromium journeys are recorded in [Phase 9 evidence](../evidence/09-summary.md). No live payment or model request was initiated.
+
+- [ ] Walk maintainer funding/review, contributor connection/claim, and independent operator notice/refund links with actual eligible accounts.
+- [ ] Verify real repository/App permission loss, session expiry and reconnect hide private data and restore only current authorized state.
+- [ ] Observe actual worker activity update the dashboard; inspect paid, failed/pending delivery and refund history against provider records.
+- [ ] Check real content on mobile and with keyboard navigation. Complete earlier phase blockers before claiming full end-to-end acceptance.
+
 ## Later phases — expand during implementation
 
 These are planned walkthroughs, not claims that implementation is complete.
 
 | Phase | Final-session work | Setup/dependency |
 | --- | --- | --- |
-| [9](09.md) | Role-specific GitHub/page/dashboard journeys, reconnecting live updates, mobile and keyboard checks. | Implemented UI and role-scoped data. |
 | [10](10.md) | Restart/recovery, access loss, missed webhooks and ambiguous provider outcomes without duplicate financial operations. | Controlled fault plan; clearly label simulations. |
 | [11](11.md) | Hosted clean-session core flows and restart recovery. | Approved hosting setup and deployment; local checks alone do not establish hosted acceptance. |
 | [12](12.md) | Complete evidence matrix, reproduce setup/demo, verify negative paths and obtain final acceptance. | Resolve or explicitly document all remaining blockers. |

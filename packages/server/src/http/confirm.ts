@@ -1,3 +1,4 @@
+import { readModels } from '../read-models/bounties.js';
 import type { Express,Response } from 'express';
 import { z } from 'zod';
 import { assertCancellable,authorizeAction,findBounty } from '../actions/guards.js';
@@ -48,11 +49,13 @@ if(target) {
   try {
    if(document.visibilityState==='hidden')return;
    const response=await fetch('/api/bounties/'+encodeURIComponent(target.dataset.bountyId),{credentials:'same-origin',cache:'no-store'});
-   if(!response.ok) { feedback.textContent=response.status===401?'Session expired. Sign in again to refresh.':'Unable to refresh. Please try again.';return; }
+   if(!response.ok) { target.dataset.stale='true';target.replaceChildren(feedback); feedback.textContent=response.status===401?'Session expired. Sign in again to refresh.':'Unable to refresh. Please try again.';return; }
    const data=await response.json();
+   const signature=JSON.stringify([data.status,data.award?.paidCents??0,data.cancellation?.stage??null,data.needsAttention]);
+   if(target.dataset.stale==='true'||target.dataset.signature!==signature){location.reload();return;}
    if(typeof data.status==='string')document.getElementById('bounty-status').textContent=data.status;
    feedback.textContent=data.needsAttention?'Synchronization or funding needs attention.':'Status is up to date.';
-  } catch {feedback.textContent='Connection interrupted. Retrying…';}
+  } catch {target.dataset.stale='true';target.replaceChildren(feedback);feedback.textContent='Connection interrupted. Private status is hidden until access can be verified. Retrying…';}
   finally {setTimeout(refresh,${String(env.POLL_INTERVAL_MS)});}
  };
  setTimeout(refresh,${String(env.POLL_INTERVAL_MS)});
@@ -95,7 +98,8 @@ if(target) {
   try{
    const session=await pageSession(deps,request,response);if(!session)return;
    const bounty=await findBounty(database,request.params.id);await authorizeAction(auth,github,session,bounty,'read');
-   response.type('html').send(htmlPage('Bounty status',`<section data-bounty-id="${bounty.id}">`+summary(bounty)+`<p>${bounty.status==='CANCELLED'?'Draft cancelled. No payment or refund was sent.':'This page shows the saved bounty state.'}</p>${bounty.needsAttention?'<p role="status">Synchronization or funding needs attention. Restore access and request /bounty status.</p>':''}<p id="poll-feedback" role="status">Checking for updates…</p><p><a href="/bounties/${bounty.id}">Refresh status</a> · <a href="/login">Sign in again</a></p>${bounty.status==='OPEN'?`<p><a href="/bounties/${bounty.id}/fund">Review funding</a> · <a href="/bounties/${bounty.id}/cancel">Review draft cancellation</a></p>`:''}</section>`));
+   const view=await readModels(deps).detail(session,bounty.id),signature=JSON.stringify([view.status,view.award?.paidCents??0,view.cancellation?.stage??null,view.needsAttention]);
+   response.type('html').send(htmlPage('Bounty status',`<section data-bounty-id="${bounty.id}" data-signature="${escapeHtml(signature)}">`+summary(bounty)+`<p><strong>Next: ${escapeHtml(view.nextAction.actor)}</strong> · <a href="${escapeHtml(view.nextAction.href)}">${escapeHtml(view.nextAction.label)}</a></p><p>Award committed: ${dollars(view.award?.amountCents??0)} USD. Delivered: ${dollars(view.award?.paidCents??0)} USD.</p>${view.cancellation?`<p>Cancellation review: ${escapeHtml(view.cancellation.stage)}. ${view.cancellation.stage==='COMPLETED'?'Refund confirmed.':'No completed refund is implied.'} <a href="/cancellations/${view.cancellation.id}">View notice and evidence</a>.</p>`:''}<p><a href="/dashboard/?bounty=${bounty.id}">View full reasoning and history</a></p>`+`<p>${bounty.status==='CANCELLED'?(bounty.captureId?'Reviewed refund confirmed. History is retained.':'Draft cancelled. No payment or refund was sent.'):'This page shows the saved bounty state.'}</p>${bounty.needsAttention?'<p role="status">Synchronization or funding needs attention. Restore access and request /bounty status.</p>':''}<p id="poll-feedback" role="status">Checking for updates…</p><p><a href="/bounties/${bounty.id}">Refresh status</a> · <a href="/login">Sign in again</a></p>${bounty.status==='OPEN'?`<p><a href="/bounties/${bounty.id}/fund">Review funding</a> · <a href="/bounties/${bounty.id}/cancel">Review draft cancellation</a></p>`:''}</section>`));
   }catch(error){safeError(response,error,request.path);}
  });
 }

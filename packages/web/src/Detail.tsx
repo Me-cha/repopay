@@ -1,0 +1,18 @@
+import { useEffect,useRef } from 'react';
+import { label,money,type DetailDto } from './api.js';
+export function Detail({data,onClose,onHistory}:{data:DetailDto;onClose:()=>void;onHistory:()=>void}){
+ const heading=useRef<HTMLHeadingElement>(null);useEffect(()=>{heading.current?.focus();},[data.id]);
+ return <section className="detail" aria-labelledby="detail-heading" onKeyDown={e=>{if(e.key==='Escape')onClose();}}>
+  <div className="section-heading"><div><p className="eyebrow">{data.repoFullName} · #{data.issueNumber}</p><h2 ref={heading} tabIndex={-1} id="detail-heading">{data.title}</h2></div><button onClick={onClose}>Close detail</button></div>
+  <div className="detail-facts"><p><span>Funded amount</span><strong>{data.fundedAt?money(data.amountCents):'Not funded'}</strong></p><p><span>Committed award</span><strong>{money(data.award?.amountCents??0)}</strong></p><p><span>Delivered</span><strong>{money(data.award?.paidCents??0)}</strong></p><p><span>Status</span><strong>{label(data.status)}</strong></p></div>
+  <div className="next-step"><strong>Next: {data.nextAction.actor}</strong><p><a href={data.nextAction.href}>{data.nextAction.label}</a></p>{data.attentionReason&&<p>{data.attentionReason}</p>}</div>
+  <p><a href={data.githubUrl}>Manage in GitHub ↗</a> · <a href={'/bounties/'+data.id}>Open status page</a></p>
+  {data.cancellation&&<section className="notice"><h3>Cancellation review: {label(data.cancellation.stage)}</h3><p>{data.cancellation.stage==='COMPLETED'?'Refund confirmed.':'A cancellation request does not mean money was refunded. Contributions and committed awards remain protected.'}</p><p>Notice deadline: {data.cancellation.noticeEndsAt??'Publication pending; the notice clock has not started.'}</p>{data.cancellation.nextUpdateAt&&<p>Next operator update: {data.cancellation.nextUpdateAt}</p>}<a href={'/cancellations/'+data.cancellation.id}>Open evidence and independent review</a></section>}
+  <h3>Frozen acceptance criteria</h3><p className="preserve">{data.criteria}</p>
+  <h3>Verification history</h3>{data.verifications.length?data.verifications.map(v=><article className="history-item" key={v.id}><h4>{v.verdict?label(v.verdict):label(v.status)} · revision {v.headSha.slice(0,12)}</h4><p>{v.reasoning}</p>{v.confidence!==null&&<p>Confidence: {Math.round(v.confidence*100)}% · Coverage: {Math.round((v.coverage??0)*100)}%</p>}{v.unmetRequirements.length>0&&<ul>{v.unmetRequirements.map((r,i)=><li key={i}>{r}</li>)}</ul>}{v.errorCode&&<p>Review unavailable: {label(v.errorCode)}</p>}</article>):<p>No verifier assessment yet. A review alone does not select an award.</p>}
+  <h3>Decision history</h3>{[...data.reviews,...data.cancellationDecisions].length?[...data.reviews,...data.cancellationDecisions].map((d,i)=><article className="history-item" key={i}><strong>{label(d.kind)} · GitHub account {d.actorGhId}</strong><p>{d.reason}</p><time>{d.createdAt}</time></article>):<p>No maintainer or operator decisions recorded.</p>}
+  <h3>Payouts</h3>{data.payouts.length?data.payouts.map(p=><p key={p.id}>@{p.login}: {money(p.amountCents)} committed · {money(p.paidCents)} delivered · {label(p.status)}. <a href={p.nextAction.href}>{p.nextAction.label}</a></p>):<p>No award committed yet.</p>}
+  {data.refunds.length>0&&<><h3>Refund history</h3>{data.refunds.map(r=><p key={r.id}>{money(r.amountCents)} · {label(r.status)}. {r.attention}</p>)}</>}
+  <h3>Activity</h3>{data.activity.length?<ol className="activity">{data.activity.map(a=><li key={a.id}><span>{label(a.action)}</span><time>{new Date(a.createdAt).toLocaleString()}</time></li>)}</ol>:<p>No recorded activity.</p>}{data.historyNextCursor&&<button onClick={onHistory}>Load earlier activity</button>}
+ </section>;
+}

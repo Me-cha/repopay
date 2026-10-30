@@ -10,17 +10,19 @@
   },
   "scripts": {
     "dev": "tsx watch --env-file=.env packages/server/src/main.ts",
-    "build": "pnpm --filter @gitpay/server build",
+    "build": "pnpm --filter @gitpay/web build && pnpm --filter @gitpay/server build",
     "start": "node --env-file=.env packages/server/dist/main.js",
-    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json && pnpm --filter @gitpay/web typecheck",
     "lint": "eslint . --max-warnings=0",
-    "test": "vitest run",
+    "test": "vitest run && pnpm --filter @gitpay/web test",
     "db:migrate": "tsx --env-file=.env packages/server/scripts/migrate.ts",
     "preflight": "tsx --env-file-if-exists=.env packages/server/scripts/preflight.ts",
     "eval:verifier": "tsx --env-file-if-exists=.env packages/server/scripts/eval-verifier.ts",
     "dev:worker": "tsx watch --env-file=.env packages/server/src/worker.ts",
     "start:worker": "node --env-file=.env packages/server/dist/worker.js",
-    "tunnel": "bash ./ngrok.sh"
+    "tunnel": "bash ./ngrok.sh",
+    "test:e2e": "playwright test",
+    "dev:web": "pnpm --filter @gitpay/web dev"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
@@ -31,6 +33,7 @@
     "typescript": "5.9.3",
     "typescript-eslint": "8.72.0",
     "vitest": "5.0.5",
-    "drizzle-kit": "0.31.11"
+    "drizzle-kit": "0.31.11",
+    "@playwright/test": "1.64.1"
   }
 }
