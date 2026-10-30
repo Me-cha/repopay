@@ -49,41 +49,63 @@ export async function handleJob(db:Database,github:GitHub,env:GitHubRuntimeEnv,j
   });return;
  }
  const {installation,repo}=await currentAccess(github,work.installationId,work.repoId);
- await github.issue(work.installationId,repo,work.issueNumber);
+ const commentPrNumber=work.kind==='run_command'&&work.isPullRequest?work.issueNumber:undefined;
+ let issueNumber=work.issueNumber;
+ if(work.kind==='run_command'&&(work.command.kind==='approve'||work.command.kind==='reject')){
+  const command=work.command;let target=issueNumber;
+  if(work.isPullRequest){
+   const links=await db.orm.select({issue:bounties.issueNumber}).from(submissions).innerJoin(bounties,eq(bounties.id,submissions.bountyId)).where(and(eq(submissions.repoId,work.repoId),eq(submissions.prNumber,issueNumber)));
+   const choices=[...new Set(links.map(r=>r.issue))];if(command.issueNumber?!choices.includes(command.issueNumber):choices.length!==1){await reply(db,github,env,job,work.installationId,repo,issueNumber,'Specify a linked issue number: `/bounty approve #12` or `/bounty reject #12 <reason>`. No decision was made.');return;}target=command.issueNumber??choices[0]??target;
+  }else if(command.issueNumber&&command.issueNumber!==issueNumber)throw new AuthError(409,'Review must target this issue.');
+  issueNumber=target;
+ }
+ await github.issue(work.installationId,repo,issueNumber);
  const permission=await github.permission(work.installationId,repo,work.actorId);
  // Private status is not disclosed to a former collaborator; comments contain no secret DTOs.
- if(permission==='none'){await reply(db,github,env,job,work.installationId,repo,work.issueNumber,'Current repository access is required.');return;}
+ if(permission==='none'){await reply(db,github,env,job,work.installationId,repo,issueNumber,'Current repository access is required.');return;}
  const command=work.kind==='run_command'?work.command:{kind:'create' as const,amount:work.amount};
  if(command.kind==='status') {
-  const bounty=await bountyStatus(db,work.repoId,work.issueNumber);
+  const bounty=await bountyStatus(db,work.repoId,issueNumber);
   if(bounty) {
    await db.withTransaction(async tx=>{await assertLease(tx,job);if(bounty.currentFundingAttemptId)await enqueue(tx,{kind:'reconcile_funding',payload:{attemptId:bounty.currentFundingAttemptId},dedupeKey:`funding-status:${job.id}`,maxAttempts:env.RECONCILIATION_MAX_ATTEMPTS});await enqueue(tx,{kind:'sync_bounty',payload:{bountyId:bounty.id},dedupeKey:`status:${job.id}`,maxAttempts:env.RECONCILIATION_MAX_ATTEMPTS});});
    const amount=`${String(Math.floor(bounty.amountCents/100))}.${String(bounty.amountCents%100).padStart(2,'0')}`;
-   await reply(db,github,env,job,work.installationId,repo,work.issueNumber,
+   await reply(db,github,env,job,work.installationId,repo,issueNumber,
     `**GitPay status · $${amount} USD · ${bounty.status}**\n\n${awardStatusText(bounty.status,env.PUBLIC_URL)??(bounty.status==='CANCELLED'?'Draft cancelled. No payment or refund was sent.':bounty.status==='OPEN'?(bounty.currentFundingAttemptId?'Checkout pending. Review funding status before starting a payment.':'Unfunded draft. No money has been collected. Review funding to start checkout.'):bounty.status==='FUNDED'?(bounty.fundingHold?'Funding confirmed, but disbursement is frozen pending reconciliation.':'Funding confirmed. The first qualifying merged PR wins under the frozen terms; anyone may submit work.'):'Capture pending or unknown. Do not start another payment; draft cancellation is unavailable.')}`);
   }
-  else await reply(db,github,env,job,work.installationId,repo,work.issueNumber,'No bounty exists for this issue. A maintainer can use `/bounty create <USD amount>`.');return;
+  else await reply(db,github,env,job,work.installationId,repo,issueNumber,'No bounty exists for this issue. A maintainer can use `/bounty create <USD amount>`.');return;
  }
- if(permission!=='write'&&command.kind!=='link'){await reply(db,github,env,job,work.installationId,repo,work.issueNumber,'Creating or managing a bounty requires current write, maintain or admin permission. `/bounty status` and `/bounty link <PR number>` are available to participants.');return;}
+ if(permission!=='write'&&command.kind!=='link'){await reply(db,github,env,job,work.installationId,repo,issueNumber,'Creating or managing a bounty requires current write, maintain or admin permission. `/bounty status` and `/bounty link <PR number>` are available to participants.');return;}
  if(command.kind==='link') {
-  const bounty=await bountyStatus(db,work.repoId,work.issueNumber);
-  if(!bounty){await reply(db,github,env,job,work.installationId,repo,work.issueNumber,'Create a bounty draft before linking a solution.');return;}
-  if(!phase5){await reply(db,github,env,job,work.installationId,repo,work.issueNumber,'Submission linking is temporarily unavailable. No bounty status or payment changed.');return;}
-  await phase5.manualLink(work.installationId,work.repoId,work.issueNumber,command.prNumber);
-  await reply(db,github,env,job,work.installationId,repo,work.issueNumber,`Linked PR #${String(command.prNumber)} as a submission. This does not reserve the bounty; anyone may submit a solution.`);return;
+  const bounty=await bountyStatus(db,work.repoId,issueNumber);
+  if(!bounty){await reply(db,github,env,job,work.installationId,repo,issueNumber,'Create a bounty draft before linking a solution.');return;}
+  if(!phase5){await reply(db,github,env,job,work.installationId,repo,issueNumber,'Submission linking is temporarily unavailable. No bounty status or payment changed.');return;}
+  await phase5.manualLink(work.installationId,work.repoId,issueNumber,command.prNumber);
+  await reply(db,github,env,job,work.installationId,repo,issueNumber,`Linked PR #${String(command.prNumber)} as a submission. This does not reserve the bounty; anyone may submit a solution.`);return;
+ }
+ if(command.kind==='reject') {
+  const bounty=await bountyStatus(db,work.repoId,issueNumber);if(!bounty||!phase6)throw new AuthError(409,'Review service unavailable.');
+  // A completed decision survives projection failure; retries must not reject the next candidate.
+  const marker=`review-command:${job.id}`;
+  const prior=await db.orm.select({id:bountyActivity.id}).from(bountyActivity).where(and(eq(bountyActivity.bountyId,bounty.id),eq(bountyActivity.action,marker)));
+  if(!prior.length)await phase6.rejectComment(work.actorId,bounty.id,command.reason,job,commentPrNumber);
+  await reply(db,github,env,job,work.installationId,repo,issueNumber,'Submission rejected for award consideration. Evidence and cancellation claims remain preserved; no refund was authorized.');return;
+ }
+ if(command.kind==='approve') {
+  const bounty=await bountyStatus(db,work.repoId,issueNumber);
+  await reply(db,github,env,job,work.installationId,repo,issueNumber,bounty?.status==='NEEDS_REVIEW'?`[Review the full award and submission decision](${new URL('/bounties/'+bounty.id+'/review',env.PUBLIC_URL).href}). Sign in with current write permission. This comment cannot approve or pay a bounty.`:'A funded bounty in NEEDS_REVIEW is required. No money moved.');return;
  }
  if(command.kind==='fund') {
-  const bounty=await bountyStatus(db,work.repoId,work.issueNumber);await reply(db,github,env,job,work.installationId,repo,work.issueNumber,bounty?`[Review funding and checkout status](${new URL('/bounties/'+bounty.id+'/fund',env.PUBLIC_URL).href}). Sign in, review immutable terms and confirm before checkout. This comment cannot move money.`:'Create a bounty draft first.');return;
+  const bounty=await bountyStatus(db,work.repoId,issueNumber);await reply(db,github,env,job,work.installationId,repo,issueNumber,bounty?`[Review funding and checkout status](${new URL('/bounties/'+bounty.id+'/fund',env.PUBLIC_URL).href}). Sign in, review immutable terms and confirm before checkout. This comment cannot move money.`:'Create a bounty draft first.');return;
  }
  if(command.kind==='cancel') {
-  const bounty=await bountyStatus(db,work.repoId,work.issueNumber);
+  const bounty=await bountyStatus(db,work.repoId,issueNumber);
   const text=!bounty?'No bounty exists for this issue.':bounty.status==='CANCELLED'?'This draft is already cancelled. No payment or refund was sent.':bounty.status!=='OPEN'||bounty.captureRequestKey||bounty.captureId||bounty.fundedAt?'This bounty cannot be cancelled as an unfunded draft. Funded cancellation review is not available yet.':`[Review draft cancellation](${new URL('/bounties/'+bounty.id+'/cancel',env.PUBLIC_URL).href}). Sign in and confirm to cancel this unfunded draft. This comment does not cancel it or move money.`;
-  await reply(db,github,env,job,work.installationId,repo,work.issueNumber,text);return;
+  await reply(db,github,env,job,work.installationId,repo,issueNumber,text);return;
  }
- if(command.kind!=='create'){await reply(db,github,env,job,work.installationId,repo,work.issueNumber,command.kind==='invalid'?'Use `/bounty create <USD amount>`, `/bounty status`, or `/bounty cancel`.':'This action is not available yet. No money has moved. Use `/bounty status`.');return;}
+ if(command.kind!=='create'){await reply(db,github,env,job,work.installationId,repo,issueNumber,command.kind==='invalid'?'Use `/bounty create <USD amount>`, `/bounty status`, or `/bounty cancel`.':'This action is not available yet. No money has moved. Use `/bounty status`.');return;}
  let amount:number;
- try{amount=parseUsd(command.amount,env.MAX_BOUNTY_CENTS);}catch{await reply(db,github,env,job,work.installationId,repo,work.issueNumber,'Invalid USD amount: use a positive amount with at most two decimals within the configured bounty limit.');return;}
- await createDraft(db,job,{installation,repo,issueNumber:work.issueNumber,actorId:work.actorId,amountCents:amount,source:work.kind==='run_command'?'command':'label',authorized:true},env.RECONCILIATION_MAX_ATTEMPTS);
+ try{amount=parseUsd(command.amount,env.MAX_BOUNTY_CENTS);}catch{await reply(db,github,env,job,work.installationId,repo,issueNumber,'Invalid USD amount: use a positive amount with at most two decimals within the configured bounty limit.');return;}
+ await createDraft(db,job,{installation,repo,issueNumber:issueNumber,actorId:work.actorId,amountCents:amount,source:work.kind==='run_command'?'command':'label',authorized:true},env.RECONCILIATION_MAX_ATTEMPTS);
 }
 async function markAttention(db:Database,job:LeasedJob) {
  const work=workFor(job);

@@ -1,3 +1,4 @@
+import {createCommentReview} from '../actions/reject.js';
 import { and,desc,eq,isNull } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import { awards,bounties,payoutBatches,submissionEvidence } from '../db/schema.js';
@@ -37,7 +38,7 @@ export function createPhase6(db:Database,github:GitHub,env:FundingEnv,provider:P
   },
  });
  let lastTick=0,lastSettlementTick=0;
- return {retryClaims:payouts.retryClaims,settleBounty:(id:string)=>settlement.settleBounty(id),async tick(){
+ return {rejectComment:createCommentReview(db,github,env).rejectComment,retryClaims:payouts.retryClaims,settleBounty:(id:string)=>settlement.settleBounty(id),async tick(){
   const now=Date.now();if(now-lastTick<60000/env.RECONCILIATION_RATE_PER_MIN)return;lastTick=now;
   await payouts.tick();
   const [claim]=await db.orm.select({id:awards.id,bountyId:awards.bountyId}).from(awards).leftJoin(payoutBatches,eq(payoutBatches.awardId,awards.id)).innerJoin(bounties,eq(bounties.id,awards.bountyId)).where(and(isNull(payoutBatches.id),eq(bounties.fundingHold,false))).orderBy(bounties.updatedAt,awards.id).limit(1);

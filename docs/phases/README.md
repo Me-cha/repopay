@@ -2,6 +2,8 @@
 
 **Status (October 30, 2026):** Phases 0, 1 and 4 have recorded completion evidence. Phase 2 retains a deferred live revocation check; Phase 3 has a real capture with receipt/recovery gates open. Phase 5 Auto v2 passed its 18/18 live evaluation; the funded competing-PR/retry walkthrough remains incomplete (ADR 0007). Phase 6 has local policy, award selection, payout reconciliation and delayed claims; automatic selection is enabled only for the existing $50 isolated sandbox demo under ADR 0008, with remaining Phase 5 checks deferred and the first Phase 6 sandbox payout successful and delayed-claim/two-author live acceptance outstanding. See [review findings](../evidence/00-05-review.md) and [Phase 6 evidence](../evidence/06-summary.md).
 
+**Execution order:** Finish local work first; run remaining live walkthroughs together at the end, per user direction. [Final live checklist](live-walkthroughs.md) tracks the deferred cases and blockers. Local completion is not live acceptance.
+
 This is the execution plan for the MVP described in [IMPLEMENTATION_PLAN.md](../../IMPLEMENTATION_PLAN.md). It breaks the existing design into **13 phases and 57 reviewable tasks**, including negative paths and operations. The [cancellation decision](../decisions/0001-open-participation-and-cancellation.md) remains the accepted product policy. The refinements below are the accepted pre-build contract and are reconciled into the master architecture.
 
 ## What the MVP delivers
@@ -199,3 +201,5 @@ These checks inform the design; they do not prove an integration is configured:
 - [x] We agree on the first implementation slice: Phase 00, with external capability evidence clearly separated from local checks. Authorized October 26, 2026.
 
 The original plan review is tracked in [review-todo.md](review-todo.md). The October 30 implementation review and unresolved gates are tracked in [review evidence](../evidence/00-05-review.md). The user authorized local implementation through Phase 12; phase completion still requires the stated evidence.
+
+Phase 7 maintainer review is implemented locally with a shared award guard, exact confirmation and immutable rejection history. Live acceptance remains pending; see [Phase 7 evidence](../evidence/07-summary.md).

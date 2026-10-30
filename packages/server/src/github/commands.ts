@@ -1,5 +1,5 @@
 import { cents } from '../domain/types.js';
-export type Command = { kind: 'create'; amount: string } | { kind: 'status' } | { kind: 'cancel' } | {kind:'fund'} | {kind:'link';prNumber:number} | { kind: 'unavailable' } | { kind: 'invalid' };
+export type Command = { kind: 'create'; amount: string } | { kind: 'status' } | { kind: 'cancel' } | {kind:'fund'} | {kind:'approve';issueNumber?:number} | {kind:'reject';reason:string;issueNumber?:number} | {kind:'link';prNumber:number} | { kind: 'unavailable' } | { kind: 'invalid' };
 export function parseCommand(body: string): Command | null {
   let fence: string | undefined;
   for (const raw of body.split(/\r?\n/)) {
@@ -10,6 +10,8 @@ export function parseCommand(body: string): Command | null {
     const create = /^\/bounty create ([^\s]+)$/i.exec(line);
     if (create?.[1]) return /^\d{1,9}(?:\.\d{1,2})?$/.test(create[1]) ? { kind: 'create', amount: create[1] } : { kind: 'invalid' };
     if (/^\/bounty status$/i.test(line)) return { kind: 'status' };
+    const approve=/^\/bounty approve(?: #([1-9]\d{0,8}))?$/i.exec(line);if(approve)return {kind:'approve',...(approve[1]?{issueNumber:Number(approve[1])}:{})};
+    const reject=/^\/bounty reject(?: #([1-9]\d{0,8}))? (.{1,2000})$/i.exec(line);if(reject?.[2])return {kind:'reject',reason:reject[2],...(reject[1]?{issueNumber:Number(reject[1])}:{})};
     if (/^\/bounty fund$/i.test(line)) return {kind:'fund'};
     const link = /^\/bounty link ([1-9]\d{0,8})$/i.exec(line);if(link?.[1])return {kind:'link',prNumber:Number(link[1])};
     if (/^\/bounty cancel$/i.test(line)) return { kind: 'cancel' };

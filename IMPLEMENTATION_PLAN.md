@@ -312,7 +312,7 @@ GitPay/
 │  │  ├─ paypal/{client.ts,orders.ts,payouts.ts,refunds.ts,webhooks.ts,status-map.ts}
 │  │  ├─ verifier/{collect.ts,prompt.ts,schema.ts,verify.ts,service.ts,evaluation.ts,evaluate.ts}
 │  │  ├─ policy/{decide.ts,allocate.ts}
-│  │  ├─ settlement/{funding.ts,claims.ts,candidates.ts,settle.ts,payout.ts,service.ts,profile.ts,refund.ts}
+│  │  ├─ settlement/{funding.ts,claims.ts,candidates.ts,settle.ts,payout.ts,service.ts,profile.ts,award.ts,refund.ts}
 │  │  ├─ http/{routes.ts,confirm.ts,fund.ts,connect.ts,retry.ts,sponsor.ts,auth.ts,session.ts,api.ts,sse.ts}
 │  │  ├─ domain/{types.ts,funded-terms.ts}
 │  │  ├─ cancellation/{evidence.ts,authorization.ts}
@@ -1165,3 +1165,8 @@ Confirmation and logout forms use same-origin CORS-mode fetch, retaining strict 
 ### Phase 3 implementation refinement
 
 [ADR 0004](docs/decisions/0004-funding-recovery.md) specifies the implemented funding adapter and conservative recovery. It supersedes the earlier route/reference examples: use `/bounties/:id/fund`, `/fund/a/:token`, and `/bounties/:id/funding/:attempt/{return,cancel}`; reference the historical attempt as `gitpay:<attemptId>` with its terms hash as `custom_id`. `funding_attempts.checkout_origin` freezes callback URLs across retries. `funding_hold` on the bounty is authoritative for later disbursement gates. Declined/failed capture attempts remain reserved for investigation instead of returning automatically to OPEN. Provider economics are retained in the durable funded activity, separate from gross promised principal. The transaction exception convention extends to `prepareFunding`/`confirmFunding`; error-valued transactions do not commit partial state.
+
+
+Phase 7 implementation uses immutable `awards` plus append-only `review_decisions` for the conceptual decision model. `actions/approve.ts` owns preview/token/decision logic, `actions/reject.ts` owns the comment authorization adapter, `http/review.ts` owns browser review, and `settlement/award.ts` shares the final guard with automatic settlement. See [ADR 0009](docs/decisions/0009-maintainer-review-records.md); phase progress remains in the numbered phase documents.
+
+Deferred final live validation is tracked in [the live walkthrough checklist](docs/phases/live-walkthroughs.md). This scheduling record supplements numbered phase acceptance requirements; it does not waive them.

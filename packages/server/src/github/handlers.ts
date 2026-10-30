@@ -39,9 +39,10 @@ function normalize(event: string, input: unknown, occurrence: string, ownAppId='
  }
  if (event==='issue_comment' && b.action==='created') {
   const v=z.object({issue:z.object({number:z.number().int().positive(),pull_request:z.unknown().optional()}),comment:z.object({id:apiId,body:z.string().max(65536),user:z.object({id:apiId,type:z.string()})})}).parse(input);
-  if (v.comment.user.type!=='User' || v.issue.pull_request || !b.repository) return null;
+  if (v.comment.user.type!=='User' || !b.repository) return null;
   const command=parseCommand(v.comment.body); if (!command) return null;
-  return {kind:'run_command',installationId:b.installation.id,repoId:b.repository.id,issueNumber:v.issue.number,commentId:v.comment.id,actorId:v.comment.user.id,command};
+  if(v.issue.pull_request&&!['approve','reject'].includes(command.kind))return null;
+  return {kind:'run_command',installationId:b.installation.id,repoId:b.repository.id,issueNumber:v.issue.number,...(v.issue.pull_request?{isPullRequest:true}:{}),commentId:v.comment.id,actorId:v.comment.user.id,command};
  }
  if (event==='issues' && b.action==='labeled') {
   const v=z.object({issue:z.object({number:z.number().int().positive(),pull_request:z.unknown().optional()}),label:z.object({name:z.string()}),sender:z.object({id:apiId,type:z.string()})}).parse(input);

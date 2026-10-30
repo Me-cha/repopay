@@ -10,3 +10,9 @@ it('parses exact cents and first nonquoted noncode line', () => {
  expect(parseLabel('bounty:$50.00')).toBe('50.00');
 });
 it.each(['-1','0','1.001','1e2','NaN','Infinity','10000000','1.2x'])('rejects invalid amount %s', value => { expect(() => parseUsd(value,10000)).toThrow(); });
+
+it('review commands bind optional issue identity and require a rejection reason',()=>{
+ expect(parseCommand('/bounty approve #12')).toEqual({kind:'approve',issueNumber:12});
+ expect(parseCommand('/bounty reject #12 Missing required behavior')).toEqual({kind:'reject',issueNumber:12,reason:'Missing required behavior'});
+ expect(parseCommand('/bounty reject')).toEqual({kind:'unavailable'});
+});

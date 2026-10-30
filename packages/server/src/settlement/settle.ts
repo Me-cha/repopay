@@ -1,9 +1,9 @@
+import {commitAward,orderedCandidates} from './award.js';
 import { createHash } from 'node:crypto';
 import { buildVerifierPrompt,PROMPT_VERSION } from '../verifier/prompt.js';
-import { and,desc,eq,sql } from 'drizzle-orm';
+import { desc,eq } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
-import { awards,bounties,bountyActivity,copilotSponsors,submissions,submissionEvidence,verifications,type Bounty } from '../db/schema.js';
-import { enqueue } from '../jobs/queue.js';
+import { awards,bounties,copilotSponsors,submissions,submissionEvidence,verifications,type Bounty } from '../db/schema.js';
 import { lockBounty,assertInstallation } from '../actions/guards.js';
 import { decide } from '../policy/decide.js';
 import { verdictSchema } from '../verifier/schema.js';
@@ -32,7 +32,7 @@ export function createSettlement(db:Database,deps:SettlementDependencies) {
    if(!scan.complete)return hold('Candidate scan incomplete; no award selected');
    const rows=await tx.select().from(submissions).where(eq(submissions.bountyId,bountyId));
    if(scan.bountyVersion!==bounty.version||candidateFingerprint(rows)!==scan.hash)return hold('Candidate evidence changed; reconcile again');
-   const merged=rows.filter(r=>r.status==='MERGED'&&r.mergedAt).sort((a,b)=>(a.mergedAt?.getTime()??0)-(b.mergedAt?.getTime()??0)||(BigInt(a.prId)<BigInt(b.prId)?-1:1));
+   const merged=await orderedCandidates(tx,rows,scan);
    const existing=savedAward;
    if(existing){const winner=merged[0];if(winner&&winner.id!==existing.submissionId&&((winner.mergedAt?.getTime()??Infinity)<existing.mergedAt.getTime()||((winner.mergedAt?.getTime()??Infinity)===existing.mergedAt.getTime()&&BigInt(winner.prId)<BigInt(rows.find(r=>r.id===existing.submissionId)?.prId??winner.prId))))await hold('Earlier merged candidate discovered after award; independent investigation required');return {kind:'awarded' as const,award:existing};}
    if(!['FUNDED','NEEDS_REVIEW'].includes(bounty.status)||!bounty.captureId||!bounty.fundedAt)return hold('Confirmed captured funding required');
@@ -49,11 +49,7 @@ export function createSettlement(db:Database,deps:SettlementDependencies) {
    const verdict=verdictSchema.safeParse(review.result);if(!verdict.success)return hold('Earliest merged submission has invalid review output');
    const decision=decide({bountyCents:bounty.amountCents,verdict:verdict.data,ci:fresh.ci.status,eligible:new Map(fresh.eligibleAuthors.filter(a=>a.ghId!==bounty.createdByGhId).map(a=>[a.ghId,a.login])),evidence:{truncated:fresh.truncated,sufficient:fresh.sufficient,stale:fresh.headSha!==candidate.headSha||fresh.baseSha!==candidate.baseSha||fresh.ci.testedSha!==candidate.headSha},cfg:terms.policy});
    if(decision.kind==='review'){await tx.update(bounties).set({status:'NEEDS_REVIEW'}).where(eq(bounties.id,bountyId));return hold(decision.reason);}
-   const [award]=await tx.insert(awards).values({bountyId,submissionId:candidate.id,evidenceId:evidence.id,verificationId:review.id,headSha:candidate.headSha,baseSha:candidate.baseSha,mergeSha:candidate.mergeSha,mergedAt:candidate.mergedAt,scanHash:scan.hash,amountCents:bounty.amountCents,allocation:decision.allocation}).returning();
-   if(!award)throw new Error('Award was not saved');
-   await tx.update(bounties).set({status:'AWAITING_CLAIM',version:sql`${bounties.version}+1`,needsAttention:false,attentionReason:null,updatedAt:new Date()}).where(and(eq(bounties.id,bountyId),eq(bounties.version,bounty.version)));
-   await tx.insert(bountyActivity).values({bountyId,source:'policy',action:'award_committed',metadata:{awardId:award.id,submissionId:candidate.id,amountCents:award.amountCents}});
-   await enqueue(tx,{kind:'sync_bounty',payload:{bountyId},dedupeKey:`award:${award.id}`,maxAttempts:5});
+   const award=await commitAward(tx,bounty,scan,candidate,evidence.id,review.id,decision.allocation);
    return {kind:'awarded' as const,award};
   });
  }};

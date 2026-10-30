@@ -126,3 +126,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Product behavior, credentials and integr
 [MIT](LICENSE), as selected in the implementation plan.
 
 The runtime uses repository-owner-sponsored Copilot Auto in v4 funded terms, preserving legacy terms and recording the concrete serving model for each review ([ADR 0007](docs/decisions/0007-copilot-auto-model.md)). Reviews remain advisory pending accepted live evaluation and settlement implementation. Organization sponsorship and complete sponsor-revocation handling remain open. SDK usage units and attempt caps do not provide a monetary budget.
+
+Phase 7 maintainer review is implemented locally with a shared award guard, exact confirmation and immutable rejection history. Live acceptance remains pending; see [Phase 7 evidence](docs/evidence/07-summary.md).
+
+Remaining live walkthroughs are deferred to the final validation session after local implementation, per user direction. See the [live checklist](docs/phases/live-walkthroughs.md) for outstanding cases and prerequisites.

@@ -6,7 +6,7 @@ import { githubId,type ActorContext } from '../domain/types.js';
 import { AuthError,type AuthService,type Session } from '../github/oauth.js';
 import type { GitHub } from '../github/app.js';
 import { currentAccess } from '../github/permissions.js';
-export type ActionKind='read'|'cancel_draft'|'fund';
+export type ActionKind='read'|'cancel_draft'|'fund'|'review';
 export async function authorizeAction(auth:AuthService,github:GitHub,session:Session,bounty:Bounty,action:ActionKind):Promise<ActorContext> {
  try {
   await currentAccess(github,bounty.installationId,bounty.repoId);

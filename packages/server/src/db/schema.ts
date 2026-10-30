@@ -89,7 +89,7 @@ export const actionTokens = pgTable('action_tokens', {
  bountyVersion:integer('bounty_version').notNull(),requestedByGhId:stringBigint('requested_by_gh_id').notNull(),
  expiresAt:timestamp('expires_at',{withTimezone:true}).notNull(),usedAt:timestamp('used_at',{withTimezone:true}),usedByGhId:stringBigint('used_by_gh_id'),
  createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
-},t=>[check('action_kind_check',sql`${t.action} in ('cancel_draft','fund')`)]);
+},t=>[check('action_kind_check',sql`${t.action} in ('cancel_draft','fund','approve')`)]);
 
 export const fundingAttempts=pgTable('funding_attempts',{
  id:stringSerial('id').primaryKey(),bountyId:stringBigint('bounty_id').notNull().references(()=>bounties.id),attemptNumber:integer('attempt_number').notNull(),actorGhId:stringBigint('actor_gh_id').notNull(),
@@ -115,3 +115,7 @@ export const payoutBatches=pgTable('payout_batches',{
 export const payoutItems=pgTable('payout_items',{
  id:stringSerial('id').primaryKey(),batchId:stringBigint('batch_id').notNull().references(()=>payoutBatches.id),awardId:stringBigint('award_id').notNull().references(()=>awards.id),ghId:stringBigint('gh_id').notNull(),amountCents:integer('amount_cents').notNull(),senderItemId:text('sender_item_id').notNull().unique(),destinationEnc:text('destination_enc').notNull(),connectionVersion:integer('connection_version').notNull(),providerItemId:text('provider_item_id').unique(),status:text('status').notNull().default('RESERVED'),updatedAt:timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
 },t=>[uniqueIndex('one_payout_per_award_recipient').on(t.awardId,t.ghId),check('payout_item_amount_check',sql`${t.amountCents}>0`)]);
+
+export const reviewDecisions=pgTable('review_decisions',{
+ id:stringSerial('id').primaryKey(),bountyId:stringBigint('bounty_id').notNull().references(()=>bounties.id),submissionId:stringBigint('submission_id').notNull().references(()=>submissions.id),kind:text('kind').notNull(),actorGhId:stringBigint('actor_gh_id').notNull(),reason:text('reason').notNull(),headSha:text('head_sha').notNull(),baseSha:text('base_sha').notNull(),mergeSha:text('merge_sha').notNull(),snapshotHash:text('snapshot_hash').notNull(),evidenceId:stringBigint('evidence_id').notNull().references(()=>submissionEvidence.id),verificationId:stringBigint('verification_id').notNull().references(()=>verifications.id),awardId:stringBigint('award_id').references(()=>awards.id),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
+});
