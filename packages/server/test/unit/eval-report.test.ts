@@ -31,3 +31,12 @@ describe('verifier evaluation report',()=>{
   expect(report.liveEvidenceComplete).toBe(false);
  });
 });
+it('accepts Auto evaluation only with concrete serving-model provenance for every run',()=>{
+ const observations=cases.map(test=>({caseId:test.id,attempts:attempts(test.expected).map(row=>({...row,model:'serving-model'}))}));
+ expect(summarizeEvaluation({model:'auto',promptVersion:'p1',sdkVersion:'1.0.28',cases,observations}).passed).toBe(true);
+ expect(summarizeEvaluation({model:'auto',promptVersion:'p1',sdkVersion:'1.0.28',cases,observations:cases.map(test=>({caseId:test.id,attempts:attempts(test.expected)}))}).passed).toBe(false);
+ expect(summarizeEvaluation({model:'auto',promptVersion:'p1',sdkVersion:'1.0.28',cases,observations:observations.map(row=>({...row,attempts:row.attempts.map(a=>({...a,model:'auto'}))}))}).passed).toBe(false);
+});
+it('cannot pass an empty evaluation suite',()=>{
+ expect(summarizeEvaluation({model:'fixed',promptVersion:'p1',sdkVersion:'1',cases:[],observations:[]}).passed).toBe(false);
+});

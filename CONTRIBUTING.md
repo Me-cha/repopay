@@ -35,3 +35,5 @@ Phase 1 worker commands: `pnpm dev:worker` and `pnpm start:worker` (after build)
 For stable local GitHub OAuth and webhook callbacks, set the account-assigned `NGROK_DOMAIN` and matching HTTPS `PUBLIC_URL`, then run `pnpm tunnel` beside `pnpm dev`. See [stable local tunnel setup](docs/setup.md#stable-local-tunnel).
 
 Copilot tests inject a fake runtime; they do not spend credits. Live SDK generation needs an explicitly consenting sponsor credential and selected model. Keep prior provider evidence historical, and never rewrite saved funded terms when changing providers.
+
+`pnpm eval:verifier` is report-only by default. The opt-in `--live --repo-id <id> --output <new-file> --allow-18-requests` mode uses the stored repository sponsor and consumes up to 18 requests only after explicit budget approval. It runs synthetic evidence through the application adapter and does not publish or pay. See [bounded live evaluation](docs/setup.md#bounded-live-auto-evaluation). Never count fixture catalog readiness as a live evaluation pass.

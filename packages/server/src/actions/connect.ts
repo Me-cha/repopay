@@ -6,6 +6,7 @@ import { AuthError } from '../github/oauth.js';
 import { contributors } from '../db/schema.js';
 import { decrypt, encrypt } from '../util/crypto.js';
 import { enqueue } from '../jobs/queue.js';
+import { assertSession } from './guards.js';
 
 const emailSchema=z.email().trim().max(254);
 const context=(ghId:string)=>`contributor:${ghId}:paypal-email:v1`;
@@ -23,6 +24,8 @@ export async function connectContributor(db:Database,session:Session,input:{payp
  const parsed=emailSchema.safeParse(input.paypalEmail);if(!parsed.success)throw new AuthError(400,'Enter a valid PayPal email address.');const paypalEmail=parsed.data;
  let saved:typeof contributors.$inferSelect|undefined;
  await db.withTransaction(async tx=>{
+  const stored=await assertSession(tx,session,now());
+  if(stored.expiresAt<=now())throw new AuthError();
   const [row]=await tx.insert(contributors).values({ghId:session.ghId,ghLogin:session.ghLogin,paypalEmailEnc:encrypt(paypalEmail,key,context(session.ghId)),connectionVersion:1,updatedAt:now()}).onConflictDoUpdate({target:contributors.ghId,set:{ghLogin:session.ghLogin,paypalEmailEnc:encrypt(paypalEmail,key,context(session.ghId)),connectionVersion:sql`${contributors.connectionVersion}+1`,updatedAt:now()}}).returning();
   if(!row)throw new Error('Contributor connection was not saved');saved=row;
   await enqueue(tx,{kind:'retry_claims',payload:{ghId:session.ghId,connectionVersion:row.connectionVersion},dedupeKey:`claims:${session.ghId}:${String(row.connectionVersion)}`,maxAttempts:5});

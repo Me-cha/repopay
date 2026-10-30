@@ -1,7 +1,8 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import type { Database } from '../db/client.js';
-import { deliveries } from '../db/schema.js';
+import { eq,sql } from 'drizzle-orm';
+import { deliveries,copilotSponsors,sessions } from '../db/schema.js';
 import { enqueue } from '../jobs/queue.js';
 import { parseCommand, parseLabel } from './commands.js';
 import type { Work } from '../jobs/kinds.js';
@@ -53,11 +54,23 @@ export async function ingestGitHub(db: Database, secret: string, maxAttempts: nu
  if (!/^sha256=[a-f0-9]{64}$/.test(headers.signature) || !/^[\w-]{1,128}$/.test(headers.deliveryId)) throw new WebhookError(401);
  const expected=createHmac('sha256',secret).update(raw).digest();
  if (!timingSafeEqual(expected,Buffer.from(headers.signature.slice(7),'hex'))) throw new WebhookError(401);
- let work: Work | null;
- try { work=normalize(headers.event,JSON.parse(raw.toString('utf8')),headers.deliveryId,ownAppId); } catch { throw new WebhookError(400); }
+ let work: Work | null;let revokedUser:string|undefined;
+ try {
+  const input:unknown=JSON.parse(raw.toString('utf8'));
+  if(headers.event==='github_app_authorization'){
+   const value=z.object({action:z.literal('revoked'),sender:z.object({id:apiId})}).parse(input);
+   revokedUser=value.sender.id;work=null;
+  }else work=normalize(headers.event,input,headers.deliveryId,ownAppId);
+ } catch { throw new WebhookError(400); }
  return db.withTransaction(async tx => {
   const inserted=await tx.insert(deliveries).values({source:'github',deliveryId:headers.deliveryId}).onConflictDoNothing().returning();
   if (!inserted.length) return {duplicate:true};
+  if(revokedUser){
+   // Invalidate immediately with the signed delivery receipt, before another
+   // worker can start using the revoked user grant. Keep financial history.
+   await tx.delete(sessions).where(eq(sessions.ghId,revokedUser));
+   await tx.update(copilotSponsors).set({revokedAt:sql`now()`,tokenGeneration:sql`${copilotSponsors.tokenGeneration}+1`,updatedAt:sql`now()`}).where(eq(copilotSponsors.sponsorGhId,revokedUser));
+  }
   if (work) {
    const key=work.kind==='run_command'?`cmd:${work.commentId}`:`github:${headers.deliveryId}`;
    await enqueue(tx,{kind:work.kind,payload:work,dedupeKey:key,maxAttempts});

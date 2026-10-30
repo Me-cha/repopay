@@ -310,7 +310,7 @@ GitPay/
 │  │  ├─ github/{app.ts,handlers.ts,commands.ts,linking.ts,reconciliation.ts,checks.ts,comments.ts,permissions.ts,oauth.ts}
 │  │  ├─ actions/{create.ts,fund.ts,cancel.ts,cancellation-review.ts,approve.ts,reject.ts,link.ts,retry.ts,status.ts,guards.ts,tokens.ts,activity.ts}
 │  │  ├─ paypal/{client.ts,orders.ts,payouts.ts,refunds.ts,webhooks.ts,status-map.ts}
-│  │  ├─ verifier/{collect.ts,prompt.ts,schema.ts,verify.ts,service.ts,evaluation.ts}
+│  │  ├─ verifier/{collect.ts,prompt.ts,schema.ts,verify.ts,service.ts,evaluation.ts,evaluate.ts}
 │  │  ├─ policy/{decide.ts,allocate.ts}
 │  │  ├─ settlement/{funding.ts,claims.ts,settle.ts,payout.ts,refund.ts}
 │  │  ├─ http/{routes.ts,confirm.ts,fund.ts,connect.ts,retry.ts,sponsor.ts,auth.ts,session.ts,api.ts,sse.ts}

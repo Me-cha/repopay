@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { and, eq, gt, isNull } from 'drizzle-orm';
+import { and, eq, gt, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { z } from 'zod';
 import type { Database } from '../db/client.js';
@@ -98,7 +98,7 @@ export function createAuth(db:Database,env:AuthEnv,provider:OAuthProvider=create
    accessTokenEnc:encrypt(input.token.accessToken,env.TOKEN_ENC_KEY,id+':copilot-access'),refreshTokenEnc:encrypt(input.token.refreshToken,env.TOKEN_ENC_KEY,id+':copilot-refresh'),
    accessExpiresAt:new Date(now.getTime()+input.token.expiresIn*1000),refreshExpiresAt:new Date(now.getTime()+input.token.refreshExpiresIn*1000),tokenGeneration:0,
    modelId:input.modelId,modelVerifiedAt:now,revokedAt:null,updatedAt:now};
-  await db.orm.insert(copilotSponsors).values(values).onConflictDoUpdate({target:copilotSponsors.repoId,set:values});
+  await db.orm.insert(copilotSponsors).values(values).onConflictDoUpdate({target:copilotSponsors.repoId,set:{...values,tokenGeneration:sql`${copilotSponsors.tokenGeneration}+1`}});
  }
  async function revokeCopilotSponsor(repoId:string) {await db.orm.update(copilotSponsors).set({revokedAt:clock.now(),updatedAt:clock.now()}).where(eq(copilotSponsors.repoId,repoId));}
  async function getCopilotSponsor(repoId:string) {

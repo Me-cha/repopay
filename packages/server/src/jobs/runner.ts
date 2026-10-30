@@ -1,10 +1,13 @@
 import type { FundingService } from '../settlement/funding.js';
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, sql, isNull, or } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import type { GitHubRuntimeEnv } from '../env.js';
 import type { GitHub } from '../github/app.js';
+import { createLogger } from '../log.js';
+import { GitHubError } from '../github/app.js';
+import { AuthError } from '../github/oauth.js';
 import { currentAccess } from '../github/permissions.js';
 import { parseUsd } from '../github/commands.js';
 import { reply, syncBounty } from '../github/comments.js';
@@ -19,14 +22,14 @@ export interface Phase5Jobs {
  syncPullRequest:(installationId:string,repoId:string,prNumber:number)=>Promise<void>;
  refreshVerificationSha:(installationId:string,repoId:string,sha:string)=>Promise<void>;
  manualLink:(installationId:string,repoId:string,issueNumber:number,prNumber:number)=>Promise<void>;
- verifySubmission:(submissionId:string,headSha:string,force?:boolean)=>Promise<void>;
+ verifySubmission:(submissionId:string,headSha:string,force?:boolean,lease?:LeasedJob)=>Promise<void>;
 }
 export async function handleJob(db:Database,github:GitHub,env:GitHubRuntimeEnv,job:LeasedJob,funding?:FundingService,phase5?:Phase5Jobs):Promise<void> {
  const work=workFor(job);
  if(work.kind==='retry_claims'){await retryClaims(work.ghId,work.connectionVersion);return;}
  if(work.kind==='sync_pull_request'){if(!phase5)throw new Error('Submission worker unavailable');await phase5.syncPullRequest(work.installationId,work.repoId,work.prNumber);return;}
  if(work.kind==='refresh_verification_sha'){if(!phase5)throw new Error('Verification worker unavailable');await phase5.refreshVerificationSha(work.installationId,work.repoId,work.sha);return;}
- if(work.kind==='verify_submission'){if(!phase5)throw new Error('Verification worker unavailable');await phase5.verifySubmission(work.submissionId,work.headSha,work.force);return;}
+ if(work.kind==='verify_submission'){if(!phase5)throw new Error('Verification worker unavailable');await phase5.verifySubmission(work.submissionId,work.headSha,work.force,job);return;}
  if(work.kind==='reconcile_funding'){if(!funding)throw new Error('Funding worker unavailable');await funding.reconcile(work.attemptId);return;}
  if(work.kind==='sync_bounty'){await syncBounty(db,github,env,job,work.bountyId);return;}
  if(work.kind==='refresh_installation') {
@@ -87,9 +90,10 @@ async function markAttention(db:Database,job:LeasedJob) {
  await db.withTransaction(async tx=>{
   await assertLease(tx,job);
   if(work.kind==='verify_submission'){
+   if(job.attempts<job.maxAttempts)return;
    const [submission]=await tx.select().from(submissions).where(eq(submissions.id,work.submissionId));
-   if(!submission)return;
-   const changed=await tx.update(bounties).set({needsAttention:true,attentionReason:REVIEW_UNAVAILABLE_REASON,updatedAt:sql`now()`}).where(eq(bounties.id,submission.bountyId)).returning({id:bounties.id});
+   if(!submission||submission.headSha!==work.headSha)return;
+   const changed=await tx.update(bounties).set({needsAttention:true,attentionReason:REVIEW_UNAVAILABLE_REASON,updatedAt:sql`now()`}).where(and(eq(bounties.id,submission.bountyId),eq(bounties.fundingHold,false),or(isNull(bounties.attentionReason),eq(bounties.attentionReason,REVIEW_UNAVAILABLE_REASON)))).returning({id:bounties.id});
    const [affected]=changed;
    if(affected)await tx.insert(bountyActivity).values({bountyId:affected.id,source:'worker',action:'verification_job_failed',metadata:{jobId:job.id}});
    return;
@@ -103,7 +107,7 @@ export async function runOnce(db:Database,github:GitHub,env:GitHubRuntimeEnv,own
  const job=await claimJob(db,owner,env.JOB_LEASE_SEC);if(!job)return false;
  const timer=setInterval(()=>{void heartbeat(db,job,env.JOB_LEASE_SEC).catch(()=>false);},Math.max(100,Math.floor(env.JOB_LEASE_SEC*1000/3)));
  try{await handleJob(db,github,env,job,funding,phase5);await finishJob(db,job);}
- catch{await markAttention(db,job).catch(()=>undefined);await finishJob(db,job,true);}
+ catch(error){createLogger(env).warn({event:'job_failed',jobId:job.id,kind:job.kind,attempt:job.attempts,maxAttempts:job.maxAttempts,failureClass:error instanceof GitHubError?'GITHUB_ACCESS_OR_PROVIDER':error instanceof AuthError?'AUTHORIZATION':'OPERATION_UNAVAILABLE',...((error instanceof GitHubError||error instanceof AuthError)?{httpStatus:error.status}:{})});await markAttention(db,job).catch(()=>undefined);await finishJob(db,job,true);}
  finally{clearInterval(timer);}return true;
 }
 export function startWorker(db:Database,github:GitHub,env:GitHubRuntimeEnv,onError:()=>void=()=>{},funding?:FundingService,phase5?:Phase5Jobs) {

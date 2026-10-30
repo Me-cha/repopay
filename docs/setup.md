@@ -179,3 +179,25 @@ For PR linking and GitPay Check Runs, update the GitHub App repository permissio
 When a PR body/title refers to a funded issue, GitPay stores it as a candidate. Contributors can also comment `/bounty link <PR number>` on the bounty issue. Multiple PRs remain eligible. A verifier Check Run is neutral and advisory; it never selects an award or authorizes payment. Verification links return to a GitHub-maintainer-only retry page. Status events trigger a fresh Checks API read, but commit-status records are not themselves accepted as trusted required CI in this implementation; configure required CI with successful external Check Runs and their producing App IDs.
 
 The live GitHub App permission update, contributor browser walkthrough, fixed-model Copilot inference, organization sponsor onboarding and semantic evaluation have not been verified. Owner-sponsored `gpt-6-luna` is required for new funded terms; the operator's local probe token is never a customer fallback. `pnpm eval:verifier` validates fixtures/report shape only unless a redacted real-run observation file is provided with `--report`; SDK usage totals are Copilot billing units, not currency, and GitHub billing settings remain the monetary control.
+
+### Bounded live Auto evaluation
+
+First connect the personal repository owner's separate sponsor grant at `/bounties/{id}/copilot-sponsor`. A historical probe token in `.env` is not a substitute. Report-only `pnpm eval:verifier` makes no provider calls. With explicit approval to consume up to 18 sponsor requests, use a new output filename:
+
+```sh
+mkdir -p .local/evaluations
+pnpm eval:verifier --live --repo-id <stable-repository-id> \
+  --output .local/evaluations/auto-run-001.json --allow-18-requests
+pnpm eval:verifier --report .local/evaluations/auto-run-001.json
+```
+
+Live mode verifies current repository ownership/App access, uses the stored sponsor, and runs three requests per fixture through the application adapter. It creates no payments or GitHub comments/checks. Every completed observation is synced to a private file; an existing output file is refused. A provider failure stops the run without retrying. Partial output is not a pass, and starting a new run needs a new approved budget because failed calls may consume allowance. Auto's concrete serving model, result, elapsed time and usage totals are retained. Report validation also requires current prompt/SDK versions.
+
+Inspect connection metadata without printing credentials:
+
+```sh
+docker compose exec -T postgres psql -U gitpay -d gitpay -c \
+"SELECT sponsor_login, model_id, CASE WHEN revoked_at IS NOT NULL THEN 'disconnected' WHEN refresh_expires_at <= now() THEN 'reconnect required' ELSE 'connected' END AS status FROM copilot_sponsors;"
+```
+
+Zero rows means no saved grant. A connected row is local state, not proof that GitHub still accepts the token; live requests revalidate access. User-authorization revocation is processed immediately from signed GitHub webhooks; duplicate deliveries cannot revoke a later reconnected grant. Delayed first-time revocation deliveries conservatively require reconnection. Organization sponsorship remains blocked until its separate onboarding and acceptance are implemented.

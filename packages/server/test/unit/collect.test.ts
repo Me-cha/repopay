@@ -32,3 +32,12 @@ it('rejects a head SHA change during collection rather than attributing old chec
  await expect(collectVerification({github:f.api,env:f.env,installationId:'1',repo,bounty:f.bounty,submission:linked.submission,terms:f.terms,expectedHeadSha:'a'.repeat(40)})).rejects.toThrow(/revision changed/);
  expect(f.api.pullRequestFiles).not.toHaveBeenCalled();
 });
+it('uses the funded diff limit even when runtime configuration later changes',async()=>{
+ f=await intentFixture();const linked=await linkPr(f.database,f.bounty,pr());
+ vi.mocked(f.api.pullRequest).mockResolvedValue(pr());
+ vi.mocked(f.api.pullRequestFiles).mockResolvedValue({files:[{filename:'src/parser.ts',status:'modified',additions:1,deletions:0,patch:'x'.repeat(500)}],complete:true});
+ const repo=await f.api.repository('1','2');
+ const terms=structuredClone(f.terms);terms.policy.maxDiffChars=100;
+ const collected=await collectVerification({github:f.api,env:{...f.env,MAX_DIFF_CHARS:1000},installationId:'1',repo,bounty:f.bounty,submission:linked.submission,terms,expectedHeadSha:'a'.repeat(40)});
+ expect(collected.diff).toHaveLength(100);expect(collected.truncated).toBe(true);expect(collected.sufficient).toBe(false);
+});

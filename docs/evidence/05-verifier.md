@@ -1,8 +1,8 @@
 # Phase 5 verifier evaluation status
 
-**Status: a non-payment Auto prototype was evaluated; accepted fixed-model verifier evaluation has not been run.** The Auto observations below are not a Phase 5 pass and do not authorize funded use.
+**Current status (October 30, 2026): Copilot Auto is the accepted profile under ADR 0007. Application-adapter evaluation has not passed.** The historical non-payment pilot below matched 14/18 verdicts and omitted required usage metrics; it is not a Phase 5 pass. The report validator now accepts Auto only when every run identifies its concrete serving model.
 
-The fixture set at `packages/server/test/fixtures/verifier/cases.json` contains six cases: full fix, partial fix, fake-test fix, instruction injection, unrelated change, and insufficient/truncated evidence. The acceptance contract requires three observations per case (18 total) under one explicitly approved fixed Copilot model/profile.
+The fixture set at `packages/server/test/fixtures/verifier/cases.json` contains six cases: full fix, partial fix, fake-test fix, instruction injection, unrelated change, and insufficient/truncated evidence. The acceptance contract requires three observations per case (18 total) under the accepted Auto profile, recording the concrete serving model for every run.
 
 `pnpm eval:verifier` validates the fixture catalog and prints the required case/run matrix. To validate a redacted observation file, run:
 
@@ -14,23 +14,23 @@ The observation file shape is:
 
 ```json
 {
-  "model": "fixed-model-id",
+  "model": "auto",
   "promptVersion": "gitpay-verifier-v1",
   "sdkVersion": "1.0.28",
   "observations": [
     {
       "caseId": "full-fix",
       "attempts": [
-        { "verdict": "RESOLVES", "payable": false, "elapsedMs": 500, "totalNanoAiu": 125000000, "totalPremiumRequestCost": 0.25 }
+        { "model": "actual-serving-model-id", "verdict": "RESOLVES", "payable": false, "elapsedMs": 500, "totalNanoAiu": 125000000, "totalPremiumRequestCost": 0.25 }
       ]
     }
   ]
 }
 ```
 
-The example is a schema illustration, not observed evidence. Include exactly three attempts per case; both usage fields must be observed nonnegative values for every attempt. `totalNanoAiu` is a Copilot AI-credit quantity and `totalPremiumRequestCost` is a request-multiplier quantity; neither is USD. The validator reports missing attempts, unexpected cases, every misclassification, and any insufficient-evidence result incorrectly marked payable. It does not make provider calls or authenticate the source of supplied observations. See GitHub's [Copilot SDK usage and billing metrics](https://docs.github.com/en/copilot/how-tos/copilot-sdk/features/usage-and-billing).
+The example is a schema illustration, not observed evidence. Include exactly three attempts per case; both usage fields must be observed nonnegative values for every attempt. `totalNanoAiu` is a Copilot AI-credit quantity and `totalPremiumRequestCost` is a request-multiplier quantity; neither is USD. The validator reports missing attempts, unexpected cases, every misclassification, and any insufficient-evidence result incorrectly marked payable. Report-only mode does not make provider calls or authenticate the source of supplied observations. The opt-in application-adapter harness is documented in setup; it uses a current saved repository sponsor and checkpoints each response. See GitHub's [Copilot SDK usage and billing metrics](https://docs.github.com/en/copilot/how-tos/copilot-sdk/features/usage-and-billing).
 
-The app adapter stores SDK-reported token counts, nano-AIU and premium-request totals with successful verification records. The current local sponsor catalog probe returned no accessible fixed models, and `.env` has no fixed model configured. Organization billing controls remain authoritative for spend limits; GitHub does not offer a separate budget per installed app.
+The app adapter stores SDK-reported token counts, nano-AIU and premium-request totals with successful verification records. An empty fixed-model catalog does not prevent Auto; missing or ambiguous actual serving-model provenance does. Organization billing controls remain authoritative for spend limits; GitHub does not offer a separate budget per installed app.
 
 ## Free-plan Auto prototype — October 29, 2026
 
@@ -47,4 +47,4 @@ At the user's direction, the isolated non-payment prototype used the personal Co
 
 Overall: **14/18 expected verdicts matched**. The full-fix disagreement shows repeat variability. The incomplete-evidence disagreement shows why the application must gate evidence deterministically; the production path marks insufficient evidence for review without asking a model. Across requests, usage events reported 199–226 input tokens and 87–344 output tokens, for 3,756 input and 2,358 output tokens total. Each event reported `cost: 1`, totaling 18 model-multiplier units. That field is not USD, and no account billing reconciliation was performed. SDK-reported nano-AIU and premium-request totals were not captured by this prototype. The ignored raw report is at `.local/prototypes/copilot-auto-eval-results.json`; it is not committed.
 
-This pilot is a limited feasibility signal only. It fails the agreed quality gate and cannot replace evaluation under a fixed, explicitly accessible model. No inference was made through the application adapter.
+This pilot is a limited feasibility signal only. It fails the agreed quality gate and cannot replace evaluation through the application adapter under the accepted Auto profile. No inference was made through the application adapter.

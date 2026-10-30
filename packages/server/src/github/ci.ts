@@ -6,7 +6,13 @@ export interface CiSnapshot {
  externalSuccessCount:number;reason:string;
 }
 export function normalizeCi(input:{sha:string;runs:CheckRun[];complete:boolean;required:{name:string;appId:string}[];requiredEnabled:boolean;ownAppId:string}):CiSnapshot {
- const relevant=input.runs.filter(run=>run.head_sha===input.sha&&run.app?.id!==input.ownAppId);
+ const latestByContext=new Map<string,CheckRun>();
+ for(const run of input.runs){
+  if(run.head_sha!==input.sha||run.app?.id===input.ownAppId)continue;
+  const key=JSON.stringify([run.app?.id??null,run.name]),previous=latestByContext.get(key);
+  if(!previous||BigInt(run.id)>BigInt(previous.id))latestByContext.set(key,run);
+ }
+ const relevant=[...latestByContext.values()];
  const externalSuccessCount=relevant.filter(run=>run.app?.id&&run.status==='completed'&&run.conclusion==='success').length;
  const required=input.required.map(context=>{
   const matched=relevant.filter(run=>run.name===context.name&&run.app?.id===context.appId);

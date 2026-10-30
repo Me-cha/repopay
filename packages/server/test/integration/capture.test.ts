@@ -105,3 +105,11 @@ it('malformed actual REST evidence after funding freezes disbursement',async()=>
   expect((await f.getBounty()).fundingHold).toBe(true);expect((await f.getBounty()).status).toBe('FUNDED');
  }finally{await f.close();}
 });
+it('discards a connection when funding lock acquisition has an unknown outcome',async()=>{
+ const f=await fixture();const client=await f.database.pool.connect();
+ const release=vi.spyOn(client,'release');
+ vi.spyOn(client,'query').mockRejectedValueOnce(new Error('query timed out'));
+ vi.spyOn(f.database.pool as {connect:()=>Promise<typeof client>},'connect').mockResolvedValueOnce(client);
+ try{await expect(f.service.reconcile(f.attempt.id)).rejects.toThrow('query timed out');expect(release).toHaveBeenCalledWith(true);}
+ finally{vi.restoreAllMocks();await f.close();}
+});

@@ -1,7 +1,7 @@
 import { afterEach,describe,expect,it,vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { githubFixture,testEnv } from '../helpers/github.js';
-import { bounties,installations,submissions,bountyActivity,verifications } from '../../src/db/schema.js';
+import { bounties,installations,submissions,submissionEvidence,bountyActivity,verifications } from '../../src/db/schema.js';
 import { runOnce } from '../../src/jobs/runner.js';
 import { enqueue } from '../../src/jobs/queue.js';
 import { required } from '../helpers/auth.js';
@@ -14,24 +14,24 @@ describe('verification job recovery',()=>{
  let f:Awaited<ReturnType<typeof githubFixture>>|undefined;
  afterEach(async()=>{await f?.close();f=undefined;});
 
- it('records attention when a verifier job exhausts without inventing a verdict or award',async()=>{
+ it.each([1,2])('records review attention only at exhaustion (max attempts %i)',async maxAttempts=>{
   f=await githubFixture();
   const fixture=required(f);
   await fixture.database.orm.insert(installations).values({id:'1',accountId:'10',accountLogin:'owner'});
   const bounty=required((await fixture.database.orm.insert(bounties).values({installationId:'1',repoId:'2',repoFullName:'owner/repo',issueNumber:12,amountCents:5000,createdByGhId:'4',createdVia:'command'}).returning())[0]);
   const submission=required((await fixture.database.orm.insert(submissions).values({bountyId:bounty.id,repoId:'2',prId:'501',prNumber:41,authorGhId:'8',authorLogin:'contributor',headSha:'a'.repeat(40),baseSha:'b'.repeat(40)}).returning())[0]);
-  await fixture.database.withTransaction(tx=>enqueue(tx,{kind:'verify_submission',payload:{submissionId:submission.id,headSha:submission.headSha},dedupeKey:'test:verify-failure',maxAttempts:1}));
+  await fixture.database.withTransaction(tx=>enqueue(tx,{kind:'verify_submission',payload:{submissionId:submission.id,headSha:submission.headSha},dedupeKey:'test:verify-failure',maxAttempts}));
   const phase5={syncPullRequest:vi.fn(),refreshVerificationSha:vi.fn(),manualLink:vi.fn(),verifySubmission:vi.fn(()=>Promise.reject(new Error('provider details must not reach activity logs')))};
 
   await runOnce(fixture.database,fixture.api,testEnv,'test-worker',undefined,phase5);
 
   const [after]=await fixture.database.orm.select().from(bounties).where(eq(bounties.id,bounty.id));
   const activities=await fixture.database.orm.select().from(bountyActivity);
-  expect(after?.needsAttention).toBe(true);
-  expect(after?.attentionReason).toMatch(/review service unavailable/);
+  expect(after?.needsAttention).toBe(maxAttempts===1);
+  if(maxAttempts===1)expect(after?.attentionReason).toMatch(/review service unavailable/);
   expect(after?.status).toBe('OPEN');
-  expect(activities.map(item=>item.action)).toContain('verification_job_failed');
-  expect(activities.some(item=>item.action==='verification_job_failed'&&typeof item.metadata.jobId==='string')).toBe(true);
+  expect(activities.some(item=>item.action==='verification_job_failed')).toBe(maxAttempts===1);
+  expect(activities.some(item=>item.action==='verification_job_failed'&&typeof item.metadata.jobId==='string')).toBe(maxAttempts===1);
   expect(fixture.api.createCheckRun).not.toHaveBeenCalled();
  });
 
@@ -66,7 +66,7 @@ describe('verification job recovery',()=>{
   } finally { await funding.close(); }
  });
 
- async function creatorScenario(attentionReason:string) {
+ async function creatorScenario(attentionReason:string,changeDuring?:'collection'|'publication'|'lost') {
   const funding=await intentFixture();
   const [storedBounty]=await funding.database.orm.update(bounties).set({status:'FUNDED',fundedTerms:funding.terms,needsAttention:true,attentionReason}).where(eq(bounties.id,funding.bounty.id)).returning();
   const bounty=required(storedBounty);
@@ -78,10 +78,47 @@ describe('verification job recovery',()=>{
   vi.mocked(funding.api.pullRequestCommits).mockResolvedValue({authors:[{ghId:'4',login:'maintainer',type:'User'}],complete:true});
   vi.mocked(funding.api.checkRuns).mockResolvedValue({runs:[],complete:true});
   const verifier=vi.fn();
+  if(changeDuring==='lost'){
+   vi.mocked(funding.api.createCheckRun).mockImplementationOnce((_inst,_repo,input)=>{
+    vi.mocked(funding.api.checkRuns).mockResolvedValue({complete:true,runs:[{id:'900',name:'GitPay solution review',head_sha:pr.head.sha,external_id:input.externalId,app:{id:funding.env.GH_APP_ID},status:'in_progress',conclusion:null}]});
+    return Promise.reject(new Error('create response lost'));
+   });
+   await expect(createPhase5(funding.database,funding.api,funding.env,funding.auth,verifier).verifySubmission(linked.submission.id,pr.head.sha)).rejects.toThrow('create response lost');
+  }
+  if(changeDuring==='collection')vi.mocked(funding.api.pullRequestFiles).mockImplementationOnce(async()=>{
+   await linkPr(funding.database,bounty,{...pr,head:{sha:'e'.repeat(40)}});
+   return {files:[],complete:true};
+  });
+  if(changeDuring==='publication')vi.mocked(funding.api.createCheckRun).mockImplementationOnce(async()=>{
+   await linkPr(funding.database,bounty,{...pr,head:{sha:'e'.repeat(40)}});return '900';
+  });
+  if(changeDuring==='collection'){
+   await expect(createPhase5(funding.database,funding.api,funding.env,funding.auth,verifier).verifySubmission(linked.submission.id,pr.head.sha)).rejects.toThrow();
+   return {funding,bounty,verifier};
+  }
   await createPhase5(funding.database,funding.api,funding.env,funding.auth,verifier).verifySubmission(linked.submission.id,pr.head.sha);
   return {funding,bounty,verifier};
  }
 
+ it('does not save stale evidence or clear current attention after a revision race',async()=>{
+  for(const stage of ['collection','publication'] as const){
+   const f=await creatorScenario('Solution review service unavailable; maintainer review and retry required',stage);
+   try{
+    const [after]=await f.funding.database.orm.select().from(bounties).where(eq(bounties.id,f.bounty.id));
+    expect(after?.needsAttention).toBe(true);
+    if(stage==='collection')expect(await f.funding.database.orm.select().from(submissionEvidence)).toHaveLength(0);
+   }finally{await f.funding.close();}
+  }
+ });
+ it('recovers a lost Check Run create response by App-owned attempt marker',async()=>{
+  const f=await creatorScenario('Solution review service unavailable; maintainer review and retry required','lost');
+  try{
+   expect(f.funding.api.createCheckRun).toHaveBeenCalledTimes(1);
+   const rows=await f.funding.database.orm.select().from(verifications);
+   expect(rows).toHaveLength(1);expect(rows[0]?.checkRunId).toBe('900');
+   expect(rows[0]?.errorCode).toBe('INSUFFICIENT_EVIDENCE');
+  }finally{await f.funding.close();}
+ });
  it('explains that the bounty creator cannot earn the bounty, without calling the model',async()=>{
   const {funding,verifier}=await creatorScenario('Solution review service unavailable; maintainer review and retry required');
   try {
@@ -104,4 +141,25 @@ describe('verification job recovery',()=>{
    expect(after?.needsAttention).toBe(true);expect(after?.attentionReason).toBe('Captured funds refunded or reversed; disbursement frozen');
   } finally { await held.funding.close(); }
  });
+});
+it('discards a connection when verifier lock acquisition has an unknown outcome',async()=>{
+ const f=await intentFixture();const client=await f.database.pool.connect();
+ const release=vi.spyOn(client,'release');
+ vi.spyOn(client,'query').mockRejectedValueOnce(new Error('query timed out'));
+ vi.spyOn(f.database.pool as {connect:()=>Promise<typeof client>},'connect').mockResolvedValueOnce(client);
+ try{await expect(createPhase5(f.database,f.api,f.env,f.auth).verifySubmission('1','a'.repeat(40))).rejects.toThrow('query timed out');expect(release).toHaveBeenCalledWith(true);}
+ finally{vi.restoreAllMocks();await f.close();}
+});
+it('an expired worker lease cannot collect evidence or write a verification',async()=>{
+ const f=await intentFixture();try{
+  const {claimJob}=await import('../../src/jobs/queue.js');
+  const {jobs}=await import('../../src/db/schema.js');
+  await f.database.withTransaction(tx=>enqueue(tx,{kind:'verify_submission',payload:{submissionId:'1',headSha:'a'.repeat(40)},dedupeKey:'expired',maxAttempts:2}));
+  const lease=required(await claimJob(f.database,'old',30));
+  await f.database.orm.update(jobs).set({lockedUntil:new Date(0)}).where(eq(jobs.id,lease.id));
+  await expect(createPhase5(f.database,f.api,f.env,f.auth).verifySubmission('1','a'.repeat(40),false,lease)).rejects.toThrow('Job lease lost');
+  expect(await f.database.orm.select().from(submissionEvidence)).toHaveLength(0);
+  expect(await f.database.orm.select().from(verifications)).toHaveLength(0);
+  expect(f.api.pullRequest).not.toHaveBeenCalled();
+ }finally{await f.close();}
 });

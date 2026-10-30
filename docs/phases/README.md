@@ -1,6 +1,6 @@
 # GitPay MVP — phase plan
 
-**Status:** Phases 0, 1 and 4 are complete. Phase 2 has one deferred live permission-revocation check; Phase 3's real capture walkthrough is pending. Phase 5's local implementation is in place, but its live model, organization sponsorship and quality gates remain open. See [Phase 4 evidence](../evidence/04-summary.md) and [Phase 5 evidence](../evidence/05-summary.md), alongside [Phase 3](../evidence/03-summary.md) and [Phase 2](../evidence/02-summary.md).
+**Status (October 30, 2026):** Phases 0, 1 and 4 have recorded completion evidence. Phase 2 retains a deferred live revocation check; Phase 3 has a real capture with receipt/recovery gates open. Phase 5 is incomplete under Copilot Auto (ADR 0007). Phase 6 implementation has started: pure policy/allocation (06.01) is present; awards/payouts are not. See [review findings](../evidence/00-05-review.md) and [Phase 6 evidence](../evidence/06-summary.md).
 
 This is the execution plan for the MVP described in [IMPLEMENTATION_PLAN.md](../../IMPLEMENTATION_PLAN.md). It breaks the existing design into **13 phases and 57 reviewable tasks**, including negative paths and operations. The [cancellation decision](../decisions/0001-open-participation-and-cancellation.md) remains the accepted product policy. The refinements below are the accepted pre-build contract and are reconciled into the master architecture.
 
@@ -10,7 +10,7 @@ GitPay connects GitHub issues/PRs to PayPal sandbox. Maintainers fund a publishe
 
 Every main user workflow is in scope, including inability to proceed safely. The product must explain failed/pending payments, lost repository access, unconnected recipients, stale confirmations and unresolved disputes rather than pretending these states do not exist.
 
-The development assistant remains Codex. The runtime verifier uses repository-sponsored Copilot SDK, per [ADR 0005](../decisions/0005-copilot-verifier.md). Three non-payment Auto samples passed live on October 29; they do not establish fixed-model access or PR review quality. Repository-owner OAuth sponsorship, fixed-model v3 funding terms, submission/evidence collection, advisory verifier/Check Run code, per-repository attempt caps and persisted SDK usage telemetry are implemented locally. Organization billing, sponsor-revocation handling, live evaluation and remaining acceptance coverage are open under [ADR 0006](../decisions/0006-fixed-lightweight-copilot-and-sponsorship.md). Exclusive contributor assignment, dashboard mutations and live-money deployment remain outside scope.
+The development assistant remains Codex. Runtime PR review uses separately consented repository-sponsored Copilot **Auto**, frozen in v4 terms, with concrete serving-model provenance ([ADR 0007](../decisions/0007-copilot-auto-model.md)). Legacy terms remain intact. The 14/18 pilot is not an acceptance pass. Organization sponsorship, complete sponsor-revocation handling and application-adapter evaluation remain open; attempt caps and SDK usage metrics are not a monetary budget.
 
 ## Review decisions
 
@@ -176,7 +176,7 @@ GitHub event acknowledgement requires delivery receipt and job creation in the s
 
 - **GitHub:** owner-controlled App/demo repository and separate maintainer/contributor identities. Add an independent reviewer with evidence access for cancellation. Account creation, secret values and collaborator invitations require the owner's action/authorization.
 - **PayPal:** sandbox business platform account, maintainer and contributor personal sandbox accounts, Payouts capability and sufficient sandbox balance. A second contributor account is needed to evidence a two-author award. Feasibility is not assumed from credentials existing.
-- **Copilot SDK:** an eligible consenting repository-owner or organization sponsor, explicit token and fixed model. Prove authenticated structured output, then evaluate the exact model/profile before settlement. Durable grants and budget controls precede background verification; model listing alone does not prove inference.
+- **Copilot SDK:** an eligible consenting repository-owner or organization sponsor, explicit sponsor token and Auto provenance for v4 terms. Prove authenticated structured output, then evaluate the accepted profile before settlement. Durable grants and budget controls precede background verification; model listing alone does not prove inference.
 - **Hosting:** account, region/plan and durable Postgres/worker capability must be verified in 11. Never invent a working deployment URL or free-worker guarantee.
 - **Independent review:** someone must actually operate the exception process. Without that person, funded refunds remain disabled and full W10 acceptance is blocked. Development can establish local correctness, but it cannot invent operating capacity.
 - **Notice:** the planned 72-hour real notice may determine earliest live-refund test timing. Schedule a legitimate test request early once Phase 08 is ready; use test clocks only for labelled automated/simulated cases.
@@ -198,4 +198,4 @@ These checks inform the design; they do not prove an integration is configured:
 - [ ] Independent reviewer responsibility and the proposed notice duration are acceptable.
 - [x] We agree on the first implementation slice: Phase 00, with external capability evidence clearly separated from local checks. Authorized October 26, 2026.
 
-The review remediation is tracked in [review-todo.md](review-todo.md). Phase 00 is complete with scoped provider evidence. Phase 01 is complete. Phase 02's deferred live permission-revocation gate and Phase 03's sandbox capture gate are tracked in their evidence files. Phase 04 local work is complete; its real contributor browser walkthrough remains. Phase 05 local pipeline work, request caps and SDK usage telemetry are present, but organization sponsorship, sponsor-revocation handling and live model evaluation remain open. These documents do not authorize later phases.
+The original plan review is tracked in [review-todo.md](review-todo.md). The October 30 implementation review and unresolved gates are tracked in [review evidence](../evidence/00-05-review.md). The user authorized local implementation through Phase 12; phase completion still requires the stated evidence.

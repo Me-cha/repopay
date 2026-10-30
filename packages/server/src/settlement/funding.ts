@@ -14,8 +14,8 @@ async function locked<T>(db:Database,key:string,work:()=>Promise<T>):Promise<T|u
  try {
   acquired=(await client.query<{locked:boolean}>('select pg_try_advisory_lock(hashtext($1)) as locked',[db.schemaName+':'+key])).rows[0]?.locked===true;
   if(acquired)return await work();
- }finally{
-  try{if(acquired)await client.query('select pg_advisory_unlock(hashtext($1))',[db.schemaName+':'+key]);}catch{destroy=true;}
+ }catch(error){destroy=true;throw error;}finally{
+  try{if(acquired){const result=await client.query<{unlocked:boolean}>('select pg_advisory_unlock(hashtext($1)) as unlocked',[db.schemaName+':'+key]);if(result.rows[0]?.unlocked!==true)destroy=true;}}catch{destroy=true;}
   client.off('error',onError);client.release(destroy);
  }
 }

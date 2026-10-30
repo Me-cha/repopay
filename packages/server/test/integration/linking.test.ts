@@ -7,10 +7,23 @@ import type { PullRequest } from '../../src/github/app.js';
 
 const pr=(number:number,id:string,authorId:string,head='a'.repeat(40),state:'open'|'closed'='open'):PullRequest=>({id,number,state,title:`Fix #12`,body:'Resolves #12',merged_at:state==='closed'?'2026-10-29T10:00:00Z':null,closed_at:state==='closed'?'2026-10-29T10:00:00Z':null,user:{id:authorId,login:`user-${authorId}`,type:'User'},head:{sha:head},base:{sha:'b'.repeat(40),repo:{id:'2'}}});
 
+import { vi } from 'vitest';
+import { eq } from 'drizzle-orm';
+import { refreshPrLinks } from '../../src/github/linking.js';
+
 describe('open bounty submissions',()=>{
  let f:Awaited<ReturnType<typeof githubFixture>>|undefined;
  afterEach(async()=>{await f?.close();f=undefined;});
  async function setup(){f=await githubFixture();await f.database.orm.insert(installations).values({id:'1',accountId:'10',accountLogin:'owner'});const [bounty]=await f.database.orm.insert(bounties).values({installationId:'1',repoId:'2',repoFullName:'owner/repo',issueNumber:12,amountCents:5000,createdByGhId:'4',createdVia:'command'}).returning();return required(bounty);}
+ it('links replacement drafts without discarding historical cancelled-bounty evidence',async()=>{
+  const old=await setup(),fixture=required(f);await linkPr(fixture.database,old,pr(41,'501','8'));
+  await fixture.database.orm.update(bounties).set({status:'CANCELLED'}).where(eq(bounties.id,old.id));
+  const replacement=required((await fixture.database.orm.insert(bounties).values({installationId:'1',repoId:'2',repoFullName:'owner/repo',issueNumber:12,amountCents:5000,createdByGhId:'4',createdVia:'command'}).returning())[0]);
+  vi.mocked(fixture.api.pullRequest).mockResolvedValue(pr(41,'501','8'));
+  const result=await refreshPrLinks(fixture.database,fixture.api,'1',await fixture.api.repository('1','2'),41);
+  expect(result.results.map(row=>row.submission.bountyId)).toEqual([replacement.id]);
+  expect(await fixture.database.orm.select().from(submissions)).toHaveLength(2);
+ });
  it('retains competing submissions without reserving or assigning a bounty',async()=>{
   const bounty=await setup(),fixture=required(f);await linkPr(fixture.database,bounty,pr(41,'501','8'));await linkPr(fixture.database,bounty,pr(42,'502','9'));
   const rows=await fixture.database.orm.select().from(submissions);expect(rows).toHaveLength(2);expect(rows.map(row=>row.authorGhId).sort()).toEqual(['8','9']);expect(rows.every(row=>row.status==='OPEN')).toBe(true);

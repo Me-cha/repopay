@@ -3,6 +3,12 @@ import { normalizeCi } from '../../src/github/ci.js';
 import type { CheckRun } from '../../src/github/app.js';
 const sha='a'.repeat(40);
 const run=(id:string,name:string,status:CheckRun['status'],conclusion:string|null,appId='51',headSha=sha):CheckRun=>({id,name,status,conclusion,head_sha:headSha,app:{id:appId}});
+it('uses the latest rerun per app and context while retaining failures from other contexts',()=>{
+ const input={sha,runs:[run('1','unit','completed','failure'),run('2','unit','completed','success')],complete:true,required:[{name:'unit',appId:'51'}],requiredEnabled:true,ownAppId:'99'};
+ expect(normalizeCi(input).status).toBe('pass');
+ expect(normalizeCi({...input,runs:[...input.runs,run('3','lint','completed','failure')]}).status).toBe('fail');
+ expect(normalizeCi({...input,runs:[...input.runs,run('3','unit','in_progress',null)]}).status).toBe('pending');
+});
 it('requires trusted external check provenance and exact SHA for required CI',()=>{
  const ci=normalizeCi({sha,runs:[run('1','unit','completed','success','51'),run('2','unit','completed','success','99')],complete:true,required:[{name:'unit',appId:'51'}],requiredEnabled:true,ownAppId:'99'});
  expect(ci).toMatchObject({status:'pass',testedSha:sha,externalSuccessCount:1,required:[{name:'unit',appId:'51',status:'pass'}]});

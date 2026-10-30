@@ -17,7 +17,7 @@ export async function collectVerification(input:{github:GitHub;env:FundingEnv;in
  const after=await github.pullRequest(installationId,repo,pr.number);
  if(after.id!==pr.id||after.head.sha!==pr.head.sha||after.base.sha!==pr.base.sha||after.base.repo?.id!==pr.base.repo.id)throw new StaleEvidenceError('Pull request changed while collecting evidence.');
  const prBody=(pr.body??'').slice(0,8000);
- let diff='',truncated=!files.complete||!commits.complete||(pr.body??'').length>8000;const limit=env.MAX_DIFF_CHARS;
+ let diff='',truncated=!files.complete||!commits.complete||(pr.body??'').length>8000;const limit=Math.min(terms.policy.maxDiffChars,env.MAX_DIFF_CHARS);
  for(const file of files.files){
   if(ignored(file.filename))continue;
   if(file.patch===null){truncated=true;continue;}

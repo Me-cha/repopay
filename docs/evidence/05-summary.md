@@ -1,5 +1,7 @@
 # Phase 5 — local implementation evidence and open gates
 
+**Current amendment, October 30, 2026:** ADR 0007 and the user's current request retain Copilot Auto. Fixed-model requirements below describe the historical October 29 implementation and are superseded for new v4 terms. The quality gate remains open: the 14/18 pilot is not a pass. See the [implementation review and fixes](00-05-review.md); the evaluator now accepts Auto reports with concrete serving models, current prompt/SDK and complete metrics.
+
 Date: October 29, 2026. Base commit: `c07e62d39dfe95b601d328672839f693daceb15c`. The worktree already contained uncommitted Phase 2/3 and Copilot migration work when this scope began; no existing changes were discarded. Phase 5 was authorized by the user's request to complete Phases 4 and 5.
 
 ## Implemented locally
@@ -49,3 +51,23 @@ The user switched new funding to Copilot Auto ([ADR 0007](../decisions/0007-copi
 - Fixed with regressions in `verification-checks.test.ts`: the Check Run now lists specific reasons (bounty creator's own PR, unverified commit authors, truncation, empty diff, required CI) instead of "authorship is ambiguous"; and a review that reaches an outcome clears a stale "Solution review service unavailable" warning while leaving funding holds untouched. Full suite 37 files / 206 tests, lint and build passed.
 
 Still observed but not yet fixed: worker job failures are not logged with a cause; a retried review that fails before saving a verification row reuses the same retry key; the review-unavailable warning is set on the first failed attempt rather than on exhaustion.
+
+## October 30, 2026 — Phase 5 continuation
+
+The user authorized completing Phase 5 and subsequent phases, approved up to 18 Auto evaluation requests, and explicitly kept organization sponsorship blocked for now. No live evaluation requests have been made in this continuation: the `.env`-selected local database had only Phase 1 tables and no sponsor grant. It was backed up to ignored private `.local/backups/gitpay-before-phase5-20261030.dump`, then the existing migrations through 0009 were applied successfully. Existing data was retained. The current demo bounty is `deepakA18/gitpay-demo-http`, local bounty 1. No funded record from the mate's historical environment was invented or imported.
+
+Implemented and tested:
+
+- Bounded `verifier/evaluate.ts` harness and opt-in CLI mode: 18 sequential application-adapter calls using only a revalidated stored owner sponsor; no payments/publications, no automatic request retry, private checkpointed observations, concrete Auto provenance and policy evaluation for insufficient evidence.
+- Transactional retry requests now bind the last queued job generation, deduplicate concurrent POSTs, validate session/bounty/submission state under locks, and recover after a job fails before an attempt row exists.
+- Verifier jobs receive lease tokens and fence evidence/attempt/attention writes. External calls remain outside SQL transactions.
+- An attempt whose Check Run create response was lost is reconciled by exact SHA, App identity and persisted external attempt ID. Complete paginated reads use `filter=all`; capped or conflicting scans stop recovery. This is advisory publication recovery, not a claim of atomic GitHub writes.
+- Review-unavailable attention is set at exhaustion and cannot replace a funding hold or a newer revision's warning. Worker logs now include safe failure category/status/job identifiers without raw provider errors.
+- Signed `github_app_authorization` revocation immediately invalidates the user's sessions and sponsor grants with the delivery receipt; generation fencing protects refresh/reconnection, duplicate delivery cannot revoke renewed consent, and in-flight reviews recheck sponsorship before storing a verdict.
+- Sponsor UI describes Auto correctly.
+
+Verification: `pnpm typecheck`, `pnpm lint`, `pnpm build` passed. Full `pnpm test` against isolated local test schemas: **41 files / 230 tests passed**. New live-harness tests use a fake adapter and do not establish semantic quality. The configured local sponsor table still had **zero rows** at the last check. No paid model request or sandbox payment was performed. The user approved the configured ngrok tunnel after automatic review initially blocked exposure; the local app runs with `WORKER_MODE=separate`, so background jobs are not running during setup.
+
+Remaining: owner sponsor connection, approved live evaluation (18-request cap), live competing-PR/check/retry/access-loss acceptance, and remaining evidence/provenance cases. Organization support remains explicitly blocked. Phase 5 is not complete and later phase acceptance is not claimed.
+
+Provider contracts checked: [GitHub authorization-revocation webhook](https://docs.github.com/en/webhooks/webhook-events-and-payloads#github_app_authorization), [Check Runs API](https://docs.github.com/en/rest/checks/runs), and [organization server-to-server authentication](https://docs.github.com/en/copilot/how-tos/copilot-sdk/auth/server-to-server-tokens). No organization billing capability was tested.

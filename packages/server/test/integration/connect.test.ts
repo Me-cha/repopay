@@ -27,3 +27,14 @@ describe('contributor payout connection',()=>{
   const events=await f.database.orm.select().from(jobs);expect(events.filter(event=>event.kind==='retry_claims')).toHaveLength(2);
  });
 });
+it('a session revoked after request authentication cannot save a payout destination',async()=>{
+ const fixture=await authFixture();try{
+  const {connectContributor}=await import('../../src/actions/connect.js');
+  const {sessions}=await import('../../src/db/schema.js');
+  const [row]=await fixture.database.orm.select().from(sessions);if(!row)throw new Error('missing session');
+  await fixture.database.orm.delete(sessions);
+  const session={id:row.id,ghId:row.ghId,ghLogin:row.ghLogin,csrfSecret:row.csrfSecret,accessToken:'synthetic',tokenGeneration:row.tokenGeneration};
+  await expect(connectContributor(fixture.database,session,{paypalEmail:'payee@example.com'},fixture.env.PAYMENT_DATA_ENC_KEY)).rejects.toThrow();
+  expect(await fixture.database.orm.select().from(contributors)).toHaveLength(0);
+ }finally{await fixture.close();}
+});
