@@ -22,6 +22,7 @@ export type Repository=z.infer<typeof repoSchema>;
 export type Comment=z.infer<typeof commentSchema>;
 export class GitHubError extends Error { constructor(readonly status: number) {super(`GitHub request failed (${String(status)}); check access and retry`);} }
 export interface GitHub {
+ cancellationReference?:(installationId:string,repo:Repository,url:string)=>Promise<Record<string,unknown>>;
  installation:(id:string)=>Promise<Installation|null>;
  repository:(installationId:string,repoId:string)=>Promise<Repository>;
  issue:(installationId:string,repo:Repository,number:number)=>Promise<void>;
@@ -63,6 +64,16 @@ export function createGitHub(env: GitHubRuntimeEnv): GitHub {
  }
  const prefix=(repo:Repository)=>'/repos/'+repo.full_name;
  return {
+  async cancellationReference(inst,repo,url){
+   const u=new URL(url),suffix=u.pathname.slice(repo.full_name.length+1);
+   if(u.origin!=='https://github.com'||!u.pathname.startsWith('/'+repo.full_name+'/')||u.search||u.hash)throw new Error('Invalid evidence reference');
+   if(/^\/commit\/[a-f0-9]{40}$/i.test(suffix)){
+    const data=z.object({sha:z.string(),commit:z.object({message:z.string(),author:z.object({date:z.string()}).nullable()}),files:z.array(pullFileSchema).max(300)}).parse(await call(inst,prefix(repo)+'/commits/'+(suffix.split('/')[2]??'')));
+    if(data.files.length>=300||data.files.some(f=>f.patch===null))throw new Error('Incomplete claimed-fix evidence');return data;
+   }
+   if(/^\/(issues|pull)\/[1-9]\d*$/.test(suffix)){const data=z.object({title:z.string(),body:z.string().nullable(),created_at:z.string(),updated_at:z.string(),user:account}).parse(await call(inst,prefix(repo)+'/issues/'+(suffix.split('/')[2]??'')));return data;}
+   throw new Error('Invalid evidence reference');
+  },
   async installation(id) {const res=await request(`/app/installations/${id}`,jwt());if(res.status===404){tokens.delete(id);return null;}if(res.status!==200)throw new GitHubError(res.status);const v=installationSchema.parse(res.body);if(v.id!==id||v.app_id!==env.GH_APP_ID)throw new GitHubError(403);if(v.suspended_at)tokens.delete(id);return v;},
   async repository(inst,id) {const repo=repoSchema.parse(await call(inst,`/repositories/${id}`));if(repo.id!==id||repo.archived||repo.disabled)throw new GitHubError(403);const binding=await request(`/repos/${repo.full_name}/installation`,jwt());if(binding.status!==200||z.object({id:apiId}).parse(binding.body).id!==inst)throw new GitHubError(403);return repo;},
   async issue(inst,repo,number) {const issue=issueSchema.parse(await call(inst,`${prefix(repo)}/issues/${String(number)}`));if(issue.number!==number||issue.pull_request)throw new GitHubError(400);},

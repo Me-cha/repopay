@@ -34,7 +34,7 @@ export const bounties = pgTable('bounties', {
  captureRequestKey:text('capture_request_key'),captureId:text('capture_id'),fundedAt:timestamp('funded_at',{withTimezone:true}),
  currentFundingAttemptId:stringBigint('current_funding_attempt_id'),fundedTerms:jsonb('funded_terms').$type<FundedTerms>(),fundingActorGhId:stringBigint('funding_actor_gh_id'),fundingHold:boolean('funding_hold').notNull().default(false),
  createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),updatedAt:timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
-},t=>[uniqueIndex('one_active_bounty_per_issue').on(t.repoId,t.issueNumber).where(sql`${t.status}<>'CANCELLED'`),check('bounty_amount_check',sql`${t.amountCents}>0 and ${t.currency}='USD'`),check('bounty_status_check',sql`${t.status} in ('OPEN','CANCELLED','CAPTURING','FUNDED','NEEDS_REVIEW','AWAITING_CLAIM','PAYING','PAID')`),check('bounty_source_check',sql`${t.createdVia} in ('label','command')`)]);
+},t=>[uniqueIndex('one_active_bounty_per_issue').on(t.repoId,t.issueNumber).where(sql`${t.status}<>'CANCELLED'`),check('bounty_amount_check',sql`${t.amountCents}>0 and ${t.currency}='USD'`),check('bounty_status_check',sql`${t.status} in ('OPEN','CANCELLED','CAPTURING','FUNDED','NEEDS_REVIEW','AWAITING_CLAIM','PAYING','PAID','REFUNDING')`),check('bounty_source_check',sql`${t.createdVia} in ('label','command')`)]);
 export const bountyActivity = pgTable('bounty_activity', {
  id:stringSerial('id').primaryKey(),bountyId:stringBigint('bounty_id').notNull().references(()=>bounties.id),actorGhId:stringBigint('actor_gh_id'),source:text('source').notNull(),action:text('action').notNull(),metadata:jsonb('metadata').$type<Record<string,unknown>>().notNull().default({}),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
 });
@@ -89,7 +89,7 @@ export const actionTokens = pgTable('action_tokens', {
  bountyVersion:integer('bounty_version').notNull(),requestedByGhId:stringBigint('requested_by_gh_id').notNull(),
  expiresAt:timestamp('expires_at',{withTimezone:true}).notNull(),usedAt:timestamp('used_at',{withTimezone:true}),usedByGhId:stringBigint('used_by_gh_id'),
  createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
-},t=>[check('action_kind_check',sql`${t.action} in ('cancel_draft','fund','approve')`)]);
+},t=>[check('action_kind_check',sql`${t.action} in ('cancel_draft','fund','approve','cancellation_review')`)]);
 
 export const fundingAttempts=pgTable('funding_attempts',{
  id:stringSerial('id').primaryKey(),bountyId:stringBigint('bounty_id').notNull().references(()=>bounties.id),attemptNumber:integer('attempt_number').notNull(),actorGhId:stringBigint('actor_gh_id').notNull(),
@@ -119,3 +119,19 @@ export const payoutItems=pgTable('payout_items',{
 export const reviewDecisions=pgTable('review_decisions',{
  id:stringSerial('id').primaryKey(),bountyId:stringBigint('bounty_id').notNull().references(()=>bounties.id),submissionId:stringBigint('submission_id').notNull().references(()=>submissions.id),kind:text('kind').notNull(),actorGhId:stringBigint('actor_gh_id').notNull(),reason:text('reason').notNull(),headSha:text('head_sha').notNull(),baseSha:text('base_sha').notNull(),mergeSha:text('merge_sha').notNull(),snapshotHash:text('snapshot_hash').notNull(),evidenceId:stringBigint('evidence_id').notNull().references(()=>submissionEvidence.id),verificationId:stringBigint('verification_id').notNull().references(()=>verifications.id),awardId:stringBigint('award_id').references(()=>awards.id),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
 });
+
+export const cancellationRequests=pgTable('cancellation_requests',{
+ id:stringSerial('id').primaryKey(),bountyId:stringBigint('bounty_id').notNull().references(()=>bounties.id),requesterId:stringBigint('requester_id').notNull(),funderId:stringBigint('funder_id').notNull(),claimants:jsonb('claimants').$type<string[]>().notNull(),nextReconcileAt:timestamp('next_reconcile_at',{withTimezone:true}).notNull().defaultNow(),reasonCategory:text('reason_category').notNull(),reason:text('reason').notNull(),links:jsonb('links').$type<string[]>().notNull(),noticeHours:integer('notice_hours').notNull(),status:text('status').notNull().default('NOTICE'),noticeCommentId:text('notice_comment_id'),noticePublishedAt:timestamp('notice_published_at',{withTimezone:true}),noticeEndsAt:timestamp('notice_ends_at',{withTimezone:true}),evidenceVersion:integer('evidence_version').notNull().default(0),evidenceHash:text('evidence_hash'),reviewerId:stringBigint('reviewer_id'),reviewReason:text('review_reason'),nextUpdateAt:timestamp('next_update_at',{withTimezone:true}),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
+});
+export type CancellationRequest=typeof cancellationRequests.$inferSelect;
+export interface CancellationBundle {complete:boolean;criteria:string;claims:{key:string;actorIds:string[];snapshot:Record<string,unknown>}[]}
+export const cancellationEvidence=pgTable('cancellation_evidence',{
+ id:stringSerial('id').primaryKey(),requestId:stringBigint('request_id').notNull().references(()=>cancellationRequests.id),version:integer('version').notNull(),hash:text('hash').notNull(),bundle:jsonb('bundle').$type<CancellationBundle>().notNull(),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
+});
+export const cancellationDecisions=pgTable('cancellation_decisions',{
+ id:stringSerial('id').primaryKey(),requestId:stringBigint('request_id').notNull().references(()=>cancellationRequests.id),evidenceVersion:integer('evidence_version').notNull(),actorId:stringBigint('actor_id').notNull(),decision:text('decision').notNull(),reason:text('reason').notNull(),assessments:jsonb('assessments').$type<Record<string,{reason:string;basis:string}>>().notNull(),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
+});
+export const refundIntents=pgTable('refund_intents',{
+ id:stringSerial('id').primaryKey(),requestId:stringBigint('request_id').notNull().references(()=>cancellationRequests.id),bountyId:stringBigint('bounty_id').notNull().references(()=>bounties.id),evidenceVersion:integer('evidence_version').notNull(),bountyVersion:integer('bounty_version').notNull(),priorStatus:text('prior_status').notNull(),captureId:text('capture_id').notNull(),amountCents:integer('amount_cents').notNull(),requestKey:text('request_key').notNull().unique(),status:text('status').notNull().default('RESERVED'),boundaryAt:timestamp('boundary_at',{withTimezone:true}),safeRetryUntil:timestamp('safe_retry_until',{withTimezone:true}),providerId:text('provider_id').unique(),attention:text('attention'),nextReconcileAt:timestamp('next_reconcile_at',{withTimezone:true}).notNull().defaultNow(),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
+});
+export type RefundIntent=typeof refundIntents.$inferSelect;

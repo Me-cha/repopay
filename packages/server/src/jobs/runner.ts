@@ -14,7 +14,7 @@ import { parseUsd } from '../github/commands.js';
 import { reply, syncBounty } from '../github/comments.js';
 import { createDraft } from '../actions/create.js';
 import { retryClaims } from '../settlement/claims.js';
-import { bountyStatus,awardStatusText } from '../actions/status.js';
+import { bountyStatus,awardStatusText,cancellationStatusText } from '../actions/status.js';
 import { bounties, bountyActivity, installations, submissions } from '../db/schema.js';
 import { REVIEW_UNAVAILABLE_REASON } from '../domain/types.js';
 import { workFor, type LeasedJob } from './kinds.js';
@@ -70,7 +70,7 @@ export async function handleJob(db:Database,github:GitHub,env:GitHubRuntimeEnv,j
    await db.withTransaction(async tx=>{await assertLease(tx,job);if(bounty.currentFundingAttemptId)await enqueue(tx,{kind:'reconcile_funding',payload:{attemptId:bounty.currentFundingAttemptId},dedupeKey:`funding-status:${job.id}`,maxAttempts:env.RECONCILIATION_MAX_ATTEMPTS});await enqueue(tx,{kind:'sync_bounty',payload:{bountyId:bounty.id},dedupeKey:`status:${job.id}`,maxAttempts:env.RECONCILIATION_MAX_ATTEMPTS});});
    const amount=`${String(Math.floor(bounty.amountCents/100))}.${String(bounty.amountCents%100).padStart(2,'0')}`;
    await reply(db,github,env,job,work.installationId,repo,issueNumber,
-    `**GitPay status · $${amount} USD · ${bounty.status}**\n\n${awardStatusText(bounty.status,env.PUBLIC_URL)??(bounty.status==='CANCELLED'?'Draft cancelled. No payment or refund was sent.':bounty.status==='OPEN'?(bounty.currentFundingAttemptId?'Checkout pending. Review funding status before starting a payment.':'Unfunded draft. No money has been collected. Review funding to start checkout.'):bounty.status==='FUNDED'?(bounty.fundingHold?'Funding confirmed, but disbursement is frozen pending reconciliation.':'Funding confirmed. The first qualifying merged PR wins under the frozen terms; anyone may submit work.'):'Capture pending or unknown. Do not start another payment; draft cancellation is unavailable.')}`);
+    `**GitPay status · $${amount} USD · ${bounty.status}**\n\n${awardStatusText(bounty.status,env.PUBLIC_URL)??(bounty.status==='CANCELLED'?(bounty.captureId?'Reviewed refund confirmed. History is retained.':'Draft cancelled. No payment or refund was sent.'):bounty.status==='OPEN'?(bounty.currentFundingAttemptId?'Checkout pending. Review funding status before starting a payment.':'Unfunded draft. No money has been collected. Review funding to start checkout.'):bounty.status==='FUNDED'?(bounty.fundingHold?'Funding confirmed, but disbursement is frozen pending reconciliation.':'Funding confirmed. The first qualifying merged PR wins under the frozen terms; anyone may submit work.'):'Capture pending or unknown. Do not start another payment; draft cancellation is unavailable.')}${await cancellationStatusText(db,bounty.id,env.PUBLIC_URL)}`);
   }
   else await reply(db,github,env,job,work.installationId,repo,issueNumber,'No bounty exists for this issue. A maintainer can use `/bounty create <USD amount>`.');return;
  }
@@ -99,7 +99,7 @@ export async function handleJob(db:Database,github:GitHub,env:GitHubRuntimeEnv,j
  }
  if(command.kind==='cancel') {
   const bounty=await bountyStatus(db,work.repoId,issueNumber);
-  const text=!bounty?'No bounty exists for this issue.':bounty.status==='CANCELLED'?'This draft is already cancelled. No payment or refund was sent.':bounty.status!=='OPEN'||bounty.captureRequestKey||bounty.captureId||bounty.fundedAt?'This bounty cannot be cancelled as an unfunded draft. Funded cancellation review is not available yet.':`[Review draft cancellation](${new URL('/bounties/'+bounty.id+'/cancel',env.PUBLIC_URL).href}). Sign in and confirm to cancel this unfunded draft. This comment does not cancel it or move money.`;
+  const text=!bounty?'No bounty exists for this issue.':bounty.status==='CANCELLED'?(bounty.captureId?'This bounty has a confirmed refund. History is retained.':'This draft is already cancelled. No payment or refund was sent.'):bounty.status!=='OPEN'||bounty.captureRequestKey||bounty.captureId||bounty.fundedAt?`This bounty cannot be cancelled as an unfunded draft. ${bounty.fundedTerms?.policy.fundedCancellationEnabled?`[Request independent cancellation review](${new URL('/bounties/'+bounty.id+'/cancellation',env.PUBLIC_URL).href}). No refund is authorized by this comment.`:'Funded cancellation is disabled in these terms.'}`:`[Review draft cancellation](${new URL('/bounties/'+bounty.id+'/cancel',env.PUBLIC_URL).href}). Sign in and confirm to cancel this unfunded draft. This comment does not cancel it or move money.`;
   await reply(db,github,env,job,work.installationId,repo,issueNumber,text);return;
  }
  if(command.kind!=='create'){await reply(db,github,env,job,work.installationId,repo,issueNumber,command.kind==='invalid'?'Use `/bounty create <USD amount>`, `/bounty status`, or `/bounty cancel`.':'This action is not available yet. No money has moved. Use `/bounty status`.');return;}
@@ -133,8 +133,8 @@ export async function runOnce(db:Database,github:GitHub,env:GitHubRuntimeEnv,own
  catch(error){createLogger(env).warn({event:'job_failed',jobId:job.id,kind:job.kind,attempt:job.attempts,maxAttempts:job.maxAttempts,failureClass:error instanceof GitHubError?'GITHUB_ACCESS_OR_PROVIDER':error instanceof AuthError?'AUTHORIZATION':'OPERATION_UNAVAILABLE',...((error instanceof GitHubError||error instanceof AuthError)?{httpStatus:error.status}:{})});await markAttention(db,job).catch(()=>undefined);await finishJob(db,job,true);}
  finally{clearInterval(timer);}return true;
 }
-export function startWorker(db:Database,github:GitHub,env:GitHubRuntimeEnv,onError:()=>void=()=>{},funding?:FundingService,phase5?:Phase5Jobs,phase6?:Phase6) {
+export function startWorker(db:Database,github:GitHub,env:GitHubRuntimeEnv,onError:()=>void=()=>{},funding?:FundingService,phase5?:Phase5Jobs,phase6?:Phase6,phase8?:{tick:()=>Promise<void>}) {
  const abort=new AbortController();const owner=randomUUID();
- const done=(async()=>{while(!abort.signal.aborted){try{await funding?.tick();await phase6?.tick();if(await runOnce(db,github,env,owner,funding,phase5,phase6))continue;}catch{onError();}await delay(env.POLL_INTERVAL_MS,undefined,{signal:abort.signal}).catch(()=>undefined);}})();
+ const done=(async()=>{while(!abort.signal.aborted){try{await funding?.tick();await phase6?.tick();await phase8?.tick();if(await runOnce(db,github,env,owner,funding,phase5,phase6))continue;}catch{onError();}await delay(env.POLL_INTERVAL_MS,undefined,{signal:abort.signal}).catch(()=>undefined);}})();
  return {async close(){abort.abort();await done;}};
 }

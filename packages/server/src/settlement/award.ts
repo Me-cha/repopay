@@ -1,6 +1,6 @@
 import { and,eq,sql } from 'drizzle-orm';
 import type { Transaction } from '../db/transaction.js';
-import { awards,bounties,bountyActivity,reviewDecisions,submissions,type Bounty,type Submission } from '../db/schema.js';
+import { awards,bounties,bountyActivity,cancellationRequests,reviewDecisions,submissions,type Bounty,type Submission } from '../db/schema.js';
 import { AuthError } from '../github/oauth.js';
 import { assertInstallation } from '../actions/guards.js';
 import { candidateFingerprint,type CandidateScan } from './candidates.js';
@@ -22,6 +22,7 @@ export async function commitAward(tx:Transaction,bounty:Bounty,scan:CandidateSca
  if(!allocation.length||allocation.some(a=>!eligible.has(a.ghId)||!Number.isSafeInteger(a.cents)||a.cents<=0)||new Set(allocation.map(a=>a.ghId)).size!==allocation.length||allocation.reduce((n,a)=>n+a.cents,0)!==bounty.amountCents)throw new AuthError(409,'Invalid award recipients or amount.');
  const [award]=await tx.insert(awards).values({bountyId:bounty.id,submissionId:candidate.id,evidenceId,verificationId,headSha:candidate.headSha,baseSha:candidate.baseSha,mergeSha:candidate.mergeSha,mergedAt:candidate.mergedAt,scanHash:scan.hash,amountCents:bounty.amountCents,allocation}).returning();
  if(!award)throw new Error('Award was not saved');
+ await tx.update(cancellationRequests).set({status:'SUPERSEDED'}).where(and(eq(cancellationRequests.bountyId,bounty.id),sql`${cancellationRequests.status} in ('NOTICE','REVIEW','APPROVED')`));
  await tx.update(bounties).set({status:'AWAITING_CLAIM',version:sql`${bounties.version}+1`,needsAttention:false,attentionReason:null,updatedAt:new Date()}).where(eq(bounties.id,bounty.id));
  await tx.insert(bountyActivity).values({bountyId:bounty.id,source:'policy',action:'award_committed',metadata:{awardId:award.id,submissionId:candidate.id,amountCents:award.amountCents}});
  await enqueue(tx,{kind:'sync_bounty',payload:{bountyId:bounty.id},dedupeKey:`award:${award.id}`,maxAttempts:5});return award;

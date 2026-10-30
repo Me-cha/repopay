@@ -1,3 +1,4 @@
+import { mountCancellation } from './cancellation.js';
 import { mountReview } from './review.js';
 import { PayPalWebhookError,type PayPalHeaders } from '../paypal/webhooks.js';
 import express, { type Express, type ErrorRequestHandler } from 'express';
@@ -44,9 +45,10 @@ export function buildApp(deps: AppDependencies): Express {
   }
   if(deps.authentication) {
     app.use((_request,response,next)=>{sensitiveHeaders(response);next();});
+    app.use('/cancellations',express.urlencoded({extended:false,limit:262144,parameterLimit:2000}));
     app.use(express.urlencoded({extended:false,limit:4096,parameterLimit:5}));
     mountAuth(app,deps.authentication);mountConfirm(app,deps.authentication);mountApi(app,deps.authentication);mountConnect(app,deps.authentication);
-    if(deps.funding){mountReview(app,deps.authentication,deps.funding.env);mountFunding(app,{...deps.authentication,env:deps.funding.env,...(deps.funding.listCopilotModels?{listCopilotModels:deps.funding.listCopilotModels}:{})});mountCopilotSponsor(app,{...deps.authentication,model:deps.funding.env.COPILOT_MODEL,responseMaxBytes:deps.funding.env.PROVIDER_RESPONSE_MAX_BYTES});mountVerificationRetry(app,deps.authentication);}
+    if(deps.funding){mountCancellation(app,deps.authentication,deps.funding.env);mountReview(app,deps.authentication,deps.funding.env);mountFunding(app,{...deps.authentication,env:deps.funding.env,...(deps.funding.listCopilotModels?{listCopilotModels:deps.funding.listCopilotModels}:{})});mountCopilotSponsor(app,{...deps.authentication,model:deps.funding.env.COPILOT_MODEL,responseMaxBytes:deps.funding.env.PROVIDER_RESPONSE_MAX_BYTES});mountVerificationRetry(app,deps.authentication);}
     const errors:ErrorRequestHandler=(error,_request,response,next)=>{if(response.headersSent){next(error);return;}response.status(400).json({error:'Invalid request body'});};
     app.use(errors);
   }

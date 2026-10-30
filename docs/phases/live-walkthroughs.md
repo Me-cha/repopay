@@ -35,13 +35,24 @@ Local verification: 47 files / 273 tests, typecheck, lint and build passed; migr
 - [ ] Show stale confirmation rejection after evidence changes, loss of permission, and a duplicate action without a second award.
 - [ ] Exercise issue/PR command routing and ambiguous PR links with explicit issue numbers in the browser/GitHub flow.
 
+## Phase 8 — exceptional cancellation and refunds
+
+Local verification: 57 files / 303 tests, typecheck, lint and build passed; migration 0014 applied. No cancellation requests or refund intents exist in the demo database. See [Phase 8 evidence](../evidence/08-summary.md).
+
+- [ ] Obtain a separate independent operator account with repository evidence access, excluding creator/requester/funder/claimants.
+- [ ] Explicitly authorize isolated activation; set its numeric repository scope and operator IDs. Keep general activation off. Fund a **new version 5 bounty**; do not retrofit the paid $50 bounty or other legacy terms.
+- [ ] Publish notice, verify bot identity and persisted deadline, and wait the **full real 72 hours**. Injected-clock local tests do not satisfy this step.
+- [ ] Demonstrate valid contributor work blocks cancellation and a qualifying merge earns one award with no refund.
+- [ ] Review a genuine independent earlier fix with complete chronology, no copied/unresolved work and reasoned claim assessments; confirm as the independent operator.
+- [ ] Verify the original capture's full-principal refund, provider completion, CANCELLED status and payer receipt, with one operation. Inspect pending/uncertain recovery without replacement keys.
+- [ ] Verify stale review/new objection/access-loss behavior and public status links. Keep cross-service race limitations explicit.
+
 ## Later phases — expand during implementation
 
 These are planned walkthroughs, not claims that implementation is complete.
 
 | Phase | Final-session work | Setup/dependency |
 | --- | --- | --- |
-| [8](08.md) | Block abusive cancellation; independently review a valid exception after notice; verify sandbox refund. | Separate eligible operator, evidence and the frozen notice period. Do not shorten notice for the demo. |
 | [9](09.md) | Role-specific GitHub/page/dashboard journeys, reconnecting live updates, mobile and keyboard checks. | Implemented UI and role-scoped data. |
 | [10](10.md) | Restart/recovery, access loss, missed webhooks and ambiguous provider outcomes without duplicate financial operations. | Controlled fault plan; clearly label simulations. |
 | [11](11.md) | Hosted clean-session core flows and restart recovery. | Approved hosting setup and deployment; local checks alone do not establish hosted acceptance. |

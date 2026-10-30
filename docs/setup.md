@@ -221,3 +221,9 @@ A merged candidate with stale evidence queues verification and stays pending. Me
 ### Maintainer review (Phase 7)
 
 Apply migration 0013 using `pnpm db:migrate` after backing up the local database and stopping workers, then restart them. `/bounty approve` on a NEEDS_REVIEW issue opens the authenticated review page. Select the proposed split or a verified recipient, give a reason, review the full amount/revision and confirm. `/bounty reject <reason>` rejects the current merged candidate without clearing evidence or refunding. PR commands accept an explicit linked issue (`/bounty approve #12`, `/bounty reject #12 <reason>`), required when ambiguous. Browser rejection is also available. New evidence, lost access, expired/used tokens and committed awards block stale actions. Existing settlement scope restrictions also apply to manual approval; this is not general payment activation.
+
+## Phase 8 local cancellation/refund verification
+
+Apply migration 0014 after backing up Postgres and stopping workers, then restart. Keep `FUNDED_CANCELLATION_ENABLED=false`; no live refund exercise is authorized now. Future explicitly authorized isolated activation also requires `CANCELLATION_SANDBOX_REPO_ID` and independent `CANCELLATION_OPERATOR_GH_IDS`. Only new version 5 Auto terms disclose cancellation; existing terms/hashes stay intact. The notice is always 72 hours from confirmed publication. Local tests inject time and mock providers; they do not satisfy live notice/refund acceptance.
+
+Run `pnpm typecheck`, `pnpm lint`, `TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test pnpm test`, and `pnpm build` using the pinned Node version. Follow the cancellation operations guide for state inspection; never reset an uncertain refund or create a replacement key.

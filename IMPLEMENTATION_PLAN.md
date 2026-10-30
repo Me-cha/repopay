@@ -294,7 +294,7 @@ GitPay/
 ├─ package.json  pnpm-workspace.yaml  pnpm-lock.yaml  .node-version  .npmrc
 ├─ tsconfig.base.json  tsconfig.json  eslint.config.js  vitest.config.ts  drizzle.config.ts
 ├─ docs/{setup.md,copilot-verifier-research.md}
-├─ docs/evidence/{00-summary.md,00-preflight.md,01-summary.md,02-summary.md,03-summary.md,04-summary.md,05-summary.md,05-verifier.md}
+├─ docs/evidence/{00-summary.md,00-preflight.md,01-summary.md,02-summary.md,03-summary.md,04-summary.md,05-summary.md,05-verifier.md,06-summary.md,07-summary.md,08-summary.md,08-cancellation.md}
 ├─ docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md,0003-nemotron-only-and-preflight-scope.md,0004-funding-recovery.md,0005-copilot-verifier.md}
 ├─ docs/phases/{README.md,review-todo.md,copilot-migration.md,00.md,...,12.md} (task source of truth; status in phase index)
 ├─ docker-compose.yml (Phase 0)  render.yaml (future deployment)
@@ -308,14 +308,14 @@ GitPay/
 │  │  ├─ models/copilot.ts
 │  │  ├─ jobs/{queue.ts,runner.ts,kinds.ts}
 │  │  ├─ github/{app.ts,handlers.ts,commands.ts,linking.ts,reconciliation.ts,checks.ts,comments.ts,permissions.ts,oauth.ts}
-│  │  ├─ actions/{create.ts,fund.ts,cancel.ts,cancellation-review.ts,approve.ts,reject.ts,link.ts,retry.ts,status.ts,guards.ts,tokens.ts,activity.ts}
+│  │  ├─ actions/{create.ts,fund.ts,cancel.ts,approve.ts,reject.ts,link.ts,retry.ts,status.ts,guards.ts,tokens.ts,activity.ts}
 │  │  ├─ paypal/{client.ts,orders.ts,payouts.ts,refunds.ts,webhooks.ts,status-map.ts}
 │  │  ├─ verifier/{collect.ts,prompt.ts,schema.ts,verify.ts,service.ts,evaluation.ts,evaluate.ts}
 │  │  ├─ policy/{decide.ts,allocate.ts}
 │  │  ├─ settlement/{funding.ts,claims.ts,candidates.ts,settle.ts,payout.ts,service.ts,profile.ts,award.ts,refund.ts}
-│  │  ├─ http/{routes.ts,confirm.ts,fund.ts,connect.ts,retry.ts,sponsor.ts,auth.ts,session.ts,api.ts,sse.ts}
+│  │  ├─ http/{routes.ts,confirm.ts,fund.ts,connect.ts,retry.ts,sponsor.ts,auth.ts,session.ts,api.ts,review.ts,cancellation.ts,sse.ts}
 │  │  ├─ domain/{types.ts,funded-terms.ts}
-│  │  ├─ cancellation/{evidence.ts,authorization.ts}
+│  │  ├─ cancellation/{evidence.ts,authorization.ts,service.ts,runtime.ts}
 │  │  ├─ read-models/{bounties.ts,payouts.ts}  operations/attention.ts
 │  │  └─ util/{money.ts,crypto.ts,parse.ts}
 │  ├─ server/test/{helpers/,unit/,integration/,fixtures/}
@@ -330,7 +330,9 @@ All business actions live in `actions/`. Comment commands, confirm POSTs and pol
 
 ## 7. Environment
 
-Boot fails clearly on missing/invalid required values. `.env.example` is the configuration template, not working credentials. `CANCELLATION_OPERATOR_GH_IDS` may be empty only when funded cancellation is disabled. Validate the notice period as positive and record it with funded terms. Runtime config validation is a Phase 0 deliverable.
+Boot fails clearly on missing/invalid required values. `.env.example` is the configuration template, not working credentials. Implementation detail: [ADR 0010](docs/decisions/0010-cancellation-refund-boundaries.md) maps the cancellation action contracts to `cancellation/service.ts`, migration 0014, and version 5 funded terms; legacy versions remain disabled. `CANCELLATION_SANDBOX_REPO_ID` restricts activation to one isolated repository.
+
+`CANCELLATION_OPERATOR_GH_IDS` may be empty only when funded cancellation is disabled. Validate the notice period as positive and record it with funded terms. Runtime config validation is a Phase 0 deliverable.
 
 | Var                                                                                                   | Notes                                                                                                                                                                                                                     |
 | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

@@ -8,6 +8,8 @@ The principle is **glue, not a platform**: development stays in GitHub, checkout
 
 > **Project status (October 30, 2026):** Phases 0, 1 and 4 have recorded completion evidence. Phase 2 has a deferred live revocation check. Phase 3 has a recorded $40 sandbox capture, with receipt/recovery acceptance still open. Phase 5 is advisory and incomplete: Copilot **Auto** is the accepted profile, and the current v2 application-adapter evaluation passed 18/18; the live funded competing-PR/retry walkthrough is still open. The latest [Phases 0–5 review](docs/evidence/00-05-review.md) records fixes and remaining blockers. Phase 6 now has local award selection, immutable payout intents, item reconciliation and claim resumption. Automatic award selection is enabled only for the existing $50 isolated sandbox demo under ADR 0008; remaining Phase 5 checks are deferred and the first sandbox payout is provider-confirmed SUCCESS, with recipient receipt confirmed; delayed-claim/two-author live acceptance remains open. See [Phase 6 evidence](docs/evidence/06-summary.md).
 
+Phases 7 and 8 now have local implementations and automated verification. Their live walkthroughs, along with outstanding Phase 5–6 cases, remain on the [final live checklist](docs/phases/live-walkthroughs.md). See [Phase 8 evidence](docs/evidence/08-summary.md).
+
 ## Intended flow
 
 1. A maintainer comments `/bounty create 50` on an issue, or adds `bounty:$50`. This creates an **unfunded draft** when the App is installed and its receiver is running.
@@ -28,7 +30,7 @@ Funded bounties are commitments. A maintainer may **request** cancellation for a
 - Multiple contributors may submit. Opening the first PR or saying “I'll work on it” does not reserve the reward.
 - An existing qualifying submission blocks ordinary cancellation while its claim is unresolved. This protection does not automatically make that submission the winner.
 - A genuinely independent earlier internal fix, duplicate bounty or invalid issue may justify an exception. Copying a contributor's fix and calling it internal does not.
-- The proposed process uses public notice, evidence collection and an independent operator's decision. AI assists the review; it cannot approve refunds. The proposed notice period is 72 hours, published before funding.
+- The locally implemented exception flow uses public notice, evidence collection and an independent operator’s decision. No AI output authorizes a refund. The 72-hour period is frozen before funding and begins only after confirmed notice publication.
 - Accepted awards cannot be cancelled because the contributor has not connected PayPal or a payout failed.
 - Without an independent operator, funded refunds remain unavailable. App removal or missing repository access also blocks new refund authorization.
 
@@ -36,7 +38,7 @@ These rules prevent the normal recorded cancel-then-merge abuse path. They canno
 
 ## Commands (full MVP target)
 
-Currently available: `/bounty create`, `/bounty status`, `/bounty fund`, and `/bounty cancel` for an unfunded draft. Cancellation opens an authenticated preview; the comment itself cannot cancel the draft. Sandbox funding requires merchant, trusted CI and an explicit Copilot model configuration. Funded cancellation remains unavailable.
+Currently available: `/bounty create`, `/bounty status`, `/bounty fund`, and `/bounty cancel` for an unfunded draft. Cancellation opens an authenticated preview; the comment itself cannot cancel the draft. Sandbox funding requires merchant, trusted CI and an explicit Copilot model configuration. Funded cancellation remains disabled in the current deployment and all legacy funded terms. Phase 8 adds a locally verified, independently reviewed exception flow for explicitly scoped new version 5 terms; its real 72-hour refund walkthrough is deferred.
 
 | Command                   | Purpose                                                                                                         |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------- |

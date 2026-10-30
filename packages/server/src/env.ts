@@ -108,6 +108,9 @@ export function parseAuthEnv(input:Record<string,string|undefined>):AuthEnv {
 
 const settlementScope=z.object({bountyId:z.string().regex(/^[1-9]\d*$/),repoId:z.string().regex(/^[1-9]\d*$/),amountCents:z.number().int().positive().max(2147483647),termsHash:z.string().regex(/^[a-f0-9]{64}$/)}).strict();
 const fundingSettings = z.object({
+ FUNDED_CANCELLATION_ENABLED:flag.default(false),
+ CANCELLATION_OPERATOR_GH_IDS:schema.shape.CANCELLATION_OPERATOR_GH_IDS.default([]),
+ CANCELLATION_SANDBOX_REPO_ID:z.string().regex(/^[1-9]\d*$|^$/).default(''),
  SETTLEMENT_DEMO_SCOPE:z.string().default('').transform((value,ctx)=>{if(!value.trim())return null;try{return JSON.parse(value) as unknown;}catch{ctx.addIssue({code:'custom',message:'Invalid settlement scope'});return z.NEVER;}}).pipe(settlementScope.nullable()),
  PP_BASE:preflightSchema.shape.PP_BASE,PP_CLIENT_ID:text,PP_SECRET:text,
  PP_WEBHOOK_ID:z.string().trim().default(''),PP_MERCHANT_ID:z.string().regex(/^[A-Z0-9]{1,32}$|^$/).default(''),
@@ -126,5 +129,6 @@ export type FundingEnv=AuthEnv & z.infer<typeof fundingSettings>;
 export function parseFundingEnv(input:Record<string,string|undefined>):FundingEnv {
  const auth=parseAuthEnv(input),result=fundingSettings.safeParse(input);
  if(!result.success)throw new Error('Invalid configuration: '+[...new Set(result.error.issues.map(issue=>issue.path.join('.')))].join(', '));
+ if(result.data.FUNDED_CANCELLATION_ENABLED&&(!result.data.CANCELLATION_OPERATOR_GH_IDS.length||!result.data.CANCELLATION_SANDBOX_REPO_ID))throw new Error('Cancellation requires operators and an isolated sandbox repository');
  return {...auth,...result.data};
 }

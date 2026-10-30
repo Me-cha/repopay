@@ -11,7 +11,7 @@ export async function linkPr(db:Database,bounty:Bounty,pr:PullRequest,now=()=>ne
  return db.withTransaction(async tx=>{
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${`submission:${bounty.id}:${pr.id}`}))`);
   const [current]=await tx.select().from(bounties).where(eq(bounties.id,bounty.id)).for('update');
-  if(!current||current.repoId!==pr.base.repo?.id||!['OPEN','FUNDED','NEEDS_REVIEW','AWAITING_CLAIM','PAYING','PAID'].includes(current.status)||current.fundingHold)throw new AuthError(409,'This bounty is not accepting submissions.');
+  if(!current||current.repoId!==pr.base.repo?.id||!['OPEN','FUNDED','NEEDS_REVIEW','AWAITING_CLAIM','PAYING','PAID','REFUNDING'].includes(current.status)||current.fundingHold)throw new AuthError(409,'This bounty is not accepting submissions.');
   const [old]=await tx.select().from(submissions).where(and(eq(submissions.bountyId,current.id),eq(submissions.prId,pr.id))).for('update');
   const changed=!old||old.headSha!==pr.head.sha||old.baseSha!==pr.base.sha||old.status!==status||old.mergeSha!==(pr.merge_commit_sha??null);
   const values={mergeSha:pr.merge_commit_sha??null,authorGhId:pr.user.id,authorLogin:pr.user.login,status,headSha:pr.head.sha,baseSha:pr.base.sha,mergedAt:pr.merged_at?new Date(pr.merged_at):null,closedAt:pr.closed_at?new Date(pr.closed_at):null,observedAt:now(),updatedAt:now()};

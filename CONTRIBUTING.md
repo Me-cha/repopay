@@ -43,3 +43,9 @@ Phase 6 local implementation is authorized; automatic selection remains gated by
 Phase 6 activation is default-off and scope-bound; see [scoped sandbox activation](docs/setup.md#scoped-phase-6-sandbox-activation). Changes to its boundaries need negative tests for wrong bounty/repository/amount/terms, revoked sponsorship and unaccepted serving models. Never activate a scope to silently waive a documented acceptance gate.
 
 Phase 7 review regression coverage is in `packages/server/test/integration/review-approve.test.ts` (preview, approval, rejection and HTTP boundaries), alongside award-selection and command tests. Migration 0013 is required for review history. See `docs/setup.md` for review commands; provider calls in the local tests are mocked.
+
+## Phase 8 local cancellation/refund verification
+
+Apply migration 0014 after backing up Postgres and stopping workers, then restart. Keep `FUNDED_CANCELLATION_ENABLED=false`; no live refund exercise is authorized now. Future explicitly authorized isolated activation also requires `CANCELLATION_SANDBOX_REPO_ID` and independent `CANCELLATION_OPERATOR_GH_IDS`. Only new version 5 Auto terms disclose cancellation; existing terms/hashes stay intact. The notice is always 72 hours from confirmed publication. Local tests inject time and mock providers; they do not satisfy live notice/refund acceptance.
+
+Run `pnpm typecheck`, `pnpm lint`, `TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test pnpm test`, and `pnpm build` using the pinned Node version. Follow the cancellation operations guide for state inspection; never reset an uncertain refund or create a replacement key.

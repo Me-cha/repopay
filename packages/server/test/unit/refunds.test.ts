@@ -1,0 +1,7 @@
+import { expect,it } from 'vitest';
+import nock from 'nock';
+import { createRefunds,normalizeRefund } from '../../src/paypal/refunds.js';
+import { fundingEnv } from '../helpers/funding.js';
+const raw={id:'REFUND',status:'COMPLETED',amount:{value:'50.00',currency_code:'USD'},links:[{rel:'up',href:'https://api-m.sandbox.paypal.com/v2/payments/captures/CAPTURE'}]};
+it('refund adapter pins sandbox capture, amount, idempotency header and validates GET identity',async()=>{const env=fundingEnv(),api=createRefunds(env);const scope=nock(env.PP_BASE).post('/v1/oauth2/token').reply(200,{access_token:'test',token_type:'Bearer'}).post('/v2/payments/captures/CAPTURE/refund',{amount:{value:'50.00',currency_code:'USD'}}).matchHeader('PayPal-Request-Id','fixed-key').reply(201,raw).post('/v1/oauth2/token').reply(200,{access_token:'test',token_type:'Bearer'}).get('/v2/payments/refunds/REFUND').reply(200,raw);expect(await api.submit('CAPTURE',5000,'fixed-key',new Date(Date.now()+10000))).toMatchObject({amountCents:5000,captureId:'CAPTURE',status:'COMPLETED'});expect((await api.get('REFUND')).id).toBe('REFUND');expect(scope.isDone()).toBe(true);});
+it('refund parsing refuses unknown statuses, mismatched currency and attacker recovery links',()=>{expect(()=>normalizeRefund({...raw,status:'SUCCESS'})).toThrow();expect(()=>normalizeRefund({...raw,amount:{value:'50.00',currency_code:'EUR'}})).toThrow();expect(()=>normalizeRefund({...raw,links:[{rel:'up',href:'https://evil.test/CAPTURE'}]})).toThrow();});
