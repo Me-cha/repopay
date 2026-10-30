@@ -20,11 +20,10 @@ const snapshot = { batch_header: { payout_batch_id: 'BATCH123', batch_status: 'S
 it('probe_default_does_not_pay or generate model output', async () => {
   token();
   nock('https://api.github.com').get('/app').reply(200, { slug: env.GH_APP_SLUG });
-  nock('https://integrate.api.nvidia.com').get('/v1/models').reply(200, { data: [{ id: env.NVIDIA_MODEL }] });
   const providerEnv = parsePreflightEnv({ ...syntheticEnv(), GH_PRIVATE_KEY: privateKey, PP_WEBHOOK_ID: '', GH_WEBHOOK_SECRET: '', GH_CLIENT_SECRET: '' });
   const report = await runPreflight(providerEnv, {});
   expect(report.paypal).toEqual({ authentication: 'ok', payouts: 'not_probed' });
-  expect(report.nvidia.structuredOutput).toBe('not_probed');
+  expect(report.copilot.structuredOutput).toBe('not_probed');
   expect(report.github.authentication).toBe('ok');
 });
 it('probe_reuses_identity persisted before sending and recovers duplicate', async () => {

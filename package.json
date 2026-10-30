@@ -17,8 +17,10 @@
     "test": "vitest run",
     "db:migrate": "tsx --env-file=.env packages/server/scripts/migrate.ts",
     "preflight": "tsx --env-file-if-exists=.env packages/server/scripts/preflight.ts",
+    "eval:verifier": "tsx --env-file-if-exists=.env packages/server/scripts/eval-verifier.ts",
     "dev:worker": "tsx watch --env-file=.env packages/server/src/worker.ts",
-    "start:worker": "node --env-file=.env packages/server/dist/worker.js"
+    "start:worker": "node --env-file=.env packages/server/dist/worker.js",
+    "tunnel": "bash ./ngrok.sh"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

@@ -1,5 +1,5 @@
 import { cents } from '../domain/types.js';
-export type Command = { kind: 'create'; amount: string } | { kind: 'status' } | { kind: 'unavailable' } | { kind: 'invalid' };
+export type Command = { kind: 'create'; amount: string } | { kind: 'status' } | { kind: 'cancel' } | {kind:'fund'} | {kind:'link';prNumber:number} | { kind: 'unavailable' } | { kind: 'invalid' };
 export function parseCommand(body: string): Command | null {
   let fence: string | undefined;
   for (const raw of body.split(/\r?\n/)) {
@@ -10,6 +10,9 @@ export function parseCommand(body: string): Command | null {
     const create = /^\/bounty create ([^\s]+)$/i.exec(line);
     if (create?.[1]) return /^\d{1,9}(?:\.\d{1,2})?$/.test(create[1]) ? { kind: 'create', amount: create[1] } : { kind: 'invalid' };
     if (/^\/bounty status$/i.test(line)) return { kind: 'status' };
+    if (/^\/bounty fund$/i.test(line)) return {kind:'fund'};
+    const link = /^\/bounty link ([1-9]\d{0,8})$/i.exec(line);if(link?.[1])return {kind:'link',prNumber:Number(link[1])};
+    if (/^\/bounty cancel$/i.test(line)) return { kind: 'cancel' };
     if (/^\/bounty (fund|approve|reject|cancel|link|retry)(?:\s|$)/i.test(line)) return { kind: 'unavailable' };
     return /^\/bounty(?:\s|$)/i.test(line) ? { kind: 'invalid' } : null;
   }

@@ -5,20 +5,28 @@ const fraction = z.string().regex(/^(0(\.\d+)?|1(\.0+)?)$/).transform(Number);
 const flag = z.enum(['true', 'false']).transform(value => value === 'true');
 const key = z.string().refine(value => /^[A-Za-z0-9+/]{43}=$/.test(value) && Buffer.from(value, 'base64').length === 32, 'must be a 32-byte base64 key');
 const database = z.url().refine(value => ['postgres:', 'postgresql:'].includes(new URL(value).protocol));
-const nvidiaSchema = z.object({
-  NVIDIA_API_KEY: text, NVIDIA_BASE: z.literal('https://integrate.api.nvidia.com/v1'),
-  NVIDIA_MODEL: z.literal('nvidia/nemotron-3-ultra-550b-a55b'),
-  NVIDIA_MAX_TOKENS: integer(128, 16384), NVIDIA_TIMEOUT_MS: integer(1000, 120000),
+// `auto` lets GitHub choose the serving model; each review records the model it reports.
+const copilotModel = z.string().trim().max(200).regex(/^[a-zA-Z0-9._:/-]*$/).transform(value => value.toLowerCase() === 'auto' ? 'auto' : value);
+const copilotSchema = z.object({
+  COPILOT_GITHUB_TOKEN: text,
+  COPILOT_BILLING_OWNER_ID: z.string().regex(/^[1-9]\d*$/),
+  COPILOT_AUTH_KIND: z.enum(['user', 'organization']), COPILOT_MODEL: copilotModel.default(''),
+  COPILOT_TIMEOUT_MS: integer(1000, 120000).default(120000),
+  COPILOT_SHUTDOWN_TIMEOUT_MS: integer(100, 10000).default(5000),
+  COPILOT_MAX_INPUT_BYTES: integer(1, 1048576).default(200000),
   PROVIDER_RESPONSE_MAX_BYTES: integer(1, 10485760),
+}).superRefine((env, ctx) => {
+  const valid = env.COPILOT_AUTH_KIND === 'organization' ? /^ghs_/.test(env.COPILOT_GITHUB_TOKEN) : /^(ghu_|gho_|github_pat_)/.test(env.COPILOT_GITHUB_TOKEN);
+  if (!valid) ctx.addIssue({code:'custom',path:['COPILOT_GITHUB_TOKEN'],message:'Token type must match the explicit sponsor authorization kind'});
 });
-export type NvidiaEnv = z.infer<typeof nvidiaSchema>;
-export function parseNvidiaEnv(input: Record<string, string | undefined>): NvidiaEnv {
-  const result = nvidiaSchema.safeParse(input);
+export type CopilotEnv = z.infer<typeof copilotSchema>;
+export function parseCopilotEnv(input: Record<string, string | undefined>): CopilotEnv {
+  const result = copilotSchema.safeParse(input);
   if (!result.success) throw new Error('Invalid configuration: ' + [...new Set(result.error.issues.map(issue => issue.path.join('.')))].join(', '));
   return result.data;
 }
 const preflightSchema = z.object({
-  ...nvidiaSchema.shape,
+  PROVIDER_RESPONSE_MAX_BYTES: integer(1, 10485760),
   GH_APP_ID: z.string().regex(/^[1-9]\d*$/), GH_APP_SLUG: text, GH_PRIVATE_KEY: text, GH_CLIENT_ID: text,
   PP_BASE: z.literal('https://api-m.sandbox.paypal.com'), PP_CLIENT_ID: text, PP_SECRET: text,
   PROVIDER_TIMEOUT_MS: integer(100, 120000),
@@ -36,6 +44,7 @@ const schema = z.object({
   DATABASE_URL: database, TEST_DATABASE_URL: database,
   WORKER_MODE: z.enum(['inline', 'separate']), SESSION_SECRET: z.string().min(32),
   TOKEN_ENC_KEY: key, PAYMENT_DATA_ENC_KEY: key, ACTION_TOKEN_TTL_SEC: integer(1, 3600),
+  SESSION_TTL_SEC: integer(300,2592000), OAUTH_STATE_TTL_SEC: integer(60,900),
   GH_WEBHOOK_SECRET: z.string().min(32), GH_CLIENT_SECRET: text, PP_WEBHOOK_ID: text,
   POLICY_MIN_CONFIDENCE: fraction, POLICY_CI_REQUIRED: flag, POLICY_MIN_SHARE: fraction,
   MAX_BOUNTY_CENTS: integer(1, 2147483647), MAX_DIFF_CHARS: integer(1, 1000000),
@@ -77,4 +86,43 @@ export function parseGitHubRuntimeEnv(input:Record<string,string|undefined>):Git
  const result=githubRuntimeSchema.safeParse(input);
  if(!result.success)throw new Error('Invalid configuration: '+[...new Set(result.error.issues.map(issue=>issue.path.join('.')))].join(', '));
  return result.data;
+}
+
+const authSchema = githubRuntimeSchema.extend({
+ GH_CLIENT_SECRET: text, SESSION_SECRET: schema.shape.SESSION_SECRET,
+ TOKEN_ENC_KEY: key, PAYMENT_DATA_ENC_KEY:key, ACTION_TOKEN_TTL_SEC: schema.shape.ACTION_TOKEN_TTL_SEC,
+ SESSION_TTL_SEC: integer(300, 2592000), OAUTH_STATE_TTL_SEC: integer(60, 900),
+}).superRefine((env, ctx) => {
+ const url = new URL(env.PUBLIC_URL);
+ if (url.pathname !== '/' || url.search || url.hash || url.username || url.password ||
+     (url.protocol !== 'https:' && !['localhost','127.0.0.1','[::1]'].includes(url.hostname))) {
+  ctx.addIssue({code:'custom',path:['PUBLIC_URL'],message:'Use an HTTPS origin or loopback HTTP origin'});
+ }
+});
+export type AuthEnv = z.infer<typeof authSchema>;
+export function parseAuthEnv(input:Record<string,string|undefined>):AuthEnv {
+ const result=authSchema.safeParse(input);
+ if(!result.success)throw new Error('Invalid configuration: '+[...new Set(result.error.issues.map(issue=>issue.path.join('.')))].join(', '));
+ return result.data;
+}
+
+const fundingSettings = z.object({
+ PP_BASE:preflightSchema.shape.PP_BASE,PP_CLIENT_ID:text,PP_SECRET:text,
+ PP_WEBHOOK_ID:z.string().trim().default(''),PP_MERCHANT_ID:z.string().regex(/^[A-Z0-9]{1,32}$|^$/).default(''),
+ COPILOT_MODEL:copilotModel.default('auto'),
+ POLICY_VERSION:text.default('gitpay-v2-copilot'),POLICY_MIN_CONFIDENCE:fraction,POLICY_MIN_SHARE:fraction,
+ POLICY_CI_REQUIRED:flag,MAX_DIFF_CHARS:schema.shape.MAX_DIFF_CHARS,CANCELLATION_NOTICE_HOURS:schema.shape.CANCELLATION_NOTICE_HOURS,
+ POLICY_CI_CONTEXTS:z.string().default('{}').transform((value,ctx)=>{try{return JSON.parse(value) as unknown;}catch{ctx.addIssue({code:'custom',message:'Invalid JSON'});return z.NEVER;}}).pipe(z.record(z.string().regex(/^[1-9]\d*$/),z.array(z.object({name:text.max(200),appId:z.string().regex(/^[1-9]\d*$/)}).strict()).min(1).max(50))),
+ PP_SAFE_RETRY_SEC:integer(60,18000).default(18000),
+ RECONCILIATION_INTERVAL_SEC:schema.shape.RECONCILIATION_INTERVAL_SEC,
+ RECONCILIATION_RATE_PER_MIN:schema.shape.RECONCILIATION_RATE_PER_MIN,
+ PP_VERIFY_CONCURRENCY:integer(1,16).default(2),
+ VERIFIER_DAILY_ATTEMPT_LIMIT:integer(1,1000).default(25),
+ VERIFIER_MAX_ATTEMPTS_PER_SHA:integer(1,10).default(3),
+});
+export type FundingEnv=AuthEnv & z.infer<typeof fundingSettings>;
+export function parseFundingEnv(input:Record<string,string|undefined>):FundingEnv {
+ const auth=parseAuthEnv(input),result=fundingSettings.safeParse(input);
+ if(!result.success)throw new Error('Invalid configuration: '+[...new Set(result.error.issues.map(issue=>issue.path.join('.')))].join(', '));
+ return {...auth,...result.data};
 }

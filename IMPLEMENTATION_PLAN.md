@@ -3,11 +3,11 @@
 > "Fund an issue. Merge a qualifying solution. Pay the contributor."
 > A GitHub App that glues GitHub issues and PRs to PayPal: maintainers fund bounties through PayPal checkout, AI verifies PRs and merged work is paid through PayPal Payouts.
 
-Status: **implementation authorized for Phase 00; task progress and outstanding gates are tracked in [the phase index](docs/phases/README.md)**. Updated October 26, 2026. This is the canonical implementation plan; [PLAN.md](PLAN.md) is a navigation pointer.
+Status: **Phases 0–5 are in scope by user authorization; Phases 4 and 5 have local implementation but remain gated by live walkthrough/model evidence and documented sponsor controls.** Updated October 29, 2026. See [the phase index](docs/phases/README.md). This is the canonical implementation plan; [PLAN.md](PLAN.md) is a navigation pointer.
 
 Hackathon target: PayPal "Build What's Next with PayPal and AI". The inherited submission date is November 12, 2026; verify the official deadline, eligibility and prize rules before submission.
 
-Development uses **Codex** and [AGENTS.md](AGENTS.md). The runtime verifier uses NVIDIA-hosted Nemotron only, authorized in [ADR 0003](docs/decisions/0003-nemotron-only-and-preflight-scope.md). That decision supersedes the v3 Anthropic selection; Codex remains the development assistant.
+Development uses **Codex** and [AGENTS.md](AGENTS.md). The runtime verifier uses repository-sponsored Copilot SDK, authorized in [ADR 0005](docs/decisions/0005-copilot-verifier.md). This supersedes the Nemotron provider selection while preserving historical evidence and funded terms; Codex remains the development assistant.
 
 Revision v4 incorporates open participation, exceptional cancellation review, persistent contributor awards and the GitPay name. The pre-build review remediation recorded in [the phase review TODO](docs/phases/review-todo.md) is now part of this canonical plan: the master architecture, schema sketch, state machines and phase contracts must agree before Phase 00 starts. See [the cancellation decision](docs/decisions/0001-open-participation-and-cancellation.md) for reasons and tradeoffs.
 
@@ -147,7 +147,7 @@ Main prizes, Best Use of PayPal + AI, Most Impactful, Best Demo, AG Grid, APIMat
 │ sync_bounty    → bot comment    │──▶ GitHub comment / badge label
 │ run_command    → actions        │
 │ create_order / capture_order    │──▶ PayPal Orders
-│ verify_pr      → github+NVIDIA  │──▶ Check Run
+│ verify_pr      → github+Copilot  │──▶ Check Run
 │ settle_pr      → policy         │
 │ submit_payout / poll_payout     │──▶ PayPal Payouts
 │ submit_refund / poll_refund     │──▶ PayPal Refunds
@@ -200,7 +200,7 @@ Design rules:
 
 ### 3.3 Other
 
-- NVIDIA API key with access to the selected Nemotron model.
+- Eligible repository-owner or organization Copilot sponsor, explicit credential and accessible fixed model. Durable consent, repository binding, expiry/revocation, request limits and the sponsor's applicable monetary spending policy must precede background verification; see ADR 0005.
 - smee.io for local GitHub webhooks. PayPal cannot reach localhost: dev uses polling fallbacks.
 - Optional APIMatic Context Plugin/MCP in Codex if available; otherwise use official PayPal documentation. Do not assume any integration is installed.
 
@@ -270,7 +270,7 @@ Unauthorized or invalid-state commands get a short reply explaining why and what
 | HTTP        | Express 5                                                                                                                            |
 | GitHub      | `@octokit/app`, `octokit.graphql`                                                                                                    |
 | PayPal      | `@paypal/paypal-server-sdk` for Orders/Payments if it fits; plain `fetch` client for Payouts, webhook verification and gaps          |
-| LLM         | NVIDIA OpenAI-compatible Chat Completions via bounded fetch; Nemotron only, one bounded attempt; JSON-schema output validated by Zod |
+| LLM         | Pinned Copilot SDK; isolated tool-free session, explicit sponsor/model, bounded lifecycle and Zod structured output |
 | DB          | Postgres 16, `drizzle-orm` + `drizzle-kit`, `pg`                                                                                     |
 | Validation  | `zod`                                                                                                                                |
 | Crypto      | Node `crypto` (AES-256-GCM for stored OAuth tokens, HMAC for state, SHA-256 for token hashes)                                        |
@@ -289,14 +289,14 @@ The following is the **target layout**, not a claim that the runtime exists. [AG
 ```
 GitPay/
 ├─ IMPLEMENTATION_PLAN.md  PLAN.md (pointer)  README.md  AGENTS.md  Agent.md (pointer)
-├─ CONTRIBUTING.md  LICENSE (MIT)  .gitignore  .gitattributes  .editorconfig  .env.example
+├─ CONTRIBUTING.md  LICENSE (MIT)  .gitignore  .gitattributes  .editorconfig  .env.example  ngrok.sh
 ├─ .github/{pull_request_template.md,workflows/ci.yml}
 ├─ package.json  pnpm-workspace.yaml  pnpm-lock.yaml  .node-version  .npmrc
 ├─ tsconfig.base.json  tsconfig.json  eslint.config.js  vitest.config.ts  drizzle.config.ts
-├─ docs/setup.md
-├─ docs/evidence/{00-summary.md,00-preflight.md} (later phases add their evidence)
-├─ docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md,0003-nemotron-only-and-preflight-scope.md}
-├─ docs/phases/{README.md,review-todo.md,00.md,...,12.md} (task source of truth; status in phase index)
+├─ docs/{setup.md,copilot-verifier-research.md}
+├─ docs/evidence/{00-summary.md,00-preflight.md,01-summary.md,02-summary.md,03-summary.md,04-summary.md,05-summary.md,05-verifier.md}
+├─ docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md,0003-nemotron-only-and-preflight-scope.md,0004-funding-recovery.md,0005-copilot-verifier.md}
+├─ docs/phases/{README.md,review-todo.md,copilot-migration.md,00.md,...,12.md} (task source of truth; status in phase index)
 ├─ docker-compose.yml (Phase 0)  render.yaml (future deployment)
 ├─ postman/README.md  gitpay.postman_collection.json (Phase 12)
 ├─ packages/
@@ -304,17 +304,16 @@ GitPay/
 │  ├─ server/src/
 │  │  ├─ main.ts  worker.ts  env.ts  log.ts
 │  │  ├─ db/{schema.ts,client.ts,transaction.ts,migrate.ts,migrations/}
-│  │  ├─ domain/types.ts
 │  │  ├─ preflight/{run.ts,http.ts,state.ts}
-│  │  ├─ models/nvidia.ts
+│  │  ├─ models/copilot.ts
 │  │  ├─ jobs/{queue.ts,runner.ts,kinds.ts}
 │  │  ├─ github/{app.ts,handlers.ts,commands.ts,linking.ts,reconciliation.ts,checks.ts,comments.ts,permissions.ts,oauth.ts}
-│  │  ├─ actions/{create.ts,fund.ts,cancel.ts,cancellation-review.ts,approve.ts,reject.ts,link.ts,retry.ts,status.ts,guards.ts,activity.ts}
+│  │  ├─ actions/{create.ts,fund.ts,cancel.ts,cancellation-review.ts,approve.ts,reject.ts,link.ts,retry.ts,status.ts,guards.ts,tokens.ts,activity.ts}
 │  │  ├─ paypal/{client.ts,orders.ts,payouts.ts,refunds.ts,webhooks.ts,status-map.ts}
-│  │  ├─ verifier/{collect.ts,prompt.ts,schema.ts,verify.ts}
+│  │  ├─ verifier/{collect.ts,prompt.ts,schema.ts,verify.ts,service.ts,evaluation.ts}
 │  │  ├─ policy/{decide.ts,allocate.ts}
-│  │  ├─ settlement/{funding.ts,settle.ts,payout.ts,claims.ts,refund.ts}
-│  │  ├─ http/{routes.ts,confirm.ts,fund.ts,connect.ts,auth.ts,session.ts,api.ts,sse.ts}
+│  │  ├─ settlement/{funding.ts,claims.ts,settle.ts,payout.ts,refund.ts}
+│  │  ├─ http/{routes.ts,confirm.ts,fund.ts,connect.ts,retry.ts,sponsor.ts,auth.ts,session.ts,api.ts,sse.ts}
 │  │  ├─ domain/{types.ts,funded-terms.ts}
 │  │  ├─ cancellation/{evidence.ts,authorization.ts}
 │  │  ├─ read-models/{bounties.ts,payouts.ts}  operations/attention.ts
@@ -336,6 +335,7 @@ Boot fails clearly on missing/invalid required values. `.env.example` is the con
 | Var                                                                                                   | Notes                                                                                                                                                                                                                     |
 | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `NODE_ENV`, `PORT`, `PUBLIC_URL`, `DATABASE_URL`, `TEST_DATABASE_URL`                                 | Separate test database is mandatory for destructive fixture resets                                                                                                                                                        |
+| `NGROK_DOMAIN`                                                                                         | Optional stable account-assigned hostname for local `pnpm tunnel`; no ngrok credential is stored here                                                                                                                    |
 | `WORKER_MODE`                                                                                         | `inline` or `separate`                                                                                                                                                                                                    |
 | `SESSION_SECRET`                                                                                      | 32+ bytes; HMAC for OAuth state and CSRF                                                                                                                                                                                  |
 | `TOKEN_ENC_KEY`                                                                                       | 32 bytes base64; AES-256-GCM key for stored GitHub user tokens                                                                                                                                                            |
@@ -344,9 +344,9 @@ Boot fails clearly on missing/invalid required values. `.env.example` is the con
 | `GH_APP_ID`, `GH_APP_SLUG`, `GH_PRIVATE_KEY`, `GH_WEBHOOK_SECRET`, `GH_CLIENT_ID`, `GH_CLIENT_SECRET` |                                                                                                                                                                                                                           |
 | `PP_BASE`                                                                                             | must equal `https://api-m.sandbox.paypal.com`                                                                                                                                                                             |
 | `PP_CLIENT_ID`, `PP_SECRET`, `PP_WEBHOOK_ID`                                                          |                                                                                                                                                                                                                           |
-| `NVIDIA_API_KEY`, `NVIDIA_BASE`                                                                       | key and exact `https://integrate.api.nvidia.com/v1` base                                                                                                                                                                  |
-| `NVIDIA_MODEL`                                                                                        | `nvidia/nemotron-3-ultra-550b-a55b`; sole approved runtime model                                                                                                                                                          |
-| `NVIDIA_MAX_TOKENS`, `NVIDIA_TIMEOUT_MS`                                                              | explicit model-generation budget and per-attempt timeout; examples `2048`, `120000`                                                                                                                                       |
+| `COPILOT_GITHUB_TOKEN`, `COPILOT_AUTH_KIND`, `COPILOT_BILLING_OWNER_ID` | Explicit sponsor token, user/organization kind and declared stable sponsor ID; separate from browser login. Required for model probes only. |
+| `COPILOT_MODEL` | Fixed accessible model ID; blank permits listing and GitHub-only operation but blocks new funding/generation. No auto selection. |
+| `COPILOT_MAX_INPUT_BYTES`, `COPILOT_TIMEOUT_MS`, `COPILOT_SHUTDOWN_TIMEOUT_MS` | Bounded supplied evidence, request lifecycle and cleanup; see `.env.example`. These are not a guaranteed maximum bill. |
 | `POLICY_MIN_CONFIDENCE`                                                                               | e.g. `0.75`                                                                                                                                                                                                               |
 | `POLICY_CI_REQUIRED`                                                                                  | `true`/`false`                                                                                                                                                                                                            |
 | `POLICY_MIN_SHARE`                                                                                    | e.g. `0.05`                                                                                                                                                                                                               |
@@ -354,7 +354,7 @@ Boot fails clearly on missing/invalid required values. `.env.example` is the con
 | `MAX_DIFF_CHARS`                                                                                      | e.g. `160000`                                                                                                                                                                                                             |
 | `POLL_INTERVAL_MS`                                                                                    | e.g. `5000`; orders, payouts, refunds                                                                                                                                                                                     |
 | `JOB_LEASE_SEC`                                                                                       | e.g. `120`                                                                                                                                                                                                                |
-| `PROVIDER_TIMEOUT_MS`                                                                                 | e.g. `10000`; bounded GitHub/PayPal (model requests use NVIDIA_TIMEOUT_MS) request timeout                                                                                                                                |
+| `PROVIDER_TIMEOUT_MS`                                                                                 | e.g. `10000`; bounded GitHub/PayPal (model requests use COPILOT_TIMEOUT_MS) request timeout                                                                                                                                |
 | `PROVIDER_RESPONSE_MAX_BYTES`                                                                         | explicit maximum probe/provider JSON response bytes; example `1048576`                                                                                                                                                    |
 | `PREFLIGHT_SANDBOX_RECIPIENT`                                                                         | optional local-only address; required only for explicit sandbox payment probe                                                                                                                                             |
 | `WEBHOOK_BODY_MAX_BYTES`                                                                              | e.g. `1048576`; reject oversized raw webhook bodies before parsing                                                                                                                                                        |
@@ -592,7 +592,7 @@ create table bounty_activity (
 );
 
 create table action_tokens (
-  token_sha256 text primary key,
+  token_hash text primary key,
   bounty_id bigint not null references bounties(id),
   action text not null,                        -- fund | approve | cancel_draft | request_cancellation | review_cancellation
   params jsonb not null,                       -- e.g. {allocation} for approve
@@ -605,23 +605,24 @@ create table action_tokens (
 );
 
 create table sessions (
-  id text primary key,                         -- opaque random id in the cookie
+  id text primary key,                         -- SHA-256 of opaque random cookie
   gh_id bigint not null,
   gh_login text not null,
-  access_token_enc bytea not null,             -- AES-256-GCM
-  refresh_token_enc bytea,
-  access_expires_at timestamptz,
-  refresh_expires_at timestamptz,
+  access_token_enc text not null,             -- AES-256-GCM
+  refresh_token_enc text not null,
+  access_expires_at timestamptz not null,
+  refresh_expires_at timestamptz not null,
+  token_generation int not null default 0,
   csrf_secret text not null,
   created_at timestamptz not null default now(),
-  last_seen_at timestamptz not null default now(),
   expires_at timestamptz not null
 );
 
 create table oauth_states (
-  nonce text primary key,
-  browser_binding_sha256 text not null,        -- hash of a cookie set when the flow starts
+  nonce_hash text primary key,
+  browser_binding_hash text not null,        -- hash of a cookie set when the flow starts
   return_to text not null,                     -- local path only
+  verifier_enc text not null,                  -- encrypted PKCE S256 verifier
   expires_at timestamptz not null,
   used_at timestamptz
 );
@@ -819,7 +820,7 @@ Webhook **event names** differ from item statuses (`PAYMENT.PAYOUTS-ITEM.SUCCEED
 - `permissions.ts`: current stable actor ID resolved to login, then REST collaborator permission lookup (`admin|maintain|write`); `userCanWrite(userOctokit, repo)` via `GET /repos/{owner}/{repo}` → `permissions`.
 - `checks.ts`: Check Run `GitPay · Bounty verification`; `in_progress` then `success` for RESOLVES, `neutral` otherwise (never `failure`; the app must not block merges). Summary: verdict, coverage, confidence, reasoning, unmet requirements, proposed split, CI state, truncation note, bounty state.
 - `comments.ts`: accept reconciliation markers only on comments authored by this GitHub App; user-authored matching markers cannot substitute for a notice or receipt. Status comment (section 4.1) via marker; each `/bounty status` command also receives a fresh per-command reply, deduplicated across delivery/job retries; settlement result comment on the PR via `<!-- gitpay:settle:{bountyId}:{pr} -->`; command replies. Never include emails.
-- `oauth.ts`: start flow → random nonce + browser-binding cookie → `oauth_states` row → GitHub authorize URL with signed state. Callback: verify signature, binding, expiry, single use, local `return_to`; exchange code; `GET /user`; create `sessions` row with encrypted tokens; set cookie (`httpOnly`, `secure`, `sameSite=lax`). Serialize refresh per session and compare-and-swap token generations; delete a session on confirmed refresh failure only if its generation is still current. Logout invalidates pending refresh results.
+- `oauth.ts`: start flow → random nonce + PKCE S256 challenge + browser-binding cookie → `oauth_states` row → GitHub authorize URL with signed state. Callback: verify signature, binding, expiry, single use, local `return_to`; exchange code; `GET /user`; create `sessions` row with encrypted tokens; set cookie (`httpOnly`, `secure`, `sameSite=lax`). Serialize refresh per session and compare-and-swap token generations; delete a session on confirmed refresh failure only if its generation is still current. Logout invalidates pending refresh results.
 
 ### 10.3 `actions/` (single source of business logic)
 
@@ -933,7 +934,11 @@ changes only to comments or formatting. Treat these as DOES_NOT_RESOLVE.
 Return only the JSON object matching the supplied verdict schema.
 ```
 
-`verify.ts`: reuse `models/nvidia.ts` with the `Verdict` schema. Send the Phase-00-tested OpenAI-compatible JSON-schema profile: non-streaming response, temperature 1, top_p 0.95, bounded max_tokens; Nemotron thinking enabled. Accept only a completed, non-refused, model-matched response whose JSON passes Zod. Make one bounded Nemotron attempt. Transport failures, HTTP errors and invalid/truncated output remain errors; a valid negative verdict is final. Store `status='error'` on exhaustion and complete the Check Run as neutral "Verifier error, use `/bounty retry`". Store actual model, attempts, `prompt_sha256` and capability-profile version. The Nemotron profile must pass Phase 05 evaluations before automatic settlement. See ADR 0003.
+`verify.ts`: reuse `models/copilot.ts` with the `Verdict` schema and a repository-bound sponsored credential. Freeze provider/model/SDK/prompt profile and sponsor identity in funded terms and verification records. Version 3 terms identify the fixed model and repository-owner sponsor; version 2 Copilot terms and version 1 Nemotron terms remain readable with identical hashes and must stay pending unless a compatible explicitly reviewed migration is approved. Never substitute a provider or sponsor for an existing agreement.
+
+The adapter supplies an isolated empty-mode SDK runtime, filtered environment, explicit credential/model and no tools, skills, plugins or repository instruction discovery. Submit one bounded structured-output request and validate locally with Zod. A valid negative verdict is final. Missing authorization, exhausted budget, model mismatch, unsupported schema output, timeout or malformed output remains an error; complete the Check Run as neutral with a retry path. Preserve actual provider/model, SDK version, sponsor binding, attempt, prompt hash and evidence revision. Do not expose raw reasoning or tokens.
+
+The owner OAuth path now persists an encrypted sponsor grant separate from browser sessions, checks the personal repository owner, refreshes tokens and freezes sponsor/model in new v3 funding terms. The verifier persists SDK usage metrics and enforces per-repository UTC-day/per-SHA attempt caps; these are Copilot billing units and request limits, not monetary budgets. Organization Copilot Requests installation authorization and sponsor-revocation handling in verification remain to be implemented. PR authors never select the billing identity and need no Copilot account. Native Copilot reviews are optional advisory evidence, not a replacement for this contract, CI provenance or settlement policy. Every selected model/prompt/SDK profile must pass Phase 05 live compatibility and adversarial evaluations before automatic settlement.
 
 ### 10.6 `policy/` (pure, fully unit tested)
 
@@ -1055,7 +1060,7 @@ Implementation priority is risk-first within the dependency graph: prove the loc
 | Layer                   | What                                                                                                                                                                                                                               |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Unit                    | amount parsing, command grammar, link regex, `decide`, `allocate` (property), state guards per action, status mapping, permission decisions                                                                                        |
-| Integration             | webhook fixtures + `nock` for GitHub/PayPal/NVIDIA; assert DB rows, jobs, outbound calls                                                                                                                                           |
+| Integration             | webhook fixtures + `nock` for GitHub/PayPal and an injected Copilot runtime; assert DB rows, jobs, outbound calls                                                                                                                                           |
 | Idempotency             | replay every webhook twice; double confirm POST; repeated `/fund/return`; assert one capture/payout/refund and stable request keys                                                                                                 |
 | Authorization           | non-writer commands and confirms rejected; token reuse/expiry/stale version; dashboard scope via list, detail and SSE                                                                                                              |
 | Lifecycle               | abandoned checkout, OPEN cancel with approved order, capture pending/declined, refund pending/failed, verifier error, AWAITING_CLAIM cancel refused, payout ONHOLD/UNCLAIMED/FAILED, worker crash mid-payout, cancel vs merge race |
@@ -1077,7 +1082,7 @@ Implementation priority is risk-first within the dependency graph: prove the loc
 | 1:30–2:00 | Maintainer merges the real fix. Comment: "💸 Paid $50.00 to @contributor". Cut to sandbox account receiving it                                                                            |
 | 2:00–2:30 | Second bounty in NEEDS_REVIEW: `/bounty approve` → confirm page with exact split → paid. Show a cancellation request blocked by an existing valid submission; mention reviewed exceptions |
 | 2:30–2:50 | Read-only dashboard: rows flip live, filter attention items, expand AI reasoning                                                                                                          |
-| 2:50–3:00 | "GitHub + PayPal + NVIDIA. Glue, not a platform."                                                                                                                                         |
+| 2:50–3:00 | "GitHub + PayPal + Copilot. Glue, not a platform."                                                                                                                                         |
 
 ---
 
@@ -1145,3 +1150,18 @@ Restore safety: an older DB backup may omit an operation already sent to PayPal.
 ## 17. Maintaining this plan
 
 When implementation changes the folder structure, commands, configuration or behavior, update this plan and the relevant README/AGENTS.md sections in the same change. Keep planned paths separate from actual files. Record changed financial policy in a new decision record that supersedes the prior decision. Do not mark a phase complete based on documentation or mocked provider tests alone.
+
+### Phase 02 implementation refinements
+
+The stable bot link `/bounties/:id/cancel` is a read-only preview. An authenticated CSRF/Origin-checked POST prepares the hash-only token before redirecting to `/a/:token`; this keeps raw bearer links out of durable job payloads. Final POST consumes the token in the same transaction as cancellation and its sync job. A token can be confirmed by any currently authorized writer; it is not authority by itself.
+
+Phase 2 `cancelDraft` and `confirmAction` return the updated bounty or throw a typed safe error. Errors cross the transaction boundary to ensure rollback, rather than returning a failure-valued result that could commit partial work. OAuth tokens use versioned AES-256-GCM text envelopes with session/purpose AAD. Session IDs and OAuth nonces are stored as hashes; refresh uses a per-session advisory lock and generation compare-and-swap without an open SQL transaction across provider calls.
+
+`SESSION_TTL_SEC` and `OAUTH_STATE_TTL_SEC` explicitly bound local session/state lifetime (template 604800 and 600 seconds). Phase 2 adds nullable `capture_request_key`, `capture_id`, `funded_at` plus CAPTURING/FUNDED constraint values solely to enforce cancellation exclusions and reserved-state fixtures. Phase 3 owns real funding writes and must share the bounty row lock, increment version and recheck OPEN before reserving capture. Those Phase 2 fields are now consumed by Phase 3; see the refinement below.
+
+Confirmation and logout forms use same-origin CORS-mode fetch, retaining strict Origin/CSRF checks and no-referrer (native no-referrer form navigation sends Origin:null). JavaScript is required for these mutation forms and the page explains this when disabled. OAuth refresh destroys connections on uncertain advisory-lock acquisition/release; logout validates local session/CSRF without provider refresh. Used/stale tokens provide authorized browser recovery links.
+
+
+### Phase 3 implementation refinement
+
+[ADR 0004](docs/decisions/0004-funding-recovery.md) specifies the implemented funding adapter and conservative recovery. It supersedes the earlier route/reference examples: use `/bounties/:id/fund`, `/fund/a/:token`, and `/bounties/:id/funding/:attempt/{return,cancel}`; reference the historical attempt as `gitpay:<attemptId>` with its terms hash as `custom_id`. `funding_attempts.checkout_origin` freezes callback URLs across retries. `funding_hold` on the bounty is authoritative for later disbursement gates. Declined/failed capture attempts remain reserved for investigation instead of returning automatically to OPEN. Provider economics are retained in the durable funded activity, separate from gross promised principal. The transaction exception convention extends to `prepareFunding`/`confirmFunding`; error-valued transactions do not commit partial state.

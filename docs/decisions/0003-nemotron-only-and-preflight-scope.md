@@ -1,5 +1,6 @@
 # ADR 0003 — Nemotron-only runtime and provider-scoped preflight
 
+**Superseded October 28, 2026:** [ADR 0005](0005-copilot-verifier.md) replaces the runtime-provider selection with Copilot SDK. This document records the historical Nemotron decision; scoped configuration, explicit probes and preserved payout identity still apply.
 **Status:** Accepted October 27, 2026, following the user's instruction to drop DeepSeek and complete Phase 0. Supersedes ADR 0002's model selection and fallback policy; its historical rationale and probe results remain preserved.
 
 ## Decision

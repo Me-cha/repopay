@@ -1,0 +1,2 @@
+ALTER TABLE "copilot_sponsors" DROP CONSTRAINT "copilot_sponsor_model_check";--> statement-breakpoint
+ALTER TABLE "copilot_sponsors" ADD CONSTRAINT "copilot_sponsor_model_check" CHECK ("copilot_sponsors"."model_id" <> '');

@@ -15,6 +15,62 @@
       "when": 1793084858646,
       "tag": "0001_bounties",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793174999742,
+      "tag": "0002_auth",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793175209143,
+      "tag": "0003_action_tokens",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793182761651,
+      "tag": "0004_funding",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793272615172,
+      "tag": "0005_copilot_sponsors",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793272632099,
+      "tag": "0006_copilot_sponsor_return_to",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793274135973,
+      "tag": "0007_phase4_5",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793281157420,
+      "tag": "0008_calm_blink",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793294512951,
+      "tag": "0009_auto_copilot_sponsor",
+      "breakpoints": true
     }
   ]
 }

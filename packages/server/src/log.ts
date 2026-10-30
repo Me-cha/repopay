@@ -1,12 +1,13 @@
 import { pino, type DestinationStream, type Logger } from 'pino';
-import type { Env, PreflightEnv, GitHubRuntimeEnv } from './env.js';
-const sensitiveKey = /api[_-]?key|token|secret|password|cookie|authorization|email|private.?key|receiver|destination|payload|body|database_url|enc_key/i;
-export function createLogger(env: Env | PreflightEnv | GitHubRuntimeEnv, destination?: DestinationStream): Logger {
+import type { Env, PreflightEnv, GitHubRuntimeEnv, CopilotEnv } from './env.js';
+const sensitiveKey = /api[_-]?key|token|secret|password|cookie|authorization|email|private.?key|receiver|destination|payload|body|database_url|enc_key|csrf|^code$|^state$|verifier|browser.?binding/i;
+export function createLogger(env: Env | PreflightEnv | GitHubRuntimeEnv | CopilotEnv, destination?: DestinationStream): Logger {
   const secrets = Object.entries(env).filter(([name, value]) => sensitiveKey.test(name) && typeof value === 'string').map(([, value]) => String(value));
   function clean(value: unknown, seen = new WeakSet<object>()): unknown {
     if (value instanceof Error) return { type: 'Error', message: '[REDACTED]' };
     if (typeof value === 'string') {
       let safe = value.replace(/-----BEGIN[\s\S]*?-----END[^-]*-----/g, '[REDACTED]').replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, '[REDACTED]').replace(/Bearer\s+\S+/gi, '[REDACTED]');
+      safe = safe.replace(/\/a\/[^/?#\s]+/gi, '/a/[REDACTED]').replace(/%2fa%2f[^&\s]+/gi, '%2Fa%2F[REDACTED]').replace(/([?&](?:code|state|csrf|token)=)[^&\s]+/gi, '$1[REDACTED]');
       for (const secret of secrets) if (secret) safe = safe.split(secret).join('[REDACTED]');
       return safe;
     }

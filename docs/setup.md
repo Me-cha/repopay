@@ -1,6 +1,6 @@
 # Local setup and provider feasibility
 
-Phase 1 adds signed GitHub intake, leased workers and unfunded bounty drafts to the Phase 0 foundation. Authentication pages, funding and product payouts remain later phases. See [phase status](phases/00.md) and [verification evidence](evidence/00-summary.md).
+Phase 1 adds signed GitHub intake, leased workers and unfunded bounty drafts to the Phase 0 foundation. Phase 2 adds GitHub login, confirmation pages and unfunded draft cancellation. Phase 3 adds sandbox funding; contributor payouts remain later phases. See [phase status](phases/03.md) and [verification evidence](evidence/03-summary.md).
 
 ## Install and run locally
 
@@ -18,7 +18,7 @@ pnpm db:migrate
 
 Do not overwrite an existing `.env`. Compose exposes PostgreSQL 16 only on `127.0.0.1:5433`, with development-only credentials. The primary database is `gitpay`; tests use `gitpay_test`. `createdb` reports an error if the test database already exists; retain the existing database. Migrations are versioned and rerunnable. Test migrations use `TEST_DATABASE_URL` and an isolated schema through the test helper, never the primary migration command.
 
-Populate the required application settings in `.env` before `pnpm dev` or `pnpm start`; the Nemotron model is already pinned. Both startup and preflight validate configuration. `GH_PRIVATE_KEY` can contain literal `\n` escapes in one quoted line; the probe converts them to line breaks. Generate separate 32-byte base64 values for `TOKEN_ENC_KEY` and `PAYMENT_DATA_ENC_KEY`, and random 32-byte or longer session/webhook secrets; keep them local. The encryption keys must differ. Funded cancellation stays disabled.
+Populate the required application settings in `.env` before `pnpm dev` or `pnpm start`; Copilot model probes have their own explicit sponsor configuration. Both startup and preflight validate configuration. `GH_PRIVATE_KEY` can contain literal `\n` escapes in one quoted line; the probe converts them to line breaks. Generate separate 32-byte base64 values for `TOKEN_ENC_KEY` and `PAYMENT_DATA_ENC_KEY`, and random 32-byte or longer session/webhook secrets; keep them local. The encryption keys must differ. Funded cancellation stays disabled.
 
 ```sh
 pnpm dev
@@ -29,7 +29,7 @@ pnpm build
 pnpm start
 ```
 
-Health responds with `{status,version}`: HTTP 200 when Postgres is reachable and 503 when unavailable. SIGINT/SIGTERM stops HTTP and closes the pool. The health route does not call GitHub, PayPal or NVIDIA.
+Health responds with `{status,version}`: HTTP 200 when Postgres is reachable and 503 when unavailable. SIGINT/SIGTERM stops HTTP and closes the pool. The health route does not call GitHub, PayPal or Copilot.
 
 ## Offline checks
 
@@ -49,27 +49,36 @@ Missing database configuration fails integration tests. Nock rejects unmatched e
 
 1. **GitHub:** create the App/demo installation described in [architecture section 3](../IMPLEMENTATION_PLAN.md#3-external-setup-human-does-this-codex-documents-it-in-readme). Put its App ID, slug, private key, client ID/secret and webhook secret in `.env`. The Phase 0 probe signs a JWT and reads `/app`; installation access and user OAuth are verified in later phases. The Phase 0 probe posts no bot comments. The Phase 1 worker does post comments on its installed repositories.
 2. **PayPal:** use a sandbox REST app and business account with Payouts enabled and sufficient sandbox balance. Set `PP_CLIENT_ID`, `PP_SECRET`, `PP_WEBHOOK_ID`; keep the exact sandbox `PP_BASE`. Prepare a personal sandbox recipient account. A successful OAuth token alone does not establish Payouts capability.
-3. **NVIDIA:** set `NVIDIA_API_KEY`. The template pins `NVIDIA_MODEL=nvidia/nemotron-3-ultra-550b-a55b`, and `NVIDIA_BASE=https://integrate.api.nvidia.com/v1`. See [ADR 0003](decisions/0003-nemotron-only-and-preflight-scope.md). The current application does not read Anthropic credentials.
+3. **Copilot SDK:** new funding uses the fixed `COPILOT_MODEL` (defaults to `gpt-6-luna`) and requires an owner sponsor connection for each repository. Sign in as the owner, open a bounty's funding page, choose **Connect Copilot sponsor**, and authorize GitPay's GitHub App. GitPay checks repository ownership and live access to the configured model, then stores the refreshable authorization encrypted and separately from the browser session. GitHub bills that owner according to their Copilot plan and spending settings; contributors' accounts are not used. Copilot Free accounts currently expose Auto only, so they cannot sponsor this fixed-model path. See [the sponsorship research](copilot-verifier-research.md) and [ADR 0006](decisions/0006-fixed-lightweight-copilot-and-sponsorship.md).
+
+For an organization sponsor, this app still needs the GitHub App's **Copilot Requests → Read-only** organization permission, an approved organization installation, and an enabled organization Copilot app policy. GitHub's documented installation-token billing route is researched, but is not implemented in this onboarding slice. See [official organization authentication](https://docs.github.com/en/copilot/how-tos/copilot-sdk/auth/server-to-server-tokens).
+
+`COPILOT_GITHUB_TOKEN`, `COPILOT_AUTH_KIND` and `COPILOT_BILLING_OWNER_ID` are for explicit local model probes only; the running app does not use them as a funding or customer fallback. Sponsor OAuth and background PR verification support personal repositories locally. Configurable per-repository UTC-day and per-SHA attempt caps and SDK-reported usage telemetry are implemented. They do not create a hard monetary limit: GitHub account/organization billing controls remain authoritative. Organization-billed onboarding and sponsor-revocation handling remain open Phase 5 work. GitPay checks model access before funding and will not fall back to Auto or another account. Old NVIDIA variables in an existing local `.env` are ignored; the migration does not edit that file.
 
 Never paste credentials into chat or evidence files.
 
 ## Explicit probes
 
-From the repository root, `pnpm preflight` reads GitHub App metadata and NVIDIA's model list, and obtains a PayPal OAuth token. It does not submit a payout or generate model output. Model-only mode needs just the NVIDIA fields and response-size bound, so it works while GitHub/PayPal setup is pending.
+From the repository root, `pnpm preflight` reads GitHub App metadata and obtains a PayPal OAuth token. It does not contact Copilot or submit a payout. Copilot listing/generation uses `parseCopilotEnv`; it needs only the sponsor settings and response-size bound, independently of GitHub App/PayPal setup.
 
 ```sh
 pnpm preflight
+# No generation: lists accessible IDs when COPILOT_MODEL is blank;
+# otherwise checks whether that exact configured ID is listed.
 pnpm preflight --model-only
+# Explicit generation, billed to the configured sponsor:
 pnpm preflight --model-only --model-probe
-# Run model generation checks alongside the other configured providers:
+# The same model probe alongside GitHub/PayPal authentication checks:
 pnpm preflight --model-probe
 ```
 
-Full provider preflight uses `parsePreflightEnv`: GitHub App ID/slug/client ID/private key, PayPal sandbox client credentials, NVIDIA settings and provider limits. It does not consume or require `PP_WEBHOOK_ID`, `GH_WEBHOOK_SECRET`, `GH_CLIENT_SECRET`, database settings or local application keys. Leave unregistered webhook IDs blank; never insert placeholders to pass a probe. Phase 1 startup uses `parseGitHubRuntimeEnv`, requiring only consumed database/GitHub and worker limits; strict `parseEnv` remains available for later capabilities.
+`--model-only` exits nonzero if the accessible fixed-model catalog is empty. Successful authentication alone is not model availability. GitHub currently documents [Auto-only access for Free and Student plans](https://docs.github.com/en/copilot/reference/ai-models/supported-models#supported-ai-models-per-copilot-plan). The October 29 non-payment Auto experiment succeeded, but Auto remains outside the application configuration and funding contract; see [evidence](evidence/copilot-migration.md#auto-prototype--october-29-2026). Do not set `COPILOT_MODEL=auto` or copy an Auto-selected model ID into configuration without proving explicit access.
 
-The explicit model probe calls **Nemotron once**, with synthetic text only. It uses OpenAI-compatible Chat Completions, `response_format.type=json_schema`, non-streaming output, temperature 1 and top_p 0.95. Nemotron enables thinking, but raw reasoning is not returned/logged. `NVIDIA_MAX_TOKENS` bounds generated output (template: 2048); `NVIDIA_TIMEOUT_MS` bounds each attempt (template: 120000 ms). The probe requires a completed, non-refused response from the requested model whose content parses to exactly `{confirmed:true}`. It exits nonzero if the model fails. A listed model alone does not establish inference or structured-output capability.
+`parsePreflightEnv` requires GitHub App ID/slug/client ID/private key, PayPal sandbox client credentials and HTTP limits. It does not require Copilot credentials, webhook IDs/secrets, user OAuth secrets, database settings or local application keys. Leave unregistered webhook IDs blank. HTTP and worker startup use `parseFundingEnv`; new funding also requires an explicit `COPILOT_MODEL`. Missing Copilot credentials do not stop existing GitHub login/draft workflows.
 
-The application adapter makes one bounded Nemotron attempt. Provider errors, malformed/truncated output, refusals and model mismatch stay errors. A valid negative answer stays final. These requests use the owner's NVIDIA account allocation; no permanent or unlimited free availability is assumed. The former primary/fallback model variables are replaced by `NVIDIA_MODEL`.
+The explicit model probe makes one SDK `sendAndWait` call with a strict Zod `{confirmed:true}` schema and synthetic input. It launches the pinned SDK's managed stdio runtime in an isolated temporary directory with `mode: empty`, explicit authentication, a filtered environment, no tools/skills/config discovery and rejected permissions. It removes temporary state on completion and aborts/stops the runtime on timeout or failure. Raw model reasoning and provider errors are not returned or logged. A valid negative decision is final; errors are not retried with another model or credential. Observed model changes reject the result.
+
+`COPILOT_MAX_INPUT_BYTES` bounds supplied evidence; `PROVIDER_RESPONSE_MAX_BYTES` bounds streamed text/reasoning and final JSON; `COPILOT_TIMEOUT_MS` bounds the request lifecycle and `COPILOT_SHUTDOWN_TIMEOUT_MS` bounds cleanup. These are resource bounds, not a guaranteed maximum bill: GitHub controls model pricing and runtime accounting. The SDK's structured-output interface is preview; authenticated model/schema compatibility must pass a live probe and semantic evaluations before settlement. Model listing alone proves neither. No BYOK/NVIDIA fallback is configured.
 
 Use a sandbox Merchant REST app associated with a Business sender in a payout-sending-supported test country (the verified fixture uses US). Its Client ID and Secret authenticate the sender. The recipient is a separate sandbox account and needs no REST app. The default IN sender was rejected with `PAYOUT_NOT_AVAILABLE`.
 
@@ -87,27 +96,86 @@ The CLI refuses resubmission at 29 days, providing margin before PayPal's docume
 
 The observed sandbox duplicate response is HTTP 400 `USER_BUSINESS_ERROR` with `SENDER_BATCH_ID` and the exact issue `Batch with given sender_batch_id already exists`, without a recovery link. The adapter accepts that specific format as well as `DUPLICATE_BATCH_ID`. Recovery uses the saved batch ID; an unknown batch still requires manual reconciliation. Preserve the active identity at `.data/preflight/payout.json`. The earlier definitively country-rejected operation was archived separately when the owner switched test accounts; do not reset state for normal retries.
 
-Record redacted request/batch/item IDs, HTTP statuses, actual duplicate response shape, recipient receipt and model profile in [00-preflight.md](evidence/00-preflight.md). Provider response bodies, emails, keys and tokens stay out of tracked evidence and logs. All external gates must pass before Phase 01.
+Record redacted request/batch/item IDs, HTTP statuses, actual duplicate response shape, recipient receipt in [00-preflight.md](evidence/00-preflight.md); record new Copilot observations in [migration evidence](evidence/copilot-migration.md). Provider response bodies, emails, keys and tokens stay out of tracked evidence and logs. The historical Phase 0 gate passed; Copilot capability requires fresh evidence.
 
 ## Configuration bounds
 
-`.env.example` contains explicit values; `src/env.ts` is the validation source of truth. Timeout, body/response size, job lease and reconciliation settings are bounded positive integers. `PROVIDER_RESPONSE_MAX_BYTES` bounds streamed probe responses; `PROVIDER_TIMEOUT_MS` bounds GitHub/PayPal requests; `NVIDIA_TIMEOUT_MS` separately bounds each model request/read. Money is bounded integer cents; keys decode to exactly 32 bytes; stable IDs remain strings. Cancellation operator IDs are required only when enabled, and the notice value is fixed at 72 hours.
+`.env.example` contains explicit values; `src/env.ts` is the validation source of truth. Timeout, body/response size, job lease and reconciliation settings are bounded positive integers. `PROVIDER_RESPONSE_MAX_BYTES` bounds streamed probe responses; `PROVIDER_TIMEOUT_MS` bounds GitHub/PayPal requests; `COPILOT_TIMEOUT_MS` separately bounds the SDK request lifecycle. Money is bounded integer cents; keys decode to exactly 32 bytes; stable IDs remain strings. Cancellation operator IDs are required only when enabled, and the notice value is fixed at 72 hours.
 
 ## Provider references checked
 
 - [GitHub App JWT authentication](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-json-web-token-jwt-for-a-github-app) and [authenticated App endpoint](https://docs.github.com/en/rest/apps/apps#get-the-authenticated-app).
 - [PayPal create payout and deduplication](https://developer.paypal.com/api/payments.payouts-batch/v1/payouts-post), [batch lookup](https://developer.paypal.com/api/payments.payouts-batch/v1/payouts-get), and [official OpenAPI schema](https://github.com/paypal/paypal-rest-api-specifications/blob/main/openapi/payments_payouts_batch_v1.json).
-- [NVIDIA Nemotron API](https://docs.api.nvidia.com/nim/reference/nvidia-nemotron-3-ultra-550b-a55b-infer).
+- [Copilot SDK OAuth](https://docs.github.com/en/copilot/how-tos/copilot-sdk/setup/github-oauth) and [pinned Node SDK](https://github.com/github/copilot-sdk/blob/v1.0.28/nodejs/README.md).
 - [Drizzle migrations](https://orm.drizzle.team/docs/migrations).
 
 ## Phase 1 demo and workers
 
 The isolated demo is [deepakA18/gitpay-demo-http](https://github.com/deepakA18/gitpay-demo-http), an independent MIT-licensed copy of PayPal's archived HTTP client. It has no upstream remote or GitHub fork relationship. Preserve source attribution and LICENSE. Do all demo issues, labels and bot comments there.
 
-Register a private GitHub App under deepakA18 with Issues read/write and mandatory Metadata read-only. Subscribe to Issues and Issue comment events; installation lifecycle events are delivered automatically. Install only on the demo repository. Configure an HTTPS webhook URL ending `/webhooks/github` and a matching local `GH_WEBHOOK_SECRET`; update App ID/client ID/slug/private key locally. Never copy credentials into evidence. App `gitpay-demo-deepak` is configured and installed only on the demo repository. The live draft/status/replay/label walkthrough passed; see [Phase 1 evidence](evidence/01-summary.md). The current callback uses a temporary Cloudflare Quick Tunnel to local port 3107. Keep the server and tunnel running for deliveries; update the App callback whenever the tunnel URL changes.
+Register a private GitHub App under deepakA18 with Issues read/write and mandatory Metadata read-only. Subscribe to Issues and Issue comment events; installation lifecycle events are delivered automatically. Install only on the demo repository. Configure an HTTPS webhook URL ending `/webhooks/github` and a matching local `GH_WEBHOOK_SECRET`; update App ID/client ID/slug/private key locally. Never copy credentials into evidence. App `gitpay-demo-deepak` is configured and installed only on the demo repository. The live draft/status/replay/label walkthrough passed; see [Phase 1 evidence](evidence/01-summary.md). Its original demo setup used a temporary Cloudflare tunnel to port 3107; the current GitPay app uses the stable ngrok workflow below.
 
 Run `pnpm db:migrate`, then `pnpm dev` with `WORKER_MODE=inline`. For separate processes use `WORKER_MODE=separate pnpm dev` plus `pnpm dev:worker`; compiled equivalents are `pnpm start` and `pnpm start:worker`. Both workers use the same handlers, leases and configured retry limits. Stop gracefully before changing App credentials.
 
 Supported commands are `/bounty create 50` and `/bounty status`; `bounty:$50` also creates a draft for a current writer. Other commands explain that their phase is unavailable. Labels never fund, resize or cancel drafts. Failed jobs retain a generic reason; restore App access/provider availability, then request `/bounty status` to enqueue a fresh projection. Inspect exhausted command jobs before explicit redelivery; do not delete delivery identities to force retries. Scheduled recovery arrives in Phase 10.
 
 Each new `/bounty status` comment receives its own visible status reply, including for read-only participants. Replayed deliveries and job retries reconcile the same per-command reply. The canonical bounty summary is refreshed separately.
+
+## Phase 2 login and draft cancellation
+
+Run `pnpm db:migrate` to apply migrations 0002 and 0003 before restarting `pnpm dev`. HTTP startup now also requires `GH_CLIENT_SECRET`, `SESSION_SECRET`, `TOKEN_ENC_KEY`, `ACTION_TOKEN_TTL_SEC`, `SESSION_TTL_SEC` (example 604800) and `OAUTH_STATE_TTL_SEC` (example 600). Add missing settings to an existing `.env`; do not replace it. Phase 2 itself makes no PayPal or model call; current Phase 3 workers also load funding settings below.
+
+Set the GitHub App redirect URI to `${PUBLIC_URL}/oauth/github/callback`, with expiring user authorization tokens enabled. `PUBLIC_URL` must be an origin without a path, query or credentials. HTTPS is required except for loopback development, such as `http://localhost:3000`. Cookies are HttpOnly, SameSite=Lax and Secure under HTTPS. Restart after changing configuration.
+
+### Stable local tunnel
+
+Install the official ngrok agent and add its authtoken once with `ngrok config add-authtoken`; the token stays in ngrok's user-level config, never in GitPay `.env`. Every ngrok account has a stable dev domain; find it in the ngrok dashboard under **Gateway → Domains**. Set the hostname (without `https://`) in local `.env` as `NGROK_DOMAIN`, then set `PUBLIC_URL=https://<NGROK_DOMAIN>`. Restart `pnpm dev` after changing `PUBLIC_URL`, and configure the GitHub App callback to `${PUBLIC_URL}/oauth/github/callback` and webhook to `${PUBLIC_URL}/webhooks/github` once. Keep GitPay running, then start the tunnel in another terminal with `pnpm tunnel`. The helper checks the domain, origin, ngrok authentication and `/healthz` before forwarding port `PORT` (default 3000), with Ngrok request inspection disabled so request bodies are not retained in its local inspector. The assigned domain remains the same across restarts; the endpoint is reachable only while GitPay and ngrok are running. Free ngrok accounts may show an interstitial in browsers.
+
+1. Create an unfunded draft using the Phase 1 workflow. Comment `/bounty cancel` as a current repository writer, or follow the canonical bot comment's review link.
+2. Sign into GitHub through the same App. Installation credentials identify the bot; user OAuth identifies the person confirming. Both current installation access and current user repository access are required.
+3. Review repository, issue, exact amount and unfunded state. **Prepare confirmation** submits a CSRF-protected POST that creates a short-lived token stored only as a hash.
+4. **Confirm cancellation** submits a second POST. Cancellation, activity, token consumption and the bot-sync job commit atomically. No payment or refund occurs. `/bounties/:id` and authenticated `/api/bounties/:id` show the saved result.
+5. Reopening a consumed/expired/stale link rejects safely and offers a current status link. If a response is lost, open the bounty status page rather than attempting a new action. Revoked access, expired sessions, funding reservations or provider outages fail closed.
+
+GET previews do not issue action tokens or change bounties. Login GET/callback routes maintain the OAuth handshake and session. Logout requires POST with Origin and CSRF validation; it invalidates the local session even if refresh is in progress. Do not put confirmation URLs in external logs, analytics or screenshots. GitPay redacts them and sends no-store/no-referrer headers; configure any reverse proxy to omit or redact them too.
+
+Mutation forms require JavaScript: they submit with same-origin CORS-mode fetch so strict Origin validation works with no-referrer. Native form navigation under no-referrer sends Origin:null and is deliberately rejected. Logout checks local session/CSRF without contacting GitHub; provider outages do not block local sign-out.
+
+For a collaborator outside the owning account to authorize a personally owned GitHub App, its visibility must be **public** (App settings → Advanced → Make public). Repository collaborator access alone does not allow authorization of that private App. Public App visibility permits other accounts to authorize/install it; repository visibility and credentials are separate. See [GitHub App visibility](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/making-a-github-app-public-or-private).
+
+After editing PUBLIC_URL, stop and restart the actual `pnpm dev` server (and separate worker, if used). `docker compose restart` restarts only this repository's Postgres service. Existing comment links are not rewritten by a process restart: `/bounty status` refreshes the canonical comment, while a new `/bounty cancel` produces a new reply with the current origin. Old per-command replies retain their original links.
+
+## Phase 3 sandbox funding
+
+Apply all pending migrations with `pnpm db:migrate`, then restart the server and any separate worker. Do not overwrite your existing `.env`. Startup uses `parseFundingEnv`; it does not require the local Copilot probe token or payout-recipient data. Add the Phase 3 settings from `.env.example`:
+
+- `PP_MERCHANT_ID`: the receiving **Business sandbox account's merchant ID**, associated with `PP_CLIENT_ID`/`PP_SECRET`. This is not a client ID or email. Confirm it from that account's PayPal settings.
+- `PP_WEBHOOK_ID`: register `${PUBLIC_URL}/webhooks/paypal` on the same sandbox REST app, then save the returned webhook ID. Subscribe to `CHECKOUT.ORDER.APPROVED`, `CHECKOUT.PAYMENT-APPROVAL.REVERSED`, and the available `PAYMENT.CAPTURE.*` events. Never use a placeholder ID. Blank configuration rejects event verification; durable polling still performs recovery.
+- `POLICY_CI_CONTEXTS`: JSON keyed by the stable GitHub repository ID, with an array of required check names and trusted producing GitHub App IDs. For example, the *shape* is `{"123456":[{"name":"test","appId":"15368"}]}`. Inspect the repository's actual successful check runs; these example values are not automatic approval. Missing required CI blocks funding. This initial implementation supports App-produced check runs; status-only provenance needs explicit support before use.
+- `COPILOT_MODEL`: `auto` (default; works with Copilot Free) or a fixed model ID. Auto creates version 4 terms that freeze the sponsor and the Auto policy; each review records the serving model Copilot reports ([ADR 0007](decisions/0007-copilot-auto-model.md)). A fixed ID creates version 3 terms and requires the sponsor to list that model. The repository owner connects at `/bounties/{id}/copilot-sponsor`; version 1–3 terms remain unchanged.
+- `POLICY_VERSION=gitpay-v2-copilot`, `PP_SAFE_RETRY_SEC=18000`, `PP_VERIFY_CONCURRENCY=2`. The retry window is capped at five hours, below PayPal's documented six-hour request-key retention. `RECONCILIATION_INTERVAL_SEC` controls persisted polling cadence; `RECONCILIATION_RATE_PER_MIN` bounds polls per worker.
+
+Use `/bounty fund` on the issue. The link requires GitHub login and current write permission. If no owner sponsor is connected, use the linked sponsor page and authorize the repository owner's GitHub account; access to the fixed model is checked before funding. Then review the exact issue criteria, amount, sponsor and frozen verification policy; prepare and confirm the funding intent. The worker creates the checkout, and **Refresh funding status** exposes the stored PayPal sandbox approval link. Approval authorizes capture under that saved intent; the worker does not depend on a browser return or webhook to recover it. Use a sandbox Personal account for checkout. This is separate from the Phase 0 payout probe and its recipient.
+
+Return and cancel pages only read stored state and require the provider `token` to match the scoped order. Visiting either is not payment evidence. Only a bound, full, completed USD capture to the configured merchant marks the bounty FUNDED. Provider fees/net are recorded separately when supplied; the gross promised bounty does not shrink to cover fees. Real balance/receipt confirmation remains a manual sandbox gate.
+
+Recovery:
+
+- `/bounty status` schedules a read of the existing funding attempt. Restarting the worker also resumes due attempts.
+- A lost response preserves the order/capture key and original checkout origin. Do not delete attempts, change keys or pay again to clear an error.
+- After a safe retry deadline, ambiguous operations are read/review-only. An unknown create response without a recovered order ID requires operator investigation; no generic recovery editor is provided in this phase.
+- A provider-confirmed voided order with no capture submission can close an abandoned attempt. Pending, unknown and declined/failed capture attempts remain reserved for investigation; there is no automatic replacement payment.
+- Receiver/amount/reference mismatches, unexpected multiple/partial captures, refunds/reversals and unknown capture statuses hold disbursement. Confirmed funding/history stays recorded. No refund or payout endpoint is enabled by this phase.
+- Keep the original tunnel alive for existing checkout returns; changing `PUBLIC_URL` affects new attempts, not a saved request payload.
+
+See [funding recovery decision](decisions/0004-funding-recovery.md) and [Phase 3 evidence](evidence/03-summary.md) for tested scope and outstanding live checks.
+
+## Phases 4 and 5: contributor connection and PR review
+
+Apply migration `0007_phase4_5.sql` with `pnpm db:migrate`. Keep `PAYMENT_DATA_ENC_KEY` stable and private; it encrypts contributor PayPal sandbox addresses. A contributor signs into GitHub and saves their own payout email at `/connect`. This is self-declared address data, not proof of PayPal ownership. The page masks the saved value; it neither reserves a bounty nor sends money. No award or payout exists before Phase 6.
+
+For PR linking and GitPay Check Runs, update the GitHub App repository permissions to **Issues: Read and write**, **Metadata: Read-only**, **Pull requests: Read-only**, and **Checks: Read and write**. Subscribe to **Pull request**, **Check run**, **Check suite**, and **Status** events, in addition to existing Issues and Issue comment events. Approve the changed permissions on the App installation. GitHub documents that Check Run and Check Suite read needs Checks read access, while creating/updating Check Runs requires the GitHub App's Checks write permission ([Check Runs](https://docs.github.com/en/rest/checks/runs), [webhook event permissions](https://docs.github.com/en/webhooks/webhook-events-and-payloads)).
+
+When a PR body/title refers to a funded issue, GitPay stores it as a candidate. Contributors can also comment `/bounty link <PR number>` on the bounty issue. Multiple PRs remain eligible. A verifier Check Run is neutral and advisory; it never selects an award or authorizes payment. Verification links return to a GitHub-maintainer-only retry page. Status events trigger a fresh Checks API read, but commit-status records are not themselves accepted as trusted required CI in this implementation; configure required CI with successful external Check Runs and their producing App IDs.
+
+The live GitHub App permission update, contributor browser walkthrough, fixed-model Copilot inference, organization sponsor onboarding and semantic evaluation have not been verified. Owner-sponsored `gpt-6-luna` is required for new funded terms; the operator's local probe token is never a customer fallback. `pnpm eval:verifier` validates fixtures/report shape only unless a redacted real-run observation file is provided with `--report`; SDK usage totals are Copilot billing units, not currency, and GitHub billing settings remain the monetary control.

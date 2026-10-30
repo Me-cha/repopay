@@ -16,4 +16,6 @@ export interface Authorization { repoId: GitHubId; action: string; role: 'partic
 export interface ActorContext { actorGhId: GitHubId; source: ActionSource; authorization: Authorization }
 export type ActionResult<T> = { ok: true; value: T } | { ok: false; code: string; message: string; retryable: boolean };
 export interface Clock { now(): Date }
+// Set when a review job fails; cleared once a later review reaches an outcome.
+export const REVIEW_UNAVAILABLE_REASON = 'Solution review service unavailable; maintainer review and retry required';
 export type { Transaction } from '../db/transaction.js';

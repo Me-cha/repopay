@@ -1,0 +1,1 @@
+ALTER TABLE "copilot_sponsor_states" ADD COLUMN "return_to" text NOT NULL;
