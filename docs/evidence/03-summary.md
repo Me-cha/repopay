@@ -49,4 +49,25 @@ Created the user-authorized sandbox test fixture [Me-cha/gitpay-test#3](https://
 
 The local server answers `/healthz` with HTTP 200. The configured public tunnel is unavailable. A redacted local configuration check found merchant ID, PayPal webhook ID, trusted CI contexts and Copilot fixed model unset. `pnpm preflight --model-only` exits 1 because the authenticated sponsor has no fixed models listed; the production adapter still requires a fixed model. The full five Phase 3 integration files passed locally (30 tests) against local PostgreSQL and mocked external services; these do not evidence a real PayPal capture. No Phase 3 payment has been made.
 
+## October 29, 2026 — why funding never ran, and a fixed connection bug
+
+Funding reaches checkout only after, in order: a connected repository sponsor with the fixed model, `PP_MERCHANT_ID`, trusted CI contexts when `POLICY_CI_REQUIRED=true`, and non-empty issue criteria (`http/fund.ts`, `domain/funded-terms.ts`).
+
+- **Code bug, fixed:** the sponsor page's Connect button could never reach GitHub. Mutation forms submit through same-origin `fetch`; the server answered with a 303 to `github.com/login/oauth/authorize`, which `fetch` cannot follow cross-origin, so the browser showed "The response was interrupted". The endpoint now returns the validated authorize URL as JSON and `actions.js` navigates to it only if it is GitHub's authorize endpoint. Regression `test/integration/sponsor.test.ts` failed (HTTP 303) before the fix; full suite 37 files / 198 tests passed after.
+- **Account blocker:** Me-cha is on Copilot Free, which offers Auto only; the sponsor callback rejects an account without `gpt-6-luna`.
+- **Configuration blockers:** `PP_MERCHANT_ID`, `PP_WEBHOOK_ID` and `POLICY_CI_CONTEXTS` are unset while `POLICY_CI_REQUIRED` is set. Values were not printed.
+
+No browser sponsor connection or live funding was attempted at that point.
+
+## October 29, 2026 — first live sandbox capture
+
+After the Auto decision ([ADR 0007](../decisions/0007-copilot-auto-model.md)) the user set `PP_MERCHANT_ID`, `PP_WEBHOOK_ID` (all Checkout and Payment events subscribed), `COPILOT_MODEL=auto` and `POLICY_CI_REQUIRED=false`. The server was restarted on Node 22.23.4 behind the stable ngrok domain.
+
+- The user connected Me-cha as the repository sponsor through the fixed sponsor flow and funded bounty 5 ([Me-cha/gitpay-test#5](https://github.com/Me-cha/gitpay-test/issues/5), $40.00) with **version 4 (Auto) terms**.
+- The first approval attempt did not complete: a read-only PayPal order read returned `PAYER_ACTION_REQUIRED` with the merchant and amount matching. Paying requires a Personal sandbox buyer; the Business account is the receiving merchant and cannot pay itself. The retry in a private window succeeded.
+- Local database after capture: bounty `FUNDED`; funding attempt 1 `COMPLETED` (order `…7935`, capture `…3228`); a `funded` activity recorded gross 4000, fee 249, net 3751 cents. Two PayPal webhook deliveries (`…047334`, `…839604`) passed signature verification. The GitHub projection job completed.
+- Fixed with regression: `/bounty status` replied "Funding state requires reconciliation" for FUNDED bounties; it now reports confirmed funding (or a frozen hold). Full suite 37 files / 204 tests.
+
+Still open for the Phase 3 gate: payer/receiver balance or receipt check in the sandbox UI, the abandoned-checkout walkthrough, and a restart/replay observation during a live checkout. CI-required funding was not exercised (CI disabled by the user for this demo).
+
 After the user directed a fixed lower-cost model approach, [ADR 0006](../decisions/0006-fixed-lightweight-copilot-and-sponsorship.md) proposes `gpt-6-luna` for a controlled pilot and per-repository owner/organization sponsorship. It clarifies that provider/configuration errors make a result unavailable for settlement; they do not constitute a negative judgment of the contributor’s work. It does not alter v1/v2 terms or application behavior. Current Phase 3 capture remains blocked by explicit model access and missing PayPal/CI/tunnel configuration.

@@ -21,7 +21,7 @@ GitPay/
 ├── docker-compose.yml, drizzle.config.ts
 ├── .github/{pull_request_template.md,workflows/ci.yml}
 ├── docs/{setup.md,copilot-verifier-research.md}
-├── docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md,0003-nemotron-only-and-preflight-scope.md,0004-funding-recovery.md,0005-copilot-verifier.md,0006-fixed-lightweight-copilot-and-sponsorship.md}
+├── docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md,0003-nemotron-only-and-preflight-scope.md,0004-funding-recovery.md,0005-copilot-verifier.md,0006-fixed-lightweight-copilot-and-sponsorship.md,0007-copilot-auto-model.md}
 ├── docs/phases/{README.md,review-todo.md,copilot-migration.md,00.md … 12.md}
 ├── docs/evidence/{00-summary.md,00-preflight.md,01-summary.md,02-summary.md,03-summary.md,04-summary.md,05-summary.md,05-verifier.md,copilot-migration.md}
 ├── packages/server/

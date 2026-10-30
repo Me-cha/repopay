@@ -1,6 +1,6 @@
 # Proposed ADR 0006 — Fixed lightweight Copilot model and repository sponsorship
 
-**Status:** Accepted direction; owner-sponsor onboarding slice implemented locally October 29, 2026. `gpt-6-luna` is the fixed first candidate. This decision does not authorize subscription purchases or live payments, and the implementation has not been verified.
+**Status:** Fixed-model items 1–2 superseded by [ADR 0007](0007-copilot-auto-model.md) (Auto, October 29, 2026); sponsorship and telemetry items remain accepted. Original status: Accepted direction; owner-sponsor onboarding slice implemented locally October 29, 2026. `gpt-6-luna` is the fixed first candidate. This decision does not authorize subscription purchases or live payments, and the implementation has not been verified.
 
 ## Context
 

@@ -92,7 +92,7 @@ export function createAuth(db:Database,env:AuthEnv,provider:OAuthProvider=create
   return {repoId:stored.repoId,installationId:stored.installationId,returnTo:stored.returnTo,user,token};
  }
  async function saveCopilotSponsor(input:{repoId:string;installationId:string;user:{id:string;login:string};token:TokenSet;modelId:string}) {
-  if(!input.modelId||input.modelId.toLowerCase()==='auto')throw new AuthError(409,'GitPay requires an accessible fixed Copilot model.');
+  if(!input.modelId)throw new AuthError(409,'GitPay requires a Copilot model or auto.');
   const id=input.repoId,now=clock.now();
   const values={repoId:id,installationId:input.installationId,sponsorGhId:input.user.id,sponsorLogin:input.user.login,
    accessTokenEnc:encrypt(input.token.accessToken,env.TOKEN_ENC_KEY,id+':copilot-access'),refreshTokenEnc:encrypt(input.token.refreshToken,env.TOKEN_ENC_KEY,id+':copilot-refresh'),

@@ -43,7 +43,7 @@ it('deadline aborts the session and stops the runtime instead of merely stopping
 it('listing is read-only and missing explicit sponsor cannot fall back to CLI credentials',async()=>{
  const f=fixture();expect(await listCopilotModels(config(),f.factory)).toEqual([{model:'test-model',listed:true}]);expect(f.client.createSession).not.toHaveBeenCalled();
  expect(()=>parseCopilotEnv({...input,COPILOT_GITHUB_TOKEN:''})).toThrow(/COPILOT_GITHUB_TOKEN/);
- expect(()=>parseCopilotEnv({...input,COPILOT_MODEL:'auto'})).toThrow(/COPILOT_MODEL/);
+ expect(parseCopilotEnv({...input,COPILOT_MODEL:'AUTO'}).COPILOT_MODEL).toBe('auto');
  expect(()=>parseCopilotEnv({...input,COPILOT_AUTH_KIND:'organization'})).toThrow();
 });
 
@@ -71,6 +71,23 @@ it('lists available models before choosing one, but refuses generation without a
  const f=fixture();const env=parseCopilotEnv({...input,COPILOT_MODEL:''});
  expect(await listCopilotModels(env,f.factory)).toEqual([{model:'test-model',listed:true}]);
  await expect(completeCopilot(env,'evidence',schema,f.factory)).rejects.toThrow(/explicit model/);
+});
+const usageEvent=(model:string)=>({type:'assistant.usage' as const,data:{model,inputTokens:120,outputTokens:45},id:'usage',timestamp:'now',parentId:null,ephemeral:true as const});
+function autoFixture(models:string[]) {
+ const f=fixture();vi.mocked(f.client.listModels).mockResolvedValue([]);f.session.getModel.mockResolvedValue('auto');
+ f.session.send.mockImplementation(()=>{for(const model of models)vi.mocked(f.client.createSession).mock.calls[0]?.[0].onEvent?.(usageEvent(model));return Promise.resolve({verdict:'RESOLVES'});});
+ return f;
+}
+it('Auto requests auto despite an empty Free catalog and records the model Copilot actually served',async()=>{
+ const f=autoFixture(['gpt-6-luna']);
+ const result=await completeCopilot(parseCopilotEnv({...input,COPILOT_MODEL:'auto'}),'evidence',schema,f.factory);
+ expect(vi.mocked(f.client.createSession).mock.calls[0]?.[0].model).toBe('auto');
+ expect(result).toMatchObject({value:{verdict:'RESOLVES'},requestedModel:'auto',model:'gpt-6-luna'});
+});
+it.each([[[]],[['auto']],[['gpt-6-luna','gpt-6-astra']]])('Auto refuses a result whose serving model cannot be established %j',async models=>{
+ const f=autoFixture(models);
+ await expect(completeCopilot(parseCopilotEnv({...input,COPILOT_MODEL:'auto'}),'evidence',schema,f.factory)).rejects.toThrow(/provenance/);
+ expect(f.client.forceStop).toHaveBeenCalled();
 });
 it('treats an authenticated but empty model catalog as unavailable, not a passing preflight',async()=>{
  const f=fixture();vi.mocked(f.client.listModels).mockResolvedValue([]);

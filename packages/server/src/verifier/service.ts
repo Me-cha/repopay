@@ -11,6 +11,7 @@ import { collectVerification,StaleEvidenceError,type VerifyInput } from './colle
 import { verify } from './verify.js';
 import { buildVerifierPrompt } from './prompt.js';
 import { parseCopilotEnv } from '../env.js';
+import { isSponsoredTerms } from '../domain/funded-terms.js';
 import { REVIEW_UNAVAILABLE_REASON } from '../domain/types.js';
 import { PROMPT_VERSION } from './prompt.js';
 
@@ -95,7 +96,7 @@ export function createPhase5(db:Database,github:GitHub,env:FundingEnv,auth:AuthS
    const [sub]=await db.orm.select().from(submissions).where(eq(submissions.id,submissionId));if(!sub)return;
    const [bounty]=await db.orm.select().from(bounties).where(eq(bounties.id,sub.bountyId));if(!bounty||bounty.status!=='FUNDED'||bounty.fundingHold)return;
    const {installation,repo}=await currentAccess(github,bounty.installationId,bounty.repoId);
-   const terms=bounty.fundedTerms;if(!terms||terms.version!==3)throw new Error('Funded verifier profile is unsupported; maintainer review is required');
+   const terms=bounty.fundedTerms;if(!terms||!isSponsoredTerms(terms))throw new Error('Funded verifier profile is unsupported; maintainer review is required');
    let evidence:VerifyInput;
    try{evidence=await collectVerification({github,env,installationId:installation.id,repo,bounty,submission:sub,terms,expectedHeadSha});}
    catch(error){if(error instanceof StaleEvidenceError)return;throw error;}
@@ -126,7 +127,8 @@ export function createPhase5(db:Database,github:GitHub,env:FundingEnv,auth:AuthS
     if(identity.id!==terms.sponsor.id||access.ownerId!==identity.id||access.ownerType!=='User'||access.admin!==true)throw new Error('Sponsor ownership is unavailable');
     const copilotEnv=parseCopilotEnv({COPILOT_GITHUB_TOKEN:sponsor.accessToken,COPILOT_BILLING_OWNER_ID:sponsor.sponsorGhId,COPILOT_AUTH_KIND:'user',COPILOT_MODEL:terms.policy.model,COPILOT_TIMEOUT_MS:'120000',COPILOT_SHUTDOWN_TIMEOUT_MS:'5000',COPILOT_MAX_INPUT_BYTES:'200000',PROVIDER_RESPONSE_MAX_BYTES:String(env.PROVIDER_RESPONSE_MAX_BYTES)});
     const output=await verifyFn(evidence,copilotEnv);
-    await finish({status:'DONE',result:output.value,usageMetrics:{...output.usage},elapsedMs:output.elapsedMs,promptHash:output.promptHash},`${output.value.verdict} · confidence ${(output.value.confidence*100).toFixed(0)}%`,checkSummary({advisory:`Model assessment: ${output.value.verdict} · coverage ${(output.value.coverage*100).toFixed(0)}% · confidence ${(output.value.confidence*100).toFixed(0)}%.`,ci:evidence.ci.status,reasoning:output.value.reasoning,unmet:output.value.unmet_requirements,retryUrl}));
+    // Under Auto terms this is the serving model Copilot reported, not `auto`.
+    await finish({status:'DONE',model:output.model,result:output.value,usageMetrics:{...output.usage},elapsedMs:output.elapsedMs,promptHash:output.promptHash},`${output.value.verdict} · confidence ${(output.value.confidence*100).toFixed(0)}%`,checkSummary({advisory:`Model assessment: ${output.value.verdict} · coverage ${(output.value.coverage*100).toFixed(0)}% · confidence ${(output.value.confidence*100).toFixed(0)}%.`,ci:evidence.ci.status,reasoning:output.value.reasoning,unmet:output.value.unmet_requirements,retryUrl}));
    }catch(error){const code=safeErrorCode(error);await finish({status:'ERROR',errorCode:code},'GitPay review unavailable',checkSummary({advisory:`No model verdict was recorded (${code}).`,ci:evidence.ci.status,retryUrl}));}
   } finally {
    let destroy=false;if(acquired){try{await client.query('select pg_advisory_unlock(hashtext($1))',[lock]);}catch{destroy=true;}}

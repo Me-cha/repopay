@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { and,eq,sql } from 'drizzle-orm';
 import { actionTokens,bounties,bountyActivity,fundingAttempts } from '../db/schema.js';
 import { AuthError } from '../github/oauth.js';
-import { termsSchema,termsHash } from '../domain/funded-terms.js';
+import { isSponsoredTerms,termsSchema,termsHash } from '../domain/funded-terms.js';
 import { randomToken,sha256 } from '../util/crypto.js';
 import { assertContext,assertInstallation,assertSession,lockBounty } from './guards.js';
 import type { Transaction } from '../db/transaction.js';
@@ -20,7 +20,7 @@ async function available(tx:Transaction,ctx:ActorContext,id:string,version:numbe
  if(active)throw new AuthError(409,'Resolve the existing funding attempt before starting another.');return b;
 }
 function boundTerms(b:Bounty,terms:FundedTerms) {
- if(terms.version!==3)throw new AuthError(409,'New funding requires a validated repository-owner Copilot sponsor and fixed model.');
+ if(!isSponsoredTerms(terms))throw new AuthError(409,'New funding requires a connected repository-owner Copilot sponsor.');
  if(terms.repoId!==b.repoId||terms.issueNumber!==b.issueNumber||terms.creatorGhId!==b.createdByGhId||terms.amountCents!==b.amountCents||terms.currency!==b.currency)throw new AuthError(409,'Funding terms changed.');
 }
 export async function prepareFunding(db:Database,env:FundingEnv,session:Session,ctx:ActorContext,bounty:Bounty,input:FundedTerms,clock=()=>new Date()):Promise<string> {

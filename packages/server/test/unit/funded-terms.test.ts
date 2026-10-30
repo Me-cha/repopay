@@ -10,6 +10,14 @@ it('reads original Nemotron terms without changing their hash or provider meanin
  expect(parsed.policy).not.toHaveProperty('provider');
  expect(()=>termsSchema.parse({...legacy,policy:{...legacy.policy,model:'test-model',provider:'copilot'}})).toThrow();
 });
+it('version 4 terms record the Auto policy and sponsor; versions 2–3 still reject Auto',()=>{
+ const v3={...legacy,version:3,policy:{...legacy.policy,model:'gpt-6-luna',provider:'copilot',sdkVersion:'1.0.28'},sponsor:{kind:'user',id:'4',login:'maintainer'}};
+ const v4={...v3,version:4,policy:{...v3.policy,model:'auto'}};
+ expect(termsSchema.parse(v4).policy.model).toBe('auto');
+ expect(()=>termsSchema.parse({...v4,policy:{...v4.policy,model:'gpt-6-luna'}})).toThrow();
+ expect(()=>termsSchema.parse({...v3,policy:{...v3.policy,model:'auto'}})).toThrow();
+ expect(termsHash(termsSchema.parse(v3))).toBe(createHash('sha256').update(JSON.stringify(v3)).digest('hex'));
+});
 it('requires an explicit model and provider in version 2 terms',()=>{
  const terms={...legacy,version:2,policy:{...legacy.policy,model:'test-model',provider:'copilot',sdkVersion:'1.0.28'}};
  expect(termsSchema.parse(terms).policy.model).toBe('test-model');

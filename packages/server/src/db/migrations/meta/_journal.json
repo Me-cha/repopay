@@ -64,6 +64,13 @@
       "when": 1793281157420,
       "tag": "0008_calm_blink",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793294512951,
+      "tag": "0009_auto_copilot_sponsor",
+      "breakpoints": true
     }
   ]
 }

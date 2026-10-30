@@ -35,8 +35,11 @@ export function mountCopilotSponsor(app:Express,deps:AuthenticationDependencies&
    const {code,state}=request.query;if(typeof code!=='string'||typeof state!=='string'||!binding)throw new AuthError(400,'Invalid sponsor authorization. Start again.');
    const session=await requireSession(auth,request),grant=await auth.completeCopilotSponsor(code,state,binding,session);returnTo=grant.returnTo;
    const modelEnv=parseCopilotEnv({COPILOT_GITHUB_TOKEN:grant.token.accessToken,COPILOT_BILLING_OWNER_ID:grant.user.id,COPILOT_AUTH_KIND:'user',COPILOT_MODEL:'',COPILOT_TIMEOUT_MS:'30000',COPILOT_SHUTDOWN_TIMEOUT_MS:'5000',COPILOT_MAX_INPUT_BYTES:'200000',PROVIDER_RESPONSE_MAX_BYTES:String(deps.responseMaxBytes)});
-   const models=await listCopilotModels(modelEnv);
-   if(!models.some(item=>item.model===deps.model&&item.listed))throw new AuthError(409,`This GitHub account cannot use ${deps.model}. Connect an account or organization plan that includes this fixed model.`);
+   // Auto is not listable (Copilot Free returns an empty catalog); access is proven by the first review.
+   if(deps.model!=='auto'){
+    const models=await listCopilotModels(modelEnv);
+    if(!models.some(item=>item.model===deps.model&&item.listed))throw new AuthError(409,`This GitHub account cannot use ${deps.model}. Connect an account or organization plan that includes this fixed model.`);
+   }
    await auth.saveCopilotSponsor({...grant,modelId:deps.model});setCookie(response,env,'gitpay_sponsor_oauth','',0);response.redirect(303,grant.returnTo);
   }catch(error){setCookie(response,env,'gitpay_sponsor_oauth','',0);safeError(response,error,returnTo);}
  });

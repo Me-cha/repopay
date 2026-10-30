@@ -81,7 +81,7 @@ export const copilotSponsors = pgTable('copilot_sponsors', {
  repoId:stringBigint('repo_id').primaryKey(),installationId:stringBigint('installation_id').notNull(),sponsorGhId:stringBigint('sponsor_gh_id').notNull(),sponsorLogin:text('sponsor_login').notNull(),
  accessTokenEnc:text('access_token_enc').notNull(),refreshTokenEnc:text('refresh_token_enc').notNull(),accessExpiresAt:timestamp('access_expires_at',{withTimezone:true}).notNull(),refreshExpiresAt:timestamp('refresh_expires_at',{withTimezone:true}).notNull(),
  tokenGeneration:integer('token_generation').notNull().default(0),modelId:text('model_id').notNull(),modelVerifiedAt:timestamp('model_verified_at',{withTimezone:true}).notNull(),revokedAt:timestamp('revoked_at',{withTimezone:true}),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),updatedAt:timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
-},t=>[check('copilot_sponsor_model_check',sql`${t.modelId} <> '' and lower(${t.modelId}) <> 'auto'`)]);
+},t=>[check('copilot_sponsor_model_check',sql`${t.modelId} <> ''`)]);
 
 export const actionTokens = pgTable('action_tokens', {
  tokenHash:text('token_hash').primaryKey(),bountyId:stringBigint('bounty_id').notNull().references(()=>bounties.id),

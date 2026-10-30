@@ -39,3 +39,13 @@ The user later authorized a non-payment Auto prototype using the Free sponsor's 
 5. Update and approve the live GitHub App's Pull requests and Checks permissions/events, then verify a real PR update, external CI completion, neutral Check Run, retry and access-loss behavior.
 
 **Phase 5 is not complete.** The code establishes the local review pipeline, attempt caps and usage telemetry, but live sponsor access and quality gates remain open. Verifier output must remain informational until these gates and the later deterministic award policy are implemented and verified.
+
+## October 29–30, 2026 — first live review run and fixes
+
+The user switched new funding to Copilot Auto ([ADR 0007](../decisions/0007-copilot-auto-model.md)) and funded bounty 5 ([Me-cha/gitpay-test#5](https://github.com/Me-cha/gitpay-test/issues/5)); see [Phase 3 evidence](03-summary.md). PR #4 was then linked to that bounty.
+
+- The first review job failed all five attempts. A read-only replay of the verifier's GitHub calls showed every read succeeding except `GET …/check-runs`, which returned 403. The App's **Checks** permission had been saved but not accepted on the installation. After the user accepted it and the server restarted (clearing the cached installation token), the same reads succeeded.
+- The retry page produced a real neutral Check Run on PR #4 and an evidence snapshot. The verdict was `INSUFFICIENT_EVIDENCE` with **no Copilot request**: PR #4's author is the bounty creator, who is excluded from payment by policy. No live Copilot verdict has been produced yet; that needs a PR from a different GitHub account.
+- Fixed with regressions in `verification-checks.test.ts`: the Check Run now lists specific reasons (bounty creator's own PR, unverified commit authors, truncation, empty diff, required CI) instead of "authorship is ambiguous"; and a review that reaches an outcome clears a stale "Solution review service unavailable" warning while leaving funding holds untouched. Full suite 37 files / 206 tests, lint and build passed.
+
+Still observed but not yet fixed: worker job failures are not logged with a cause; a retried review that fails before saving a verification row reuses the same retry key; the review-unavailable warning is set on the first failed attempt rather than on exhaustion.
