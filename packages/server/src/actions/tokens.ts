@@ -1,12 +1,12 @@
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Database } from '../db/client.js';
-import { actionTokens,bounties,type Bounty } from '../db/schema.js';
+import { actionTokens,type Bounty } from '../db/schema.js';
 import type { ActorContext } from '../domain/types.js';
 import type { AuthEnv } from '../env.js';
 import { AuthError,type Session } from '../github/oauth.js';
 import { randomToken,sha256 } from '../util/crypto.js';
-import { assertCancellable,assertContext,assertInstallation,assertSession } from './guards.js';
+import { assertCancellable,assertContext,assertInstallation,assertSession,lockBounty } from './guards.js';
 import { cancelDraft } from './cancel.js';
 import { enqueue } from '../jobs/queue.js';
 const paramsSchema=z.object({}).strict();
@@ -14,7 +14,7 @@ export async function issueActionToken(db:Database,env:AuthEnv,session:Session,c
  const token=randomToken();
  await db.withTransaction(async tx=>{
   const storedSession=await assertSession(tx,session,clock());
-  const [current]=await tx.select().from(bounties).where(eq(bounties.id,bounty.id)).for('update');
+  const current=await lockBounty(tx,bounty.id);
   if(!current)throw new AuthError(404,'Bounty not found.');assertContext(ctx,current,'cancel_draft');await assertInstallation(tx,current);assertCancellable(current);
   if(current.version!==bounty.version)throw new AuthError(409,'This bounty changed. Reload the preview.');
   const now=clock();if(storedSession.expiresAt<=now)throw new AuthError();
@@ -36,7 +36,7 @@ export async function confirmAction(db:Database,env:AuthEnv,session:Session,ctx:
   const storedSession=await assertSession(tx,session,clock());
   const [stored]=await tx.select().from(actionTokens).where(eq(actionTokens.tokenHash,sha256(token))).for('update');
   if(!stored)throw new AuthError(404,'Confirmation not found.');
-  const [bounty]=await tx.select().from(bounties).where(eq(bounties.id,stored.bountyId)).for('update');if(!bounty)throw new AuthError(404,'Bounty not found.');
+  const bounty=await lockBounty(tx,stored.bountyId);if(!bounty)throw new AuthError(404,'Bounty not found.');
   assertToken(stored,bounty,clock());
   const updated=await cancelDraft(tx,ctx,bounty.id,stored.bountyVersion);
   const now=clock();assertToken(stored,bounty,now);if(storedSession.expiresAt<=now)throw new AuthError();

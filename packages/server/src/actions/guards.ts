@@ -24,6 +24,13 @@ export async function assertSession(tx:Transaction,session:Session,now:Date) {
  if(!stored||stored.ghId!==session.ghId||stored.expiresAt<=now)throw new AuthError();
  return stored;
 }
+// Installation reconciliation locks the installation row, then its bounties.
+// Actions take the same order so the two cannot deadlock.
+export async function lockBounty(tx:Transaction,id:string):Promise<Bounty|undefined> {
+ const [ref]=await tx.select({installationId:bounties.installationId}).from(bounties).where(eq(bounties.id,id));if(!ref)return undefined;
+ await tx.select({id:installations.id}).from(installations).where(eq(installations.id,ref.installationId)).for('share');
+ const [bounty]=await tx.select().from(bounties).where(eq(bounties.id,id)).for('update');return bounty;
+}
 export async function assertInstallation(tx:Transaction,bounty:Bounty) {
  const [installation]=await tx.select().from(installations).where(eq(installations.id,bounty.installationId)).for('share');
  if(!installation||installation.suspendedAt||installation.deletedAt)throw new AuthError(403,'Restore GitHub App access before continuing.');

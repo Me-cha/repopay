@@ -17,6 +17,28 @@ it('lost comment response reconciles by trusted marker, ignoring forged user mar
   expect(f.api.createComment).toHaveBeenCalledWith('1',{id:'2',full_name:'owner/repo',archived:false},12,expect.any(String));
  }finally{await f.close();}
 });
+it('delayed cancelled projection keeps the open badge of a replacement draft on the same issue',async()=>{
+ const f=await githubFixture();try{
+  const a=await f.job(createWork());await handleJob(f.database,f.api,testEnv,a);await finishJob(f.database,a);
+  const [old]=await f.database.orm.select().from(bounties);if(!old)throw new Error('missing bounty');
+  await f.database.orm.update(bounties).set({status:'CANCELLED'});
+  await f.database.orm.insert(bounties).values({installationId:old.installationId,repoId:old.repoId,repoFullName:old.repoFullName,issueNumber:old.issueNumber,amountCents:3000,createdByGhId:'4',createdVia:'command'});
+  const late=await f.job({kind:'sync_bounty',bountyId:old.id});await handleJob(f.database,f.api,testEnv,late);
+  expect(f.comments.find(c=>c.body?.includes(`gitpay:bounty:${old.id}`))?.body).toContain('CANCELLED');
+  expect(f.api.badge).not.toHaveBeenCalledWith(expect.anything(),expect.anything(),old.issueNumber,'CANCELLED');
+ }finally{await f.close();}
+});
+it('status reply for a funded bounty reports confirmed funding, not reconciliation',async()=>{
+ const f=await githubFixture();try{
+  const create=await f.job(createWork());await handleJob(f.database,f.api,testEnv,create);await finishJob(f.database,create);
+  const projection=await claimJob(f.database,'sync',120);if(!projection)throw new Error('missing sync');await handleJob(f.database,f.api,testEnv,projection);await finishJob(f.database,projection);
+  await f.database.orm.update(bounties).set({status:'FUNDED',fundedAt:new Date(),captureId:'CAPTURE1'});
+  f.state.permission='read';
+  const status=await f.job(createWork({commentId:'30',command:{kind:'status'}}));await handleJob(f.database,f.api,testEnv,status);
+  const body=f.comments.find(c=>c.body?.includes(`gitpay:reply:${status.id}`))?.body;
+  expect(body).toContain('FUNDED');expect(body).toContain('Funding confirmed');expect(body).not.toContain('requires reconciliation');
+ }finally{await f.close();}
+});
 it('projection lock serializes workers across connections',async()=>{
  const f=await githubFixture();try{await withProjectionLock(f.database,'same-bounty',async()=>{await expect(withProjectionLock(f.database,'same-bounty',async()=>{})).rejects.toThrow('busy');});await expect(withProjectionLock(f.database,'same-bounty',()=>Promise.resolve(true))).resolves.toBe(true);}finally{await f.close();}
 });

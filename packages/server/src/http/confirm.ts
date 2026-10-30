@@ -28,6 +28,11 @@ for (const form of document.querySelectorAll('form[method="post"]')) {
    // navigation sends Origin:null, which the server deliberately rejects.
    const response=await fetch(form.action,{method:'POST',body,mode:'cors',credentials:'same-origin',cache:'no-store',referrerPolicy:'no-referrer'});
    const target=new URL(response.url);if(target.origin!==location.origin)throw new Error('Unexpected redirect');
+   if(response.ok&&response.headers.get('content-type')?.startsWith('application/json')){
+    const next=new URL((await response.json()).redirect);
+    if(next.origin+next.pathname!=='https://github.com/login/oauth/authorize')throw new Error('Unexpected redirect');
+    location.assign(next.href);return;
+   }
    if(response.ok||response.status===409){location.assign(target.href);return;}
    const page=new DOMParser().parseFromString(await response.text(),'text/html');
    feedback.textContent=page.querySelector('[role="alert"]')?.textContent||'Unable to submit. Reload this page and try again.';

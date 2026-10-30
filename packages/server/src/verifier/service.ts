@@ -11,11 +11,24 @@ import { collectVerification,StaleEvidenceError,type VerifyInput } from './colle
 import { verify } from './verify.js';
 import { buildVerifierPrompt } from './prompt.js';
 import { parseCopilotEnv } from '../env.js';
+import { REVIEW_UNAVAILABLE_REASON } from '../domain/types.js';
 import { PROMPT_VERSION } from './prompt.js';
 
 function md(value:string):string{return value.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('`','\\`').replaceAll('[','\\[').replaceAll(']','\\]');}
 function checkSummary(input:{advisory:string;ci:string;reasoning?:string;unmet?:string[];retryUrl:string}) {
  return `**${input.advisory}**\n\nCI for this exact revision: **${md(input.ci)}**. This check is advisory; it does not select an award or authorize payment.\n\n${input.reasoning?md(input.reasoning):'No verifier verdict is available.'}${input.unmet?.length?`\n\nUnmet requirements:\n${input.unmet.map(value=>`- ${md(value)}`).join('\n')}`:''}\n\n[View bounty and request a fresh review](${input.retryUrl})`;
+}
+// Name why evidence is insufficient instead of a generic "ambiguous" message.
+function insufficientReasons(evidence:VerifyInput,prAuthorGhId:string,creatorGhId:string,ciRequired:boolean):string[] {
+ const reasons:string[]=[];
+ if(!evidence.eligibleAuthors.length)reasons.push(prAuthorGhId===creatorGhId?'The pull request author created this bounty, and bounty creators cannot earn their own bounty. A submission from another contributor is needed.':'The pull request author is not an eligible GitHub user account.');
+ if(prAuthorGhId!==creatorGhId&&evidence.unverifiedAuthors.includes(creatorGhId))reasons.push('The bounty creator also authored commits in this pull request; a maintainer must review authorship.');
+ const others=evidence.unverifiedAuthors.filter(id=>id!==creatorGhId).length;
+ if(others)reasons.push(`${String(others)} additional commit author${others===1?'':'s'} could not be verified as payees; a maintainer must review authorship.`);
+ if(evidence.truncated)reasons.push('Some of the pull request description or diff could not be collected in full.');
+ if(!evidence.diff.trim())reasons.push('No reviewable code changes were found.');
+ if(ciRequired&&evidence.ci.status!=='pass')reasons.push(`Required CI has not passed for this revision (${evidence.ci.status}).`);
+ return reasons.length?reasons:['The collected evidence is incomplete.'];
 }
 const safeErrorCode=(error:unknown)=>error instanceof Error&&/model/i.test(error.message)?'MODEL_UNAVAILABLE':error instanceof StaleEvidenceError?'STALE_EVIDENCE':'VERIFIER_UNAVAILABLE';
 
@@ -101,8 +114,10 @@ export function createPhase5(db:Database,github:GitHub,env:FundingEnv,auth:AuthS
    const finish=async(values:Partial<typeof verifications.$inferInsert>,title:string,summary:string)=>{
     await github.updateCheckRun(installation.id,repo,checkRunId,{detailsUrl,status:'completed',conclusion:'neutral',title,summary});
     await setAttempt(record.id,{...values,completedAt:new Date()});
+    // A review that reached an outcome supersedes an earlier failed-job warning.
+    if(values.status==='DONE'||values.errorCode==='INSUFFICIENT_EVIDENCE')await db.orm.update(bounties).set({needsAttention:false,attentionReason:null,updatedAt:new Date()}).where(and(eq(bounties.id,bounty.id),eq(bounties.attentionReason,REVIEW_UNAVAILABLE_REASON)));
    };
-   if(!evidence.sufficient){await finish({status:'ERROR',errorCode:'INSUFFICIENT_EVIDENCE'},'GitPay needs maintainer review',checkSummary({advisory:'Evidence is incomplete or authorship is ambiguous.',ci:evidence.ci.status,retryUrl}));return;}
+   if(!evidence.sufficient){await finish({status:'ERROR',errorCode:'INSUFFICIENT_EVIDENCE'},'GitPay did not review this revision',checkSummary({advisory:'This revision was not sent for model review.',ci:evidence.ci.status,reasoning:insufficientReasons(evidence,sub.authorGhId,bounty.createdByGhId,terms.policy.ciRequired).join('\n\n'),retryUrl}));return;}
    if(!await withinAttemptBudget(client,bounty.repoId,sub.id,evidence.headSha)){await finish({status:'ERROR',errorCode:'VERIFIER_BUDGET_EXHAUSTED'},'GitPay review paused',checkSummary({advisory:'The repository review-attempt limit has been reached for today or this PR revision. No model request was made for this attempt.',ci:evidence.ci.status,retryUrl}));return;}
    try {
     const sponsor=await auth.getCopilotSponsor(bounty.repoId);

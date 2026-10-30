@@ -1,7 +1,7 @@
 import { expect,it } from 'vitest';
 import { eq,sql } from 'drizzle-orm';
 import { authFixture,csrfFrom,form,prepare } from '../helpers/auth.js';
-import { bounties,actionTokens } from '../../src/db/schema.js';
+import { bounties,actionTokens,installations } from '../../src/db/schema.js';
 import { parseCommand } from '../../src/github/commands.js';
 import { githubFixture,createWork,testEnv } from '../helpers/github.js';
 import { handleJob } from '../../src/jobs/runner.js';
@@ -21,6 +21,21 @@ it('capture reservation and cancellation serialize under the same bounty row loc
  })]);
  const [final]=await f.database.orm.select().from(bounties);expect([303,409]).toContain(response.status);
  expect(final?.status).toBe(reserved?'CAPTURING':'CANCELLED');expect(response.status===303).toBe(!reserved);
+ }finally{await f.close();}
+});
+it('confirmation and installation reconciliation lock rows in the same order, avoiding deadlock',async()=>{
+ const f=await authFixture();try{
+ const link=await prepare(f),csrf=csrfFrom(await(await f.request(link)).text());
+ // Mirror refresh_installation: installation row first, then its bounties.
+ let release=()=>{};const held=new Promise<void>(resolve=>{release=resolve;});let locked=()=>{};const ready=new Promise<void>(resolve=>{locked=resolve;});
+ const reconcile=f.database.withTransaction(async tx=>{
+  await tx.update(installations).set({updatedAt:sql`now()`}).where(eq(installations.id,'1'));locked();await held;
+  await tx.update(bounties).set({updatedAt:sql`now()`}).where(eq(bounties.installationId,'1'));
+ });
+ await ready;const confirm=f.request(link,form(csrf));
+ await new Promise(resolve=>setTimeout(resolve,200));release();
+ const [response]=await Promise.all([confirm,reconcile]);
+ expect(response.status).toBe(303);expect((await f.database.orm.select().from(bounties))[0]?.status).toBe('CANCELLED');
  }finally{await f.close();}
 });
 it('cancel command produces a preview link without cancelling; cancelled projection explains no refund',async()=>{

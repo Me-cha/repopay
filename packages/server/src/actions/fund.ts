@@ -10,10 +10,10 @@ import { actionTokens,bounties,bountyActivity,fundingAttempts } from '../db/sche
 import { AuthError } from '../github/oauth.js';
 import { termsSchema,termsHash } from '../domain/funded-terms.js';
 import { randomToken,sha256 } from '../util/crypto.js';
-import { assertContext,assertInstallation,assertSession } from './guards.js';
+import { assertContext,assertInstallation,assertSession,lockBounty } from './guards.js';
 import type { Transaction } from '../db/transaction.js';
 async function available(tx:Transaction,ctx:ActorContext,id:string,version:number) {
- const [b]=await tx.select().from(bounties).where(eq(bounties.id,id)).for('update');
+ const b=await lockBounty(tx,id);
  if(!b)throw new AuthError(404,'Bounty not found.');assertContext(ctx,b,'fund');await assertInstallation(tx,b);
  if(b.version!==version||b.status!=='OPEN'||b.captureRequestKey||b.captureId||b.fundingHold)throw new AuthError(409,'This bounty changed or funding is held.');
  const [active]=await tx.select().from(fundingAttempts).where(and(eq(fundingAttempts.bountyId,id),eq(fundingAttempts.active,true)));

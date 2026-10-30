@@ -65,4 +65,43 @@ describe('verification job recovery',()=>{
    expect(funding.api.createComment).not.toHaveBeenCalled();
   } finally { await funding.close(); }
  });
+
+ async function creatorScenario(attentionReason:string) {
+  const funding=await intentFixture();
+  const [storedBounty]=await funding.database.orm.update(bounties).set({status:'FUNDED',fundedTerms:funding.terms,needsAttention:true,attentionReason}).where(eq(bounties.id,funding.bounty.id)).returning();
+  const bounty=required(storedBounty);
+  // The bounty creator (GitHub ID 4) opened and authored this PR.
+  const pr:PullRequest={id:'502',number:43,state:'open',draft:false,title:'Fix parser',body:'Fixes #12',merged_at:null,closed_at:null,user:{id:'4',login:'maintainer',type:'User'},head:{sha:'c'.repeat(40)},base:{sha:'d'.repeat(40),repo:{id:'2'}}};
+  const linked=await linkPr(funding.database,bounty,pr);
+  vi.mocked(funding.api.pullRequest).mockResolvedValue(pr);
+  vi.mocked(funding.api.pullRequestFiles).mockResolvedValue({files:[{filename:'src/parser.ts',status:'modified',additions:1,deletions:0,patch:'@@ -1 +1 @@\n+guard()'}],complete:true});
+  vi.mocked(funding.api.pullRequestCommits).mockResolvedValue({authors:[{ghId:'4',login:'maintainer',type:'User'}],complete:true});
+  vi.mocked(funding.api.checkRuns).mockResolvedValue({runs:[],complete:true});
+  const verifier=vi.fn();
+  await createPhase5(funding.database,funding.api,funding.env,funding.auth,verifier).verifySubmission(linked.submission.id,pr.head.sha);
+  return {funding,bounty,verifier};
+ }
+
+ it('explains that the bounty creator cannot earn the bounty, without calling the model',async()=>{
+  const {funding,verifier}=await creatorScenario('Solution review service unavailable; maintainer review and retry required');
+  try {
+   expect(verifier).not.toHaveBeenCalled();
+   const summary=vi.mocked(funding.api.updateCheckRun).mock.calls.at(-1)?.[3].summary??'';
+   expect(summary).toContain('created this bounty');expect(summary).not.toContain('authorship is ambiguous');
+   const [row]=await funding.database.orm.select().from(verifications);expect(row?.errorCode).toBe('INSUFFICIENT_EVIDENCE');
+  } finally { await funding.close(); }
+ });
+
+ it('a completed review clears a stale review-unavailable warning but keeps funding attention',async()=>{
+  const stale=await creatorScenario('Solution review service unavailable; maintainer review and retry required');
+  try {
+   const [after]=await stale.funding.database.orm.select().from(bounties).where(eq(bounties.id,stale.bounty.id));
+   expect(after?.needsAttention).toBe(false);expect(after?.attentionReason).toBeNull();
+  } finally { await stale.funding.close(); }
+  const held=await creatorScenario('Captured funds refunded or reversed; disbursement frozen');
+  try {
+   const [after]=await held.funding.database.orm.select().from(bounties).where(eq(bounties.id,held.bounty.id));
+   expect(after?.needsAttention).toBe(true);expect(after?.attentionReason).toBe('Captured funds refunded or reversed; disbursement frozen');
+  } finally { await held.funding.close(); }
+ });
 });

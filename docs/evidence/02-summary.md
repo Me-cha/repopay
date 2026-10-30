@@ -65,8 +65,8 @@ No later phase is complete or authorized by this evidence. Production deployment
 - Important, fixed: an uncertain refresh-lock acquire/unlock now destroys the connection instead of pooling it. A real PostgreSQL timeout regression validates lock release.
 - Important, fixed: browser logout and previous-session replacement validate local identity/CSRF without provider refresh. Provider outage cannot keep a valid local session signed in after logout.
 - Important, fixed: used/stale/expired confirmations offer authorized current status and a fresh preview where applicable. Reauthentication preserves the action destination.
-- Minor, deferred: cancellation and installation reconciliation currently acquire rows in opposite order. A race can safely abort one transaction and produce a 503/retry; atomic rollback prevents partial cancellation.
-- Minor, deferred: a delayed old cancellation projection can remove the issue-level open badge after a replacement draft exists. Bounty database state remains authoritative; issue-scoped projection serialization is a follow-up.
+- Minor, fixed October 29: cancellation, token preparation and funding confirmation now lock the installation row before the bounty row (`lockBounty` in `actions/guards.ts`), matching installation reconciliation. Regression `confirmation and installation reconciliation lock rows in the same order` failed with HTTP 503 (deadlock) before the fix.
+- Minor, fixed October 29: bounty projections serialize per issue, and a cancelled bounty's projection leaves the badge alone while a replacement draft exists on that issue. Regression `delayed cancelled projection keeps the open badge` failed before the fix.
 
 The reviewer did not assess later funding/capture/payout/refund implementations, production cleanup/rate limiting, or unobserved real provider token rotation. Those are not claimed by this phase. The real collaborator-revocation walkthrough remains an explicit gate; automated negative coverage does not substitute for that observation.
 

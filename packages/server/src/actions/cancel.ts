@@ -3,10 +3,10 @@ import type { Transaction } from '../db/transaction.js';
 import { bounties,bountyActivity,type Bounty } from '../db/schema.js';
 import type { ActorContext } from '../domain/types.js';
 import { AuthError } from '../github/oauth.js';
-import { assertCancellable,assertContext,assertInstallation } from './guards.js';
+import { assertCancellable,assertContext,assertInstallation,lockBounty } from './guards.js';
 // The caller owns the transaction that also consumes the confirmation token.
 export async function cancelDraft(tx:Transaction,ctx:ActorContext,bountyId:string,expectedVersion:number):Promise<Bounty> {
- const [bounty]=await tx.select().from(bounties).where(eq(bounties.id,bountyId)).for('update');
+ const bounty=await lockBounty(tx,bountyId);
  if(!bounty)throw new AuthError(404,'Bounty not found.');
  assertContext(ctx,bounty,'cancel_draft');await assertInstallation(tx,bounty);
  if(bounty.version!==expectedVersion)throw new AuthError(409,'This bounty changed. Request a fresh confirmation.');

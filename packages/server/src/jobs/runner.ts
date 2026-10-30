@@ -12,6 +12,7 @@ import { createDraft } from '../actions/create.js';
 import { retryClaims } from '../settlement/claims.js';
 import { bountyStatus } from '../actions/status.js';
 import { bounties, bountyActivity, installations, submissions } from '../db/schema.js';
+import { REVIEW_UNAVAILABLE_REASON } from '../domain/types.js';
 import { workFor, type LeasedJob } from './kinds.js';
 import { claimJob, assertLease, enqueue, finishJob, heartbeat } from './queue.js';
 export interface Phase5Jobs {
@@ -55,7 +56,7 @@ export async function handleJob(db:Database,github:GitHub,env:GitHubRuntimeEnv,j
    await db.withTransaction(async tx=>{await assertLease(tx,job);if(bounty.currentFundingAttemptId)await enqueue(tx,{kind:'reconcile_funding',payload:{attemptId:bounty.currentFundingAttemptId},dedupeKey:`funding-status:${job.id}`,maxAttempts:env.RECONCILIATION_MAX_ATTEMPTS});await enqueue(tx,{kind:'sync_bounty',payload:{bountyId:bounty.id},dedupeKey:`status:${job.id}`,maxAttempts:env.RECONCILIATION_MAX_ATTEMPTS});});
    const amount=`${String(Math.floor(bounty.amountCents/100))}.${String(bounty.amountCents%100).padStart(2,'0')}`;
    await reply(db,github,env,job,work.installationId,repo,work.issueNumber,
-    `**GitPay status · $${amount} USD · ${bounty.status}**\n\n${bounty.status==='CANCELLED'?'Draft cancelled. No payment or refund was sent.':bounty.status==='OPEN'?(bounty.currentFundingAttemptId?'Checkout pending. Review funding status before starting a payment.':'Unfunded draft. No money has been collected. Review funding to start checkout.'):'Funding state requires reconciliation; draft cancellation is unavailable.'}`);
+    `**GitPay status · $${amount} USD · ${bounty.status}**\n\n${bounty.status==='CANCELLED'?'Draft cancelled. No payment or refund was sent.':bounty.status==='OPEN'?(bounty.currentFundingAttemptId?'Checkout pending. Review funding status before starting a payment.':'Unfunded draft. No money has been collected. Review funding to start checkout.'):bounty.status==='FUNDED'?(bounty.fundingHold?'Funding confirmed, but disbursement is frozen pending reconciliation.':'Funding confirmed. The first qualifying merged PR wins under the frozen terms; anyone may submit work.'):'Capture pending or unknown. Do not start another payment; draft cancellation is unavailable.'}`);
   }
   else await reply(db,github,env,job,work.installationId,repo,work.issueNumber,'No bounty exists for this issue. A maintainer can use `/bounty create <USD amount>`.');return;
  }
@@ -88,7 +89,7 @@ async function markAttention(db:Database,job:LeasedJob) {
   if(work.kind==='verify_submission'){
    const [submission]=await tx.select().from(submissions).where(eq(submissions.id,work.submissionId));
    if(!submission)return;
-   const changed=await tx.update(bounties).set({needsAttention:true,attentionReason:'Solution review service unavailable; maintainer review and retry required',updatedAt:sql`now()`}).where(eq(bounties.id,submission.bountyId)).returning({id:bounties.id});
+   const changed=await tx.update(bounties).set({needsAttention:true,attentionReason:REVIEW_UNAVAILABLE_REASON,updatedAt:sql`now()`}).where(eq(bounties.id,submission.bountyId)).returning({id:bounties.id});
    const [affected]=changed;
    if(affected)await tx.insert(bountyActivity).values({bountyId:affected.id,source:'worker',action:'verification_job_failed',metadata:{jobId:job.id}});
    return;

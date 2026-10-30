@@ -24,7 +24,9 @@ export function mountCopilotSponsor(app:Express,deps:AuthenticationDependencies&
    const session=await requireSession(auth,request);checkCsrf(request,env,session);
    const bounty=await findBounty(database,request.params.id);await authorizeAction(auth,github,session,bounty,'fund');
    const binding=randomToken();const url=await auth.beginCopilotSponsor(bounty.repoId,bounty.installationId,`/bounties/${bounty.id}/copilot-sponsor`,session,binding);
-   setCookie(response,env,'gitpay_sponsor_oauth',binding,env.OAUTH_STATE_TTL_SEC);response.redirect(303,url);
+   // Mutation forms submit through same-origin fetch (see actions.js), which cannot
+   // follow a cross-origin redirect; the script navigates to this URL itself.
+   setCookie(response,env,'gitpay_sponsor_oauth',binding,env.OAUTH_STATE_TTL_SEC);response.json({redirect:url});
   }catch(error){safeError(response,error,request.path);}
  });
  app.get('/oauth/github/callback',async(request,response)=>{

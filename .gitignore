@@ -47,3 +47,6 @@ Thumbs.db
 .claude/
 
 # Keep dependency lockfiles, migrations, AGENTS.md and examples tracked.
+
+# Local agent chat transcripts (may contain screenshots/account details)
+chat.md
