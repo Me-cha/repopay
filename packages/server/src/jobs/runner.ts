@@ -136,6 +136,7 @@ export async function runOnce(db:Database,github:GitHub,env:GitHubRuntimeEnv,own
  finally{clearInterval(timer);}return true;
 }
 export function startWorker(db:Database,github:GitHub,env:GitHubRuntimeEnv,onError:()=>void=()=>{},funding?:FundingService,phase5?:Phase5Jobs,phase6?:Phase6,phase8?:{tick:()=>Promise<void>},scheduler?:{runReconciliation:(now:Date)=>Promise<void>}) {
+ if(env.RECOVERY_MODE==='hold')return {close:()=>Promise.resolve()};
  const abort=new AbortController();const owner=randomUUID();
  const done=(async()=>{while(!abort.signal.aborted){try{for(const task of [()=>scheduler?.runReconciliation(new Date()),()=>funding?.tick(),()=>phase6?.tick(),()=>phase8?.tick()]){try{await task();}catch{onError();}}if(await runOnce(db,github,env,owner,funding,phase5,phase6))continue;}catch{onError();}await delay(env.POLL_INTERVAL_MS,undefined,{signal:abort.signal}).catch(()=>undefined);}})();
  return {async close(){abort.abort();await done;}};

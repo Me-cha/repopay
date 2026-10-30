@@ -42,7 +42,7 @@ const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']), PORT: integer(1, 65535),
   PUBLIC_URL: z.url().refine(value => ['http:', 'https:'].includes(new URL(value).protocol)),
   DATABASE_URL: database, TEST_DATABASE_URL: database,
-  WORKER_MODE: z.enum(['inline', 'separate']), SESSION_SECRET: z.string().min(32),
+  WORKER_MODE: z.enum(['inline', 'separate']), RECOVERY_MODE:z.enum(['normal','hold']).default('normal'), SESSION_SECRET: z.string().min(32),
   TOKEN_ENC_KEY: key, PAYMENT_DATA_ENC_KEY: key, ACTION_TOKEN_TTL_SEC: integer(1, 3600),
   SESSION_TTL_SEC: integer(300,2592000), OAUTH_STATE_TTL_SEC: integer(60,900),
   GH_WEBHOOK_SECRET: z.string().min(32), GH_CLIENT_SECRET: text, PP_WEBHOOK_ID: text,
@@ -73,6 +73,7 @@ export function parseEnv(input: Record<string, string | undefined>): Env {
 const githubRuntimeSchema = z.object({
  NODE_ENV: schema.shape.NODE_ENV, PORT: schema.shape.PORT, PUBLIC_URL: schema.shape.PUBLIC_URL,
  DATABASE_URL: schema.shape.DATABASE_URL, WORKER_MODE: schema.shape.WORKER_MODE,
+ RECOVERY_MODE:z.enum(['normal','hold']).default('normal'),
  GH_APP_ID: schema.shape.GH_APP_ID, GH_APP_SLUG: schema.shape.GH_APP_SLUG,
  GH_PRIVATE_KEY: schema.shape.GH_PRIVATE_KEY, GH_CLIENT_ID: schema.shape.GH_CLIENT_ID,
  GH_WEBHOOK_SECRET: schema.shape.GH_WEBHOOK_SECRET, WEBHOOK_BODY_MAX_BYTES: schema.shape.WEBHOOK_BODY_MAX_BYTES,
@@ -133,5 +134,6 @@ export function parseFundingEnv(input:Record<string,string|undefined>):FundingEn
  const auth=parseAuthEnv(input),result=fundingSettings.safeParse(input);
  if(!result.success)throw new Error('Invalid configuration: '+[...new Set(result.error.issues.map(issue=>issue.path.join('.')))].join(', '));
  if(result.data.FUNDED_CANCELLATION_ENABLED&&(!result.data.CANCELLATION_OPERATOR_GH_IDS.length||!result.data.CANCELLATION_SANDBOX_REPO_ID))throw new Error('Cancellation requires operators and an isolated sandbox repository');
+ if(auth.NODE_ENV==='production'&&new URL(auth.PUBLIC_URL).protocol!=='https:')throw new Error('Production PUBLIC_URL requires HTTPS');
  return {...auth,...result.data};
 }

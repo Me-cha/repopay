@@ -57,3 +57,7 @@ Run `pnpm typecheck`, `pnpm lint`, `TEST_DATABASE_URL=postgresql://gitpay:gitpay
 ## Phase 10 recovery checks
 
 `pnpm test` includes durable checkpoint, separate-connection allocation/lease tests and a worker subprocess kill/restart using the local test database. Keep live discovery disabled while developing. `pnpm ops:retry-job <id>` preserves failed records and only permits safe read/projection kinds; read the [operations runbook](docs/operations.md). CI runs Chromium browser/security journeys with synthetic providers and no privileged fork credentials. Live model evaluations still require separate bounded authorization; they are not part of CI.
+
+## Phase 11 release compatibility
+
+Run `pnpm db:check` after migrations. Runtime health requires the exact migration history for the release. `deploy-compatibility.test.ts` uses Docker/PostgreSQL 16 dump/restore with synthetic data in a generated test schema and proves recovery hold prevents a replacement operation when a backup omits a provider-accepted intent. Keep hosted resources and live callbacks unchanged until deployment authorization; [deployment.md](docs/deployment.md) contains the prepared rollout and rollback procedure.

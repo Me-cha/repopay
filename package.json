@@ -23,7 +23,11 @@
     "tunnel": "bash ./ngrok.sh",
     "test:e2e": "playwright test",
     "dev:web": "pnpm --filter @gitpay/web dev",
-    "ops:retry-job": "tsx --env-file=.env packages/server/scripts/retry-job.ts"
+    "ops:retry-job": "tsx --env-file=.env packages/server/scripts/retry-job.ts",
+    "db:check": "tsx --env-file-if-exists=.env packages/server/scripts/check-migrations.ts",
+    "start:hosted": "node packages/server/dist/main.js",
+    "start:worker:hosted": "node packages/server/dist/worker.js",
+    "db:migrate:hosted": "tsx packages/server/scripts/migrate.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

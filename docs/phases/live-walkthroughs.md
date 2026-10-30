@@ -66,13 +66,21 @@ Local results and fault boundaries: [Phase 10 evidence](../evidence/10-summary.m
 - [ ] Run an approved fresh Auto evaluation and reconcile all W01–W16 evidence. Existing Phase 5 evaluation is historical, not a new run.
 - [ ] Rehearse hosted backup/restore with workers isolated and provider reconciliation before reactivation; complete hosting-specific rate/load/access controls in Phase 11.
 
+## Phase 11 — hosted validation
+
+Local preparation: [Phase 11 summary](../evidence/11-summary.md). No hosted deployment exists from this work.
+
+- [ ] Approve actual Render pricing/region/resources, configure shared secrets and stable HTTPS origin, and validate the account-specific Blueprint.
+- [ ] Deploy one reviewed commit with the web-owned migration step and both services held; verify schema health and SDK runtime readiness.
+- [ ] Configure hosted callback/webhooks, run read-only preflight, then explicitly authorize activation and bounded live tests.
+- [ ] Complete the role, restart, access-loss and missing-intent restore evidence in [11-hosted.md](../evidence/11-hosted.md).
+
 ## Later phases — expand during implementation
 
 These are planned walkthroughs, not claims that implementation is complete.
 
 | Phase | Final-session work | Setup/dependency |
 | --- | --- | --- |
-| [11](11.md) | Hosted clean-session core flows and restart recovery. | Approved hosting setup and deployment; local checks alone do not establish hosted acceptance. |
 | [12](12.md) | Complete evidence matrix, reproduce setup/demo, verify negative paths and obtain final acceptance. | Resolve or explicitly document all remaining blockers. |
 
 Before the final session, consolidate accounts, eligible roles, sandbox balances, recipient connections, supported attribution, scopes, callback/webhook URLs, hosting and bounded Copilot request allowances. Record issue/PR/award/batch/item IDs and outcomes without credentials, tokens or recipient emails. Earlier Phase 2–3 deferred items must also be reconciled from their own evidence before final MVP claims.

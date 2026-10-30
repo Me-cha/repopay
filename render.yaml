@@ -1,0 +1,222 @@
+# Prepared only; deploying provisions paid resources. See docs/deployment.md.
+previews:
+  generation: "off"
+services:
+  - type: web
+    name: gitpay-sandbox-web
+    runtime: node
+    region: singapore
+    plan: 1c-2g
+    numInstances: 1
+    autoDeployTrigger: "off"
+    buildCommand: corepack enable && corepack prepare pnpm@10.29.3 --activate && pnpm install --frozen-lockfile --prod=false && pnpm build
+    preDeployCommand: pnpm db:migrate:hosted && pnpm db:check
+    startCommand: pnpm start:hosted
+    healthCheckPath: /healthz
+    maxShutdownDelaySeconds: 300
+    envVars:
+      - fromGroup: gitpay-sandbox-runtime
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gitpay-sandbox-db
+          property: connectionString
+      - key: PUBLIC_URL
+        sync: false
+      - key: GH_APP_ID
+        sync: false
+      - key: GH_APP_SLUG
+        sync: false
+      - key: GH_PRIVATE_KEY
+        sync: false
+      - key: GH_WEBHOOK_SECRET
+        sync: false
+      - key: GH_CLIENT_ID
+        sync: false
+      - key: GH_CLIENT_SECRET
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
+      - key: TOKEN_ENC_KEY
+        sync: false
+      - key: PAYMENT_DATA_ENC_KEY
+        sync: false
+      - key: PP_CLIENT_ID
+        sync: false
+      - key: PP_SECRET
+        sync: false
+      - key: PP_WEBHOOK_ID
+        sync: false
+      - key: PP_MERCHANT_ID
+        sync: false
+  - type: worker
+    name: gitpay-sandbox-worker
+    runtime: node
+    region: singapore
+    plan: 1c-2g
+    numInstances: 1
+    autoDeployTrigger: "off"
+    buildCommand: corepack enable && corepack prepare pnpm@10.29.3 --activate && pnpm install --frozen-lockfile --prod=false && pnpm build
+    startCommand: pnpm start:worker:hosted
+    maxShutdownDelaySeconds: 300
+    envVars:
+      - fromGroup: gitpay-sandbox-runtime
+      - key: DATABASE_URL
+        fromDatabase:
+          name: gitpay-sandbox-db
+          property: connectionString
+      - key: PUBLIC_URL
+        fromService:
+          type: web
+          name: gitpay-sandbox-web
+          envVarKey: PUBLIC_URL
+      - key: GH_APP_ID
+        fromService:
+          type: web
+          name: gitpay-sandbox-web
+          envVarKey: GH_APP_ID
+      - key: GH_APP_SLUG
+        fromService:
+          type: web
+          name: gitpay-sandbox-web
+          envVarKey: GH_APP_SLUG
+      - key: GH_PRIVATE_KEY
+        fromService:
+          type: web
+          name: gitpay-sandbox-web
+          envVarKey: GH_PRIVATE_KEY
+      - key: GH_WEBHOOK_SECRET
+        fromService:
+          type: web
+          name: gitpay-sandbox-web
+          envVarKey: GH_WEBHOOK_SECRET
+      - key: GH_CLIENT_ID
+        fromService:
+          type: web
+          name: gitpay-sandbox-web
+          envVarKey: GH_CLIENT_ID
+      - key: GH_CLIENT_SECRET
+        fromService:
+          type: web
+          name: gitpay-sandbox-web
+          envVarKey: GH_CLIENT_SECRET
+      - key: SESSION_SECRET
+        fromService:
+          type: web
+          name: gitpay-sandbox-web
+          envVarKey: SESSION_SECRET
+      - key: TOKEN_ENC_KEY
+        fromService:
+          type: web
+          name: gitpay-sandbox-web
+          envVarKey: TOKEN_ENC_KEY
+      - key: PAYMENT_DATA_ENC_KEY
+        fromService:
+          type: web
+          name: gitpay-sandbox-web
+          envVarKey: PAYMENT_DATA_ENC_KEY
+      - key: PP_CLIENT_ID
+        fromService:
+          type: web
+          name: gitpay-sandbox-web
+          envVarKey: PP_CLIENT_ID
+      - key: PP_SECRET
+        fromService:
+          type: web
+          name: gitpay-sandbox-web
+          envVarKey: PP_SECRET
+      - key: PP_WEBHOOK_ID
+        fromService:
+          type: web
+          name: gitpay-sandbox-web
+          envVarKey: PP_WEBHOOK_ID
+      - key: PP_MERCHANT_ID
+        fromService:
+          type: web
+          name: gitpay-sandbox-web
+          envVarKey: PP_MERCHANT_ID
+databases:
+  - name: gitpay-sandbox-db
+    region: singapore
+    plan: 0.5c-1g
+    databaseName: gitpay
+    user: gitpay
+    postgresMajorVersion: "16"
+    diskSizeGB: 5
+    ipAllowList: []
+envVarGroups:
+  - name: gitpay-sandbox-runtime
+    envVars:
+      - key: NODE_ENV
+        value: "production"
+      - key: PORT
+        value: "10000"
+      - key: WORKER_MODE
+        value: "separate"
+      - key: RECOVERY_MODE
+        value: "hold"
+      - key: ACTION_TOKEN_TTL_SEC
+        value: "900"
+      - key: SESSION_TTL_SEC
+        value: "604800"
+      - key: OAUTH_STATE_TTL_SEC
+        value: "600"
+      - key: POLICY_MIN_CONFIDENCE
+        value: "0.75"
+      - key: POLICY_CI_REQUIRED
+        value: "true"
+      - key: POLICY_MIN_SHARE
+        value: "0.05"
+      - key: MAX_BOUNTY_CENTS
+        value: "100000"
+      - key: MAX_DIFF_CHARS
+        value: "160000"
+      - key: POLL_INTERVAL_MS
+        value: "5000"
+      - key: JOB_LEASE_SEC
+        value: "120"
+      - key: PROVIDER_TIMEOUT_MS
+        value: "10000"
+      - key: PROVIDER_RESPONSE_MAX_BYTES
+        value: "1048576"
+      - key: WEBHOOK_BODY_MAX_BYTES
+        value: "1048576"
+      - key: RECONCILIATION_DISCOVERY_ENABLED
+        value: "false"
+      - key: RECONCILIATION_INTERVAL_SEC
+        value: "60"
+      - key: RECONCILIATION_PAGE_LIMIT
+        value: "100"
+      - key: RECONCILIATION_RATE_PER_MIN
+        value: "30"
+      - key: RECONCILIATION_MAX_ATTEMPTS
+        value: "10"
+      - key: SSE_HEARTBEAT_SEC
+        value: "30"
+      - key: FUNDED_CANCELLATION_ENABLED
+        value: "false"
+      - key: CANCELLATION_SANDBOX_REPO_ID
+        value: ""
+      - key: CANCELLATION_OPERATOR_GH_IDS
+        value: ""
+      - key: CANCELLATION_NOTICE_HOURS
+        value: "72"
+      - key: POLICY_VERSION
+        value: "gitpay-v2-copilot"
+      - key: POLICY_CI_CONTEXTS
+        value: "{}"
+      - key: VERIFIER_DAILY_ATTEMPT_LIMIT
+        value: "25"
+      - key: VERIFIER_MAX_ATTEMPTS_PER_SHA
+        value: "3"
+      - key: SETTLEMENT_DEMO_SCOPE
+        value: ""
+      - key: NODE_VERSION
+        value: "22.23.4"
+      - key: COPILOT_MODEL
+        value: "auto"
+      - key: PP_BASE
+        value: "https://api-m.sandbox.paypal.com"
+      - key: PP_SAFE_RETRY_SEC
+        value: "18000"
+      - key: PP_VERIFY_CONCURRENCY
+        value: "2"

@@ -10,6 +10,8 @@ The principle is **glue, not a platform**: development stays in GitHub, checkout
 
 Phases 7–10 now have local implementations and automated verification. Their live walkthroughs, along with outstanding Phase 5–6 cases, remain on the [final live checklist](docs/phases/live-walkthroughs.md). See [Phase 10 evidence](docs/evidence/10-summary.md). Build with `pnpm build`, then open `/dashboard/` on the running server and sign in.
 
+Phase 11 deployment preparation and local restore safeguards are implemented. Render has **not** been provisioned or validated live. See [deployment instructions](docs/deployment.md) and [Phase 11 evidence](docs/evidence/11-summary.md).
+
 ## Intended flow
 
 1. A maintainer comments `/bounty create 50` on an issue, or adds `bounty:$50`. This creates an **unfunded draft** when the App is installed and its receiver is running.

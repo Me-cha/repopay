@@ -297,7 +297,7 @@ GitPay/
 ├─ docs/evidence/{00-summary.md,00-preflight.md,01-summary.md,02-summary.md,03-summary.md,04-summary.md,05-summary.md,05-verifier.md,06-summary.md,07-summary.md,08-summary.md,08-cancellation.md}
 ├─ docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md,0003-nemotron-only-and-preflight-scope.md,0004-funding-recovery.md,0005-copilot-verifier.md}
 ├─ docs/phases/{README.md,review-todo.md,copilot-migration.md,00.md,...,12.md} (task source of truth; status in phase index)
-├─ docker-compose.yml (Phase 0)  render.yaml (future deployment)
+├─ docker-compose.yml (Phase 0)  render.yaml (prepared hosted sandbox Blueprint)
 ├─ postman/README.md  gitpay.postman_collection.json (Phase 12)
 ├─ packages/
 │  ├─ server/{README.md,package.json,tsconfig.json,tsconfig.build.json}
@@ -800,7 +800,7 @@ Webhook **event names** differ from item statuses (`PAYMENT.PAYOUTS-ITEM.SUCCEED
 
 **`considerationId`:** `merge:{mergeCommitSha}` for the merge event; `rej:{decisionId}` when a rejection reopens consideration; `link:{activityId}` when `/bounty link` links an already-merged PR. The bounty row lock and status (not the job key) are the final barrier against double allocation.
 
-`WORKER_MODE=inline` runs the runner in `main.ts`; `separate` runs `worker.ts`. The runner sits behind a `JobRunner` interface (Render Workflows adapter is a stretch).
+`WORKER_MODE=inline` runs the runner in `main.ts`; `separate` runs `worker.ts`. The prepared Render topology uses separate services, one web pre-deploy migration process and exact artifact/schema checks. `RECOVERY_MODE=hold` disables all worker processing and HTTP mutations before restore; independent provider reconciliation is mandatory before release (ADR 0013). The runner sits behind a `JobRunner` interface (Render Workflows adapter is a stretch).
 
 ### 10.2 `github/`
 
@@ -1176,3 +1176,5 @@ Deferred final live validation is tracked in [the live walkthrough checklist](do
 Dashboard ownership and scope refinement: [ADR 0011](docs/decisions/0011-scoped-dashboard.md). Read DTOs live in `packages/server/src/read-models/{contracts,bounties,payouts}.ts`; migration 0015 supplies transactional wakeups. Progress remains in Phase 09.
 
 Recovery ownership refinement: [ADR 0012](docs/decisions/0012-recovery-checkpoints.md) maps durable scheduling to `jobs/scheduler.ts`, PR discovery to `github/reconciliation.ts`, safe retry to `operations/attention.ts` and `scripts/retry-job.ts`, and checkpoints to migration 0016. Existing settlement due-time services remain authoritative for financial recovery. Discovery activation is explicit and default-off; scope/rate bounds are work limits, not a provider HTTP or money budget.
+
+Deployment ownership refinement: [ADR 0013](docs/decisions/0013-deployment-and-restore-hold.md) adds `db/compatibility.ts`, `scripts/check-migrations.ts`, the held Render Blueprint and `docs/deployment.md`. Phase progress and hosted evidence remain in their own files.

@@ -247,3 +247,13 @@ The harness builds web assets, binds loopback port 4317, migrates/seeds a unique
 Apply migration 0016 with `pnpm db:migrate`. Leave `RECONCILIATION_DISCOVERY_ENABLED=false` during deferred live testing; enabling it can discover PRs and enqueue sponsored reviews. Explicit interval/page/rate/attempt configuration remains required. Existing financial polling uses saved due times and is not disabled by this flag. New scheduler checkpoints and job insertion commit together; ordinary status replies remain visible while redundant refresh work is coalesced.
 
 `pnpm ops:retry-job <failed-job-id>` is an operator CLI for safe read/projection retries, not a resend endpoint. See [operations](operations.md) before use. `pnpm test` includes a subprocess kill/restart harness against a uniquely named test schema; no production worker or provider is used. CI also installs Chromium and runs the isolated browser suite without fork secrets.
+
+## Phase 11 deployment preparation
+
+`pnpm db:check` compares database migration hashes/timestamps with the artifact. Server and worker startup now require a fully migrated compatible database; run `pnpm db:migrate` before starting a fresh local checkout. `/healthz` checks compatibility as well as connectivity.
+
+`RECOVERY_MODE=normal` preserves local development behavior. Use `hold` on every restored service before connecting restored data; this blocks worker processing and HTTP mutations until provider effects since backup have been reconciled. The Render Blueprint starts held, with discovery/cancellation off and no settlement scope.
+
+Hosted commands `pnpm start:hosted`, `pnpm start:worker:hosted` and `pnpm db:migrate:hosted` use environment settings directly, without requiring a local `.env`. Build first. The single web pre-deploy process migrates, then the same worker release starts after compatibility verification. Nothing is provisioned by these files alone; follow [deployment](deployment.md).
+
+The deploy-compatibility test rehearses PostgreSQL 16 dump/restore only in a generated schema of the validated local test database. Locally it uses the existing Docker Compose `postgres` service; CI uses a matching PostgreSQL 16 client container against its local test service. Docker must be available. No personal credentials or actual providers are used.

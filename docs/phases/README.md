@@ -8,6 +8,8 @@
 
 **Phase 10 local status:** Durable discovery checkpoints, safe retry, isolated polling and restart/security checks implemented. 323 server tests, 4 DOM tests and 11 browser journeys passed; live recovery/evaluation remains deferred. See [Phase 10 evidence](../evidence/10-summary.md).
 
+**Phase 11 preparation:** Render Blueprint, migration compatibility gates and recovery hold implemented and tested locally, including a disposable restore with a missing provider-accepted intent. No hosted resources provisioned; hosted acceptance deferred. See [Phase 11 evidence](../evidence/11-summary.md).
+
 **Execution order:** Finish local work first; run remaining live walkthroughs together at the end, per user direction. [Final live checklist](live-walkthroughs.md) tracks the deferred cases and blockers. Local completion is not live acceptance.
 
 This is the execution plan for the MVP described in [IMPLEMENTATION_PLAN.md](../../IMPLEMENTATION_PLAN.md). It breaks the existing design into **13 phases and 57 reviewable tasks**, including negative paths and operations. The [cancellation decision](../decisions/0001-open-participation-and-cancellation.md) remains the accepted product policy. The refinements below are the accepted pre-build contract and are reconciled into the master architecture.
