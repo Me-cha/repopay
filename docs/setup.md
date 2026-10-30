@@ -241,3 +241,9 @@ TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test pnpm tes
 ```
 
 The harness builds web assets, binds loopback port 4317, migrates/seeds a unique test schema and mocks provider boundaries. It does not load `.env` or start a worker. Keep 4317 free. Traces and responsive screenshots are ignored under `test-results/`. Root `pnpm test` includes server and web DOM tests; `pnpm typecheck` and `pnpm build` include both packages. Live role/provider walkthroughs remain on the final checklist.
+
+## Phase 10 recovery
+
+Apply migration 0016 with `pnpm db:migrate`. Leave `RECONCILIATION_DISCOVERY_ENABLED=false` during deferred live testing; enabling it can discover PRs and enqueue sponsored reviews. Explicit interval/page/rate/attempt configuration remains required. Existing financial polling uses saved due times and is not disabled by this flag. New scheduler checkpoints and job insertion commit together; ordinary status replies remain visible while redundant refresh work is coalesced.
+
+`pnpm ops:retry-job <failed-job-id>` is an operator CLI for safe read/projection retries, not a resend endpoint. See [operations](operations.md) before use. `pnpm test` includes a subprocess kill/restart harness against a uniquely named test schema; no production worker or provider is used. CI also installs Chromium and runs the isolated browser suite without fork secrets.

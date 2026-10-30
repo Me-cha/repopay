@@ -106,3 +106,4 @@ it('an awaiting award refuses draft cancellation and retains its entitlement',as
   expect(await f.database.orm.select().from(awards)).toHaveLength(1);
  }finally{await f.close();}
 });
+it('secret rotation and App removal retain known payout read identity without resubmission',async()=>{const f=await setup();try{await f.connect();const batch=required(await f.payout.reserve(f.award.id));f.setStatus('PENDING');await f.payout.reconcile(batch.id);f.env.PP_SECRET='rotated-test-secret';f.state.installation=null;f.setStatus('SUCCESS');await createPayoutService(f.database,f.env,f.api).reconcile(batch.id);expect(f.api.submit).toHaveBeenCalledTimes(1);expect((await f.database.orm.select().from(bounties))[0]?.status).toBe('PAID');}finally{await f.close();}});

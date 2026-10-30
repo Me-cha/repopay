@@ -135,3 +135,10 @@ export const refundIntents=pgTable('refund_intents',{
  id:stringSerial('id').primaryKey(),requestId:stringBigint('request_id').notNull().references(()=>cancellationRequests.id),bountyId:stringBigint('bounty_id').notNull().references(()=>bounties.id),evidenceVersion:integer('evidence_version').notNull(),bountyVersion:integer('bounty_version').notNull(),priorStatus:text('prior_status').notNull(),captureId:text('capture_id').notNull(),amountCents:integer('amount_cents').notNull(),requestKey:text('request_key').notNull().unique(),status:text('status').notNull().default('RESERVED'),boundaryAt:timestamp('boundary_at',{withTimezone:true}),safeRetryUntil:timestamp('safe_retry_until',{withTimezone:true}),providerId:text('provider_id').unique(),attention:text('attention'),nextReconcileAt:timestamp('next_reconcile_at',{withTimezone:true}).notNull().defaultNow(),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
 });
 export type RefundIntent=typeof refundIntents.$inferSelect;
+
+export const reconciliationCheckpoints=pgTable('reconciliation_checkpoints',{
+ name:text('name').primaryKey(),cursor:text('cursor').notNull().default('0'),
+ generation:integer('generation').notNull().default(0),
+ nextRunAt:timestamp('next_run_at',{withTimezone:true}).notNull().defaultNow(),
+ updatedAt:timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
+});

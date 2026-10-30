@@ -1,0 +1,5 @@
+import { expect,it } from 'vitest';
+import { authFixture } from '../helpers/auth.js';
+import { createLogger } from '../../src/log.js';
+import { bountyActivity } from '../../src/db/schema.js';
+it('raw_payee_email_absent_from_logs_and_activity_DTO; no arbitrary operator resend route',async()=>{const f=await authFixture();try{let output='';createLogger(f.env,{write(line:string){output+=line;}}).warn({jobId:'1',intentId:'2',error:new Error('secret@example.test'),destination:'secret@example.test',note:'Pay secret@example.test with Bearer token-value'});expect(output).not.toContain('secret@example.test');expect(output).not.toContain('token-value');expect(output).toContain('jobId');await f.database.orm.insert(bountyActivity).values({bountyId:f.bounty.id,source:'test',action:'recovery',metadata:{email:'secret@example.test',token:'private-secret'}});const detail=await(await f.request('/api/bounties/'+f.bounty.id)).text();expect(detail).not.toMatch(/secret@example|private-secret/);expect((await f.request('/api/payouts/resend',{method:'POST'})).status).toBe(404);expect((await f.request('/api/refunds',{method:'POST'})).status).toBe(404);}finally{await f.close();}});

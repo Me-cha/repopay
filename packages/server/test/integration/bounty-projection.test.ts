@@ -1,8 +1,8 @@
-import { expect, it } from 'vitest';
+import { expect, it,vi } from 'vitest';
 import { githubFixture, createWork, testEnv } from '../helpers/github.js';
 import { handleJob } from '../../src/jobs/runner.js';
 import { claimJob, finishJob } from '../../src/jobs/queue.js';
-import { bounties } from '../../src/db/schema.js';
+import { bounties,jobs } from '../../src/db/schema.js';
 import { syncBounty, withProjectionLock } from '../../src/github/comments.js';
 it('lost comment response reconciles by trusted marker, ignoring forged user marker',async()=>{
  const f=await githubFixture();try{
@@ -43,7 +43,7 @@ it('projection lock serializes workers across connections',async()=>{
  const f=await githubFixture();try{await withProjectionLock(f.database,'same-bounty',async()=>{await expect(withProjectionLock(f.database,'same-bounty',async()=>{})).rejects.toThrow('busy');});await expect(withProjectionLock(f.database,'same-bounty',()=>Promise.resolve(true))).resolves.toBe(true);}finally{await f.close();}
 });
 it('each read-only status command gets a reply, while retries reconcile the same reply',async()=>{
- const f=await githubFixture();try{
+ const f=await githubFixture();const clock=vi.spyOn(Date,'now').mockReturnValue(Date.now());try{
   const create=await f.job(createWork());await handleJob(f.database,f.api,testEnv,create);await finishJob(f.database,create);
   const projection=await claimJob(f.database,'sync',120);if(!projection)throw new Error('missing sync');
   await handleJob(f.database,f.api,testEnv,projection);await finishJob(f.database,projection);
@@ -57,12 +57,13 @@ it('each read-only status command gets a reply, while retries reconcile the same
    await handleJob(f.database,f.api,testEnv,job);
    await handleJob(f.database,f.api,testEnv,job);
    await finishJob(f.database,job);
-   const sync=await claimJob(f.database,'sync',120);if(!sync)throw new Error('missing status sync');
-   await handleJob(f.database,f.api,testEnv,sync);await finishJob(f.database,sync);
+   const sync=await claimJob(f.database,'sync',120);
+   if(sync){await handleJob(f.database,f.api,testEnv,sync);await finishJob(f.database,sync);}
   }
+  expect((await f.database.orm.select().from(jobs)).filter(j=>j.dedupeKey?.startsWith('status:'))).toHaveLength(1);
   const replies=f.comments.filter(c=>c.body?.includes('gitpay:reply:'));
   expect(replies).toHaveLength(2);
   for(const reply of replies){expect(reply.body).toContain('$50.00 USD');expect(reply.body).toContain('OPEN');expect(reply.body).toContain('No money has been collected');}
   expect(f.comments.filter(c=>c.body?.includes('gitpay:bounty:'))).toHaveLength(1);
- }finally{await f.close();}
+ }finally{clock.mockRestore();await f.close();}
 });

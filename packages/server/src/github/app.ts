@@ -33,6 +33,7 @@ export interface GitHub {
  updateComment:(installationId:string,repo:Repository,id:string,body:string)=>Promise<void>;
  badge:(installationId:string,repo:Repository,number:number,status?:string)=>Promise<void>;
  closingIssues:(installationId:string,repo:Repository,number:number)=>Promise<{prId:string;issueNumbers:number[];complete:boolean}>;
+ pullRequestPage:(installationId:string,repo:Repository,page:number)=>Promise<{pulls:PullRequest[];hasMore:boolean}>;
  pullRequests:(installationId:string,repo:Repository)=>Promise<{pulls:PullRequest[];complete:boolean}>;
  pullRequest:(installationId:string,repo:Repository,number:number)=>Promise<PullRequest>;
  pullRequestFiles:(installationId:string,repo:Repository,number:number)=>Promise<{files:PullRequestFile[];complete:boolean}>;
@@ -117,6 +118,7 @@ export function createGitHub(env: GitHubRuntimeEnv): GitHub {
    }
    return {prId,issueNumbers:[...new Set(issueNumbers)],complete:false};
   },
+  async pullRequestPage(inst,repo,page){if(!Number.isSafeInteger(page)||page<1)throw new Error('Invalid PR page');const pulls=z.array(pullRequestSchema).parse(await call(inst,`${prefix(repo)}/pulls?state=all&sort=created&direction=asc&per_page=100&page=${String(page)}`));return {pulls,hasMore:pulls.length===100};},
   async pullRequests(inst,repo){const pulls:PullRequest[]=[];for(let page=1;page<=env.RECONCILIATION_PAGE_LIMIT;page++){const rows=z.array(pullRequestSchema).parse(await call(inst,`${prefix(repo)}/pulls?state=all&sort=created&direction=asc&per_page=100&page=${String(page)}`));pulls.push(...rows);if(rows.length<100)return {pulls,complete:true};}return {pulls,complete:false};},
   async pullRequest(inst,repo,number){
    const pr=pullRequestSchema.parse(await call(inst,`${prefix(repo)}/pulls/${String(number)}`));if(pr.number!==number||pr.base.repo?.id!==repo.id)throw new GitHubError(403);

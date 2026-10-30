@@ -22,7 +22,8 @@
     "start:worker": "node --env-file=.env packages/server/dist/worker.js",
     "tunnel": "bash ./ngrok.sh",
     "test:e2e": "playwright test",
-    "dev:web": "pnpm --filter @gitpay/web dev"
+    "dev:web": "pnpm --filter @gitpay/web dev",
+    "ops:retry-job": "tsx --env-file=.env packages/server/scripts/retry-job.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

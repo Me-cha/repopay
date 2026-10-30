@@ -80,6 +80,7 @@ const githubRuntimeSchema = z.object({
  MAX_BOUNTY_CENTS: schema.shape.MAX_BOUNTY_CENTS, JOB_LEASE_SEC: schema.shape.JOB_LEASE_SEC,
  POLL_INTERVAL_MS: schema.shape.POLL_INTERVAL_MS, RECONCILIATION_MAX_ATTEMPTS: schema.shape.RECONCILIATION_MAX_ATTEMPTS,
  RECONCILIATION_PAGE_LIMIT: schema.shape.RECONCILIATION_PAGE_LIMIT,
+ RECONCILIATION_INTERVAL_SEC: schema.shape.RECONCILIATION_INTERVAL_SEC,
 });
 export type GitHubRuntimeEnv = z.infer<typeof githubRuntimeSchema>;
 export function parseGitHubRuntimeEnv(input:Record<string,string|undefined>):GitHubRuntimeEnv {
@@ -120,6 +121,7 @@ const fundingSettings = z.object({
  POLICY_CI_REQUIRED:flag,MAX_DIFF_CHARS:schema.shape.MAX_DIFF_CHARS,CANCELLATION_NOTICE_HOURS:schema.shape.CANCELLATION_NOTICE_HOURS,
  POLICY_CI_CONTEXTS:z.string().default('{}').transform((value,ctx)=>{try{return JSON.parse(value) as unknown;}catch{ctx.addIssue({code:'custom',message:'Invalid JSON'});return z.NEVER;}}).pipe(z.record(z.string().regex(/^[1-9]\d*$/),z.array(z.object({name:text.max(200),appId:z.string().regex(/^[1-9]\d*$/)}).strict()).min(1).max(50))),
  PP_SAFE_RETRY_SEC:integer(60,18000).default(18000),
+ RECONCILIATION_DISCOVERY_ENABLED:z.enum(['true','false']).default('false').transform(v=>v==='true'),
  RECONCILIATION_INTERVAL_SEC:schema.shape.RECONCILIATION_INTERVAL_SEC,
  RECONCILIATION_RATE_PER_MIN:schema.shape.RECONCILIATION_RATE_PER_MIN,
  PP_VERIFY_CONCURRENCY:integer(1,16).default(2),

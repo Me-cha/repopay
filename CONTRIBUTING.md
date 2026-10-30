@@ -53,3 +53,7 @@ Run `pnpm typecheck`, `pnpm lint`, `TEST_DATABASE_URL=postgresql://gitpay:gitpay
 ## Phase 9 dashboard verification
 
 `pnpm typecheck`, `pnpm test` and `pnpm build` now cover server and web. Run `pnpm exec playwright install chromium` once, then `TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test pnpm test:e2e` for isolated browser journeys on port 4317. Provider boundaries are mocked; no `.env`, live model request or payment is used. Test-only login routes must remain outside production `src/`. Rebuild web assets to preview changes on the server's `/dashboard/` route. See [dashboard setup](docs/setup.md#phase-9-dashboard-and-local-browser-verification).
+
+## Phase 10 recovery checks
+
+`pnpm test` includes durable checkpoint, separate-connection allocation/lease tests and a worker subprocess kill/restart using the local test database. Keep live discovery disabled while developing. `pnpm ops:retry-job <id>` preserves failed records and only permits safe read/projection kinds; read the [operations runbook](docs/operations.md). CI runs Chromium browser/security journeys with synthetic providers and no privileged fork credentials. Live model evaluations still require separate bounded authorization; they are not part of CI.

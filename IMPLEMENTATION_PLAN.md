@@ -306,7 +306,7 @@ GitPay/
 │  │  ├─ db/{schema.ts,client.ts,transaction.ts,migrate.ts,migrations/}
 │  │  ├─ preflight/{run.ts,http.ts,state.ts}
 │  │  ├─ models/copilot.ts
-│  │  ├─ jobs/{queue.ts,runner.ts,kinds.ts}
+│  │  ├─ jobs/{queue.ts,runner.ts,kinds.ts,scheduler.ts}
 │  │  ├─ github/{app.ts,handlers.ts,commands.ts,linking.ts,reconciliation.ts,checks.ts,comments.ts,permissions.ts,oauth.ts}
 │  │  ├─ actions/{create.ts,fund.ts,cancel.ts,approve.ts,reject.ts,link.ts,retry.ts,status.ts,guards.ts,tokens.ts,activity.ts}
 │  │  ├─ paypal/{client.ts,orders.ts,payouts.ts,refunds.ts,webhooks.ts,status-map.ts}
@@ -1174,3 +1174,5 @@ Phase 7 implementation uses immutable `awards` plus append-only `review_decision
 Deferred final live validation is tracked in [the live walkthrough checklist](docs/phases/live-walkthroughs.md). This scheduling record supplements numbered phase acceptance requirements; it does not waive them.
 
 Dashboard ownership and scope refinement: [ADR 0011](docs/decisions/0011-scoped-dashboard.md). Read DTOs live in `packages/server/src/read-models/{contracts,bounties,payouts}.ts`; migration 0015 supplies transactional wakeups. Progress remains in Phase 09.
+
+Recovery ownership refinement: [ADR 0012](docs/decisions/0012-recovery-checkpoints.md) maps durable scheduling to `jobs/scheduler.ts`, PR discovery to `github/reconciliation.ts`, safe retry to `operations/attention.ts` and `scripts/retry-job.ts`, and checkpoints to migration 0016. Existing settlement due-time services remain authoritative for financial recovery. Discovery activation is explicit and default-off; scope/rate bounds are work limits, not a provider HTTP or money budget.

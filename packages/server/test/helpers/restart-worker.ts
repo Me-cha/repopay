@@ -1,0 +1,11 @@
+import { startWorker } from '../../src/jobs/runner.js';
+import { createDatabase } from '../../src/db/client.js';
+import { parseFundingEnv } from '../../src/env.js';
+import { syntheticEnv } from './env.js';
+import { createGitHub } from '../../src/github/app.js';
+import { validateTestDatabaseUrl } from './database.js';
+const db=createDatabase(validateTestDatabaseUrl(process.env.TEST_DATABASE_URL),process.env.RESTART_TEST_SCHEMA);
+const api=createGitHub(parseFundingEnv(syntheticEnv()));
+api.installation=async()=>{if(process.env.RESTART_TEST_BLOCK==='true'){process.stdout.write('lease-held\n');await new Promise(()=>{});}return null;};
+const worker=startWorker(db,api,parseFundingEnv({...syntheticEnv(),POLL_INTERVAL_MS:'100'}));
+process.on('SIGTERM',()=>{void worker.close().then(()=>db.close()).then(()=>process.exit(0));});

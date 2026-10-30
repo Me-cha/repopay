@@ -1,0 +1,9 @@
+import { expect,it } from 'vitest';
+import { eq } from 'drizzle-orm';
+import { authFixture } from '../helpers/auth.js';
+import { cancellationFixture } from '../helpers/cancellation.js';
+import { barrier } from '../helpers/faults.js';
+import { awards,refundIntents,jobs,reconciliationCheckpoints } from '../../src/db/schema.js';
+import { reconcileBounty } from '../../src/github/reconciliation.js';
+it('stale_worker_cannot_commit_discovery_after_lease_loss',async()=>{const f=await authFixture(),entered=barrier(),release=barrier();try{const job=await f.job({kind:'reconcile_bounty',bountyId:f.bounty.id});f.api.pullRequestPage=async()=>{entered.release();await release.promise;return {pulls:[],hasMore:false};};const running=reconcileBounty(f.database,f.api,f.env,job,f.bounty.id);const failed=expect(running).rejects.toThrow('lease lost');await entered.promise;await f.database.orm.update(jobs).set({leaseToken:'replacement-owner-token'}).where(eq(jobs.id,job.id));release.release();await failed;expect((await f.database.orm.select().from(reconciliationCheckpoints))[0]?.generation).toBe(0);expect(await f.database.orm.select().from(jobs)).toHaveLength(1);}finally{release.release();await f.close();}});
+it('refund_vs_award preserves disjoint principal under simultaneous PostgreSQL reservations',async()=>{const f=await cancellationFixture();try{const request=await f.approved();await f.add('701','2026-10-30T01:00:00Z');await Promise.allSettled([f.refund.authorizeRefund(request.id),f.service.settleBounty(f.bounty.id)]);const a=await f.database.orm.select().from(awards),r=await f.database.orm.select().from(refundIntents);const committed=a.reduce((n,v)=>n+v.amountCents,0),reserved=r.filter(v=>v.status!=='ABORTED_UNSENT').reduce((n,v)=>n+v.amountCents,0);expect(committed+reserved).toBe(5000);expect(a.length+r.length).toBe(1);expect(f.provider.submit).not.toHaveBeenCalled();}finally{await f.close();}});

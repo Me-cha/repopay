@@ -56,13 +56,22 @@ Local scoped API/stream, DOM and Chromium journeys are recorded in [Phase 9 evid
 - [ ] Observe actual worker activity update the dashboard; inspect paid, failed/pending delivery and refund history against provider records.
 - [ ] Check real content on mobile and with keyboard navigation. Complete earlier phase blockers before claiming full end-to-end acceptance.
 
+## Phase 10 — recovery and release hardening
+
+Local results and fault boundaries: [Phase 10 evidence](../evidence/10-summary.md). Discovery is implemented but default-off.
+
+- [ ] Explicitly enable isolated discovery for the final session with a bounded sponsor allowance; verify real missed PR events and restored App access.
+- [ ] Restart during an approved sandbox operation; verify saved provider identity, held unknown outcomes and no second financial allocation.
+- [ ] Verify delayed/returned payout and refund reads after App removal, credential restoration and worker restart, without new replacement operations.
+- [ ] Run an approved fresh Auto evaluation and reconcile all W01–W16 evidence. Existing Phase 5 evaluation is historical, not a new run.
+- [ ] Rehearse hosted backup/restore with workers isolated and provider reconciliation before reactivation; complete hosting-specific rate/load/access controls in Phase 11.
+
 ## Later phases — expand during implementation
 
 These are planned walkthroughs, not claims that implementation is complete.
 
 | Phase | Final-session work | Setup/dependency |
 | --- | --- | --- |
-| [10](10.md) | Restart/recovery, access loss, missed webhooks and ambiguous provider outcomes without duplicate financial operations. | Controlled fault plan; clearly label simulations. |
 | [11](11.md) | Hosted clean-session core flows and restart recovery. | Approved hosting setup and deployment; local checks alone do not establish hosted acceptance. |
 | [12](12.md) | Complete evidence matrix, reproduce setup/demo, verify negative paths and obtain final acceptance. | Resolve or explicitly document all remaining blockers. |
 

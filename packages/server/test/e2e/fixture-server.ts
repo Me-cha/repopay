@@ -19,9 +19,9 @@ const provider:OAuthProvider={exchange:()=>Promise.resolve({accessToken:'test-'+
 const github={...createGitHub(env),installation:()=>Promise.resolve({id:'1',app_id:env.GH_APP_ID,account:{id:'4',login:'maintainer'},suspended_at:null}),repository:()=>Promise.resolve({id:'2',full_name:'demo/repo',archived:false}),permission:()=>Promise.resolve('read' as const),comments:()=>Promise.resolve([]),pullRequests:()=>Promise.resolve({pulls:[],complete:true})};
 const auth=createAuth(f.database,env,provider),app=buildApp({database:f.database,version:'e2e',authentication:{database:f.database,env,auth,github},funding:{env,listCopilotModels:()=>Promise.resolve([])}});
 await f.database.orm.insert(installations).values({id:'1',accountId:'4',accountLogin:'maintainer'});
-for(const [index,status] of ['OPEN','CAPTURING','FUNDED','NEEDS_REVIEW','AWAITING_CLAIM','PAYING','PAID','REFUNDING','CANCELLED'].entries()){
+for(const [index,status] of ['OPEN','CAPTURING','FUNDED','NEEDS_REVIEW','AWAITING_CLAIM','PAYING','PAID','REFUNDING','CANCELLED','FUNDED'].entries()){
  const [b]=await f.database.orm.insert(bounties).values({id:String(index+1),installationId:'1',repoId:'2',repoFullName:'demo/repo',issueNumber:index+1,amountCents:5000,createdByGhId:'4',createdVia:'command',status,needsAttention:['NEEDS_REVIEW','PAYING','REFUNDING'].includes(status),attentionReason:status==='PAYING'?'Payment pending; reconcile the existing transfer':null}).returning();if(!b)throw new Error('Seed failed');
- const terms=makeTerms(env,b,{title:'Parser issue '+String(index+1),body:'Reject malformed input and keep valid form encoding unchanged.',updatedAt:'2026-10-30T00:00:00Z'},{sponsorGhId:'4',sponsorLogin:'maintainer',modelId:env.COPILOT_MODEL,revokedAt:null});
+ const terms=makeTerms(env,b,{title:index===9?'<img src=x onerror="window.injected=true">':'Parser issue '+String(index+1),body:'Reject malformed input and keep valid form encoding unchanged.',updatedAt:'2026-10-30T00:00:00Z'},{sponsorGhId:'4',sponsorLogin:'maintainer',modelId:env.COPILOT_MODEL,revokedAt:null});
  if(index>=2)await f.database.orm.update(bounties).set({fundedTerms:terms,fundedAt:new Date(),captureId:'CAPTURE'+String(index)}).where(eq(bounties.id,b.id));
 
  if(index>=3&&index<=6){

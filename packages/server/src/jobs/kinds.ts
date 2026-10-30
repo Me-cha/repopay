@@ -5,6 +5,7 @@ export const workSchema = z.discriminatedUnion('kind', [
  z.object({ kind: z.literal('run_command'), ...ref, isPullRequest:z.boolean().optional(), commentId: id, actorId: id, command: z.discriminatedUnion('kind', [z.object({kind:z.literal('create'),amount:z.string().max(100)}),z.object({kind:z.literal('status')}),z.object({kind:z.literal('cancel')}),z.object({kind:z.literal('fund')}),z.object({kind:z.literal('approve'),issueNumber:z.number().int().positive().optional()}),z.object({kind:z.literal('reject'),reason:z.string().min(1).max(2000),issueNumber:z.number().int().positive().optional()}),z.object({kind:z.literal('link'),prNumber:z.number().int().positive()}),z.object({kind:z.literal('invalid')}),z.object({kind:z.literal('unavailable')})]) }),
  z.object({ kind: z.literal('create_bounty_from_label'), ...ref, actorId: id, amount: z.string().max(100), occurrence: z.string().max(256) }),
  z.object({ kind: z.literal('refresh_installation'), installationId: id, removedRepoIds: z.array(id).max(1000) }),
+ z.object({ kind: z.literal('reconcile_bounty'), bountyId:id }),
  z.object({ kind: z.literal('sync_bounty'), bountyId: id }),
  z.object({ kind: z.literal('reconcile_funding'), attemptId: id }),
  z.object({ kind: z.literal('retry_claims'), ghId:id, connectionVersion:z.number().int().positive() }),
