@@ -43,3 +43,13 @@ it('partial GraphQL data with provider errors is never a complete candidate scan
  const app=createGitHub(env);token();nock('https://api.github.com').post('/graphql').reply(200,{errors:[{message:'resource inaccessible'}]});
  await expect(app.closingIssues('1',repo,42)).rejects.toThrow();
 });
+
+it('recovers missing REST merge SHA from identity-bound GraphQL evidence',async()=>{
+ const app=createGitHub(env);token();
+ const pr={id:42,number:3,state:'closed',title:'Fix',body:'Fixes #1',merged_at:'2026-10-30T12:00:16Z',closed_at:'2026-10-30T12:00:16Z',user:{id:7,login:'contributor',type:'User'},head:{sha:'a'.repeat(40)},base:{sha:'b'.repeat(40),repo:{id:2}}};
+ const graph=(id:string)=>({data:{repository:{nameWithOwner:repo.full_name,pullRequest:{fullDatabaseId:id,headRefOid:pr.head.sha,mergedAt:pr.merged_at,mergeCommit:{oid:'c'.repeat(40)}}}}});
+ nock('https://api.github.com').get('/repos/owner/repo/pulls/3').reply(200,pr).post('/graphql').reply(200,graph('42'));
+ expect((await app.pullRequest('1',repo,3)).merge_commit_sha).toBe('c'.repeat(40));
+ nock('https://api.github.com').get('/repos/owner/repo/pulls/3').reply(200,pr).post('/graphql').reply(200,graph('99'));
+ await expect(app.pullRequest('1',repo,3)).rejects.toThrow();
+});

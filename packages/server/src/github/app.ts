@@ -107,7 +107,18 @@ export function createGitHub(env: GitHubRuntimeEnv): GitHub {
    return {prId,issueNumbers:[...new Set(issueNumbers)],complete:false};
   },
   async pullRequests(inst,repo){const pulls:PullRequest[]=[];for(let page=1;page<=env.RECONCILIATION_PAGE_LIMIT;page++){const rows=z.array(pullRequestSchema).parse(await call(inst,`${prefix(repo)}/pulls?state=all&sort=created&direction=asc&per_page=100&page=${String(page)}`));pulls.push(...rows);if(rows.length<100)return {pulls,complete:true};}return {pulls,complete:false};},
-  async pullRequest(inst,repo,number){const pr=pullRequestSchema.parse(await call(inst,`${prefix(repo)}/pulls/${String(number)}`));if(pr.number!==number||pr.base.repo?.id!==repo.id)throw new GitHubError(403);return pr;},
+  async pullRequest(inst,repo,number){
+   const pr=pullRequestSchema.parse(await call(inst,`${prefix(repo)}/pulls/${String(number)}`));if(pr.number!==number||pr.base.repo?.id!==repo.id)throw new GitHubError(403);
+   if(pr.merged_at&&!pr.merge_commit_sha){
+    const [owner,name]=repo.full_name.split('/');
+    const query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){nameWithOwner pullRequest(number:$number){fullDatabaseId headRefOid mergedAt mergeCommit{oid}}}}';
+    const shape=z.object({errors:z.array(z.unknown()).optional(),data:z.object({repository:z.object({nameWithOwner:z.string(),pullRequest:z.object({fullDatabaseId:apiId,headRefOid:z.string(),mergedAt:z.string(),mergeCommit:z.object({oid:z.string().regex(/^[a-f0-9]{40,64}$/i)})})})}).optional()});
+    const response=shape.parse(await call(inst,'/graphql','POST',{query,variables:{owner,name,number}})),data=response.data?.repository,merged=data?.pullRequest;
+    if(response.errors?.length||data?.nameWithOwner!==repo.full_name||!merged||merged.fullDatabaseId!==pr.id||merged.headRefOid!==pr.head.sha||merged.mergedAt!==pr.merged_at)throw new Error('Merged revision evidence unavailable');
+    pr.merge_commit_sha=merged.mergeCommit.oid;
+   }
+   return pr;
+  },
   async pullRequestFiles(inst,repo,number){const files:PullRequestFile[]=[];for(let page=1;page<=env.RECONCILIATION_PAGE_LIMIT;page++){const rows=z.array(pullFileSchema).parse(await call(inst,`${prefix(repo)}/pulls/${String(number)}/files?per_page=100&page=${String(page)}`));files.push(...rows);if(rows.length<100)return {files,complete:true};}return {files,complete:false};},
   async pullRequestCommits(inst,repo,number){const authors:{ghId:string;login:string;type:string}[]=[];for(let page=1;page<=env.RECONCILIATION_PAGE_LIMIT;page++){const rows=z.array(commitSchema).parse(await call(inst,`${prefix(repo)}/pulls/${String(number)}/commits?per_page=100&page=${String(page)}`));for(const row of rows)if(row.author)authors.push({ghId:row.author.id,login:row.author.login,type:row.author.type});if(rows.length<100)return {authors,complete:true};}return {authors,complete:false};},
   async checkRuns(inst,repo,sha){const runs:CheckRun[]=[];for(let page=1;page<=env.RECONCILIATION_PAGE_LIMIT;page++){const response=z.object({check_runs:z.array(checkRunSchema)}).parse(await call(inst,`${prefix(repo)}/commits/${encodeURIComponent(sha)}/check-runs?filter=all&per_page=100&page=${String(page)}`));runs.push(...response.check_runs);if(response.check_runs.length<100)return {runs,complete:true};}return {runs,complete:false};},

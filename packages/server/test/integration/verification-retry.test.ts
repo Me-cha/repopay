@@ -9,7 +9,8 @@ it('a failed job before a verification row can be retried, while duplicate POSTs
   const sub=required((await f.database.orm.insert(submissions).values({bountyId:f.bounty.id,repoId:'2',prId:'501',prNumber:41,authorGhId:'8',authorLogin:'contributor',headSha:'a'.repeat(40),baseSha:'b'.repeat(40)}).returning())[0]);
   const path=`/submissions/${sub.id}/retry`;
   const body=async()=>{const html=await(await f.request(path)).text();return form(csrfFrom(html),{headSha:sub.headSha,retryVersion:/name="retryVersion" value="(\d+)"/.exec(html)?.[1]??'0'});};
-  const first=await body();await Promise.all([f.request(path,first),f.request(path,first)]);
+  const first=await body();const responses=await Promise.all([f.request(path,first),f.request(path,first)]);
+  for(const response of responses){expect(response.status).toBe(303);expect(response.headers.get('location')).toBe(path);}
   expect(await f.database.orm.select().from(jobs)).toHaveLength(1);
   await f.database.orm.update(jobs).set({status:'failed'});
   expect((await f.request(path,await body())).status).toBe(303);

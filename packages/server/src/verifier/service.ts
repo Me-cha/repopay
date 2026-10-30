@@ -70,7 +70,7 @@ export function createPhase5(db:Database,github:GitHub,env:FundingEnv,auth:AuthS
    const [sub]=await tx.select().from(submissions).where(eq(submissions.id,input.submissionId)).for('update');
    if(!sub||sub.headSha!==input.headSha||sub.baseSha!==input.baseSha||sub.evidenceVersion!==expectedVersion)throw new StaleEvidenceError('Submission changed while collecting evidence.');
    const [latest]=await tx.select().from(submissionEvidence).where(eq(submissionEvidence.submissionId,input.submissionId)).orderBy(desc(submissionEvidence.version)).limit(1);
-   if(latest?.snapshotHash===input.snapshotHash)return latest;
+   if(latest?.snapshotHash===input.snapshotHash&&latest.version===sub.evidenceVersion)return latest;
    const version=Math.max(latest?.version??0,sub.evidenceVersion)+1;
    const [row]=await tx.insert(submissionEvidence).values({submissionId:input.submissionId,version,headSha:input.headSha,baseSha:input.baseSha,testedSha:input.ci.testedSha,title:input.prTitle,body:input.prBody,diffText:input.diff,inputTruncated:input.truncated,evidenceSufficient:input.sufficient,eligibleAuthors:input.eligibleAuthors,unverifiedAuthors:input.unverifiedAuthors,ci:JSON.parse(JSON.stringify(input.ci)) as Record<string,unknown>,snapshotHash:input.snapshotHash}).returning();
    await tx.update(submissions).set({evidenceVersion:version,updatedAt:new Date()}).where(eq(submissions.id,input.submissionId));
@@ -161,7 +161,7 @@ export function createPhase5(db:Database,github:GitHub,env:FundingEnv,auth:AuthS
     await checkLease();
     const output=await verifyFn(evidence,copilotEnv);
     const currentSponsor=await auth.getCopilotSponsor(bounty.repoId);
-    if(currentSponsor.sponsorGhId!==terms.sponsor.id||currentSponsor.modelId!==terms.policy.model||currentSponsor.installationId!==bounty.installationId)throw new Error('Sponsor changed during review');
+    if(currentSponsor.tokenGeneration!==sponsor.tokenGeneration||currentSponsor.sponsorGhId!==terms.sponsor.id||currentSponsor.modelId!==terms.policy.model||currentSponsor.installationId!==bounty.installationId)throw new Error('Sponsor changed during review');
     // Under Auto terms this is the serving model Copilot reported, not `auto`.
     await finish({status:'DONE',model:output.model,result:output.value,usageMetrics:{...output.usage},elapsedMs:output.elapsedMs,promptHash:output.promptHash},`${output.value.verdict} · confidence ${(output.value.confidence*100).toFixed(0)}%`,checkSummary({advisory:`Model assessment: ${output.value.verdict} · coverage ${(output.value.coverage*100).toFixed(0)}% · confidence ${(output.value.confidence*100).toFixed(0)}%.`,ci:evidence.ci.status,reasoning:output.value.reasoning,unmet:output.value.unmet_requirements,retryUrl}));
    }catch(error){const code=safeErrorCode(error);await finish({status:'ERROR',errorCode:code},'GitPay review unavailable',checkSummary({advisory:`No model verdict was recorded (${code}).`,ci:evidence.ci.status,retryUrl}));}

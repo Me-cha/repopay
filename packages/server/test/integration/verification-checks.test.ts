@@ -1,7 +1,7 @@
 import { afterEach,describe,expect,it,vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { githubFixture,testEnv } from '../helpers/github.js';
-import { bounties,installations,submissions,submissionEvidence,bountyActivity,verifications,jobs } from '../../src/db/schema.js';
+import { bounties,installations,submissions,submissionEvidence,bountyActivity,verifications,jobs,copilotSponsors } from '../../src/db/schema.js';
 import { runOnce } from '../../src/jobs/runner.js';
 import { enqueue } from '../../src/jobs/queue.js';
 import { required } from '../helpers/auth.js';
@@ -100,6 +100,22 @@ describe('verification job recovery',()=>{
   return {funding,bounty,verifier};
  }
 
+ it('refreshes evidence after a merge transition even when its diff hash is unchanged',async()=>{
+  const f=await creatorScenario('');
+  try{
+   const original=await f.funding.api.pullRequest('1',await f.funding.api.repository('1','2'),43);
+   const merged={...original,state:'closed' as const,merged_at:'2026-10-30T10:00:00Z',closed_at:'2026-10-30T10:00:00Z',merge_commit_sha:'f'.repeat(40)};
+   const linked=await linkPr(f.funding.database,f.bounty,merged);
+   vi.mocked(f.funding.api.pullRequest).mockResolvedValue(merged);
+   await createPhase5(f.funding.database,f.funding.api,f.funding.env,f.funding.auth,f.verifier).verifySubmission(linked.submission.id,merged.head.sha);
+   const evidence=await f.funding.database.orm.select().from(submissionEvidence);
+   const [sub]=await f.funding.database.orm.select().from(submissions);
+   expect(evidence).toHaveLength(2);expect(evidence[0]?.snapshotHash).toBe(evidence[1]?.snapshotHash);
+   expect(sub?.evidenceVersion).toBe(Math.max(...evidence.map(row=>row.version)));
+   expect(await f.funding.database.orm.select().from(verifications)).toHaveLength(2);
+  }finally{await f.funding.close();}
+ });
+
  it('does not save stale evidence or clear current attention after a revision race',async()=>{
   for(const stage of ['collection','publication'] as const){
    const f=await creatorScenario('Solution review service unavailable; maintainer review and retry required',stage);
@@ -178,5 +194,25 @@ it('schedules changed PR descriptions at the same SHA and deduplicates identical
   vi.mocked(f.api.pullRequest).mockResolvedValue({...pr,body:'Fixes #12. Additional evidence.'});
   await service.syncPullRequest('1','2',42);
   expect(await f.database.orm.select().from(jobs).where(eq(jobs.kind,'verify_submission'))).toHaveLength(2);
+ }finally{await f.close();}
+});
+
+it('rejects an in-flight verdict if the sponsor reconnects before the result is saved',async()=>{
+ const f=await intentFixture();try{
+  const bounty=required((await f.database.orm.update(bounties).set({status:'FUNDED',fundedTerms:f.terms}).where(eq(bounties.id,f.bounty.id)).returning())[0]);
+  const pr:PullRequest={id:'501',number:42,state:'open',title:'Fix parser',body:'Fixes #12',merged_at:null,closed_at:null,user:{id:'8',login:'contributor',type:'User'},head:{sha:'a'.repeat(40)},base:{sha:'b'.repeat(40),repo:{id:'2'}}};
+  const linked=await linkPr(f.database,bounty,pr);
+  vi.mocked(f.api.pullRequest).mockResolvedValue(pr);
+  vi.mocked(f.api.pullRequestFiles).mockResolvedValue({files:[{filename:'parser.ts',status:'modified',additions:1,deletions:0,patch:'+validate(value)'}],complete:true});
+  vi.mocked(f.api.pullRequestCommits).mockResolvedValue({authors:[{ghId:'8',login:'contributor',type:'User'}],complete:true});
+  vi.mocked(f.api.checkRuns).mockResolvedValue({runs:[{id:'11',name:'test',head_sha:pr.head.sha,status:'completed',conclusion:'success',app:{id:'15368'}}],complete:true});
+  const verify=vi.fn(async()=>{
+   await f.auth.revokeCopilotSponsor('2');
+   await f.database.orm.update(copilotSponsors).set({revokedAt:null,tokenGeneration:99}).where(eq(copilotSponsors.repoId,'2'));
+   return {value:{verdict:'RESOLVES' as const,coverage:1,confidence:1,reasoning:'Fixed',unmet_requirements:[],splits:[{gh_id:'8',share:1,why:'author'}]},usage:{totalNanoAiu:1,totalPremiumRequestCost:1,totalApiDurationMs:1,totalUserRequests:1,inputTokens:1,outputTokens:1,cacheReadTokens:0,cacheWriteTokens:0},provider:'copilot' as const,requestedModel:'auto',model:'test-model',sdkVersion:'1.0.28',billingOwnerId:'4',elapsedMs:1,promptHash:'f'.repeat(64),promptVersion:'gitpay-verifier-v2'};
+  });
+  await createPhase5(f.database,f.api,f.env,f.auth,verify).verifySubmission(linked.submission.id,pr.head.sha);
+  expect(verify).toHaveBeenCalledTimes(1);
+  const rows=await f.database.orm.select().from(verifications);expect(rows).toHaveLength(1);expect(rows[0]?.status).toBe('ERROR');expect(rows[0]?.result).toBeNull();
  }finally{await f.close();}
 });

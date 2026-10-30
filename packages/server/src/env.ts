@@ -106,7 +106,9 @@ export function parseAuthEnv(input:Record<string,string|undefined>):AuthEnv {
  return result.data;
 }
 
+const settlementScope=z.object({bountyId:z.string().regex(/^[1-9]\d*$/),repoId:z.string().regex(/^[1-9]\d*$/),amountCents:z.number().int().positive().max(2147483647),termsHash:z.string().regex(/^[a-f0-9]{64}$/)}).strict();
 const fundingSettings = z.object({
+ SETTLEMENT_DEMO_SCOPE:z.string().default('').transform((value,ctx)=>{if(!value.trim())return null;try{return JSON.parse(value) as unknown;}catch{ctx.addIssue({code:'custom',message:'Invalid settlement scope'});return z.NEVER;}}).pipe(settlementScope.nullable()),
  PP_BASE:preflightSchema.shape.PP_BASE,PP_CLIENT_ID:text,PP_SECRET:text,
  PP_WEBHOOK_ID:z.string().trim().default(''),PP_MERCHANT_ID:z.string().regex(/^[A-Z0-9]{1,32}$|^$/).default(''),
  COPILOT_MODEL:copilotModel.default('auto'),

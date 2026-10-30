@@ -44,3 +44,71 @@ Development setup must back up the database, stop workers, apply migrations and 
 ## Later setup amendment — October 30
 
 During the user-authorized Phase 5 $50 sandbox walkthrough setup, the development database was backed up and migrations through 0012 were applied successfully; the separate worker was then started. This supersedes the earlier unapplied-development-migration note. Phase 5 prompt v2 passed 18/18 live evaluation fixtures, but its live workflow and Phase 6 payout acceptance remain open. Automatic award selection remains disabled. See [Phase 5 evidence](05-summary.md).
+
+
+## Phase 6 continuation — October 30, 2026
+
+The user requested proceeding with Phase 6 after PR #3's live RESOLVES review. The separate owner sponsor, $50 sandbox capture and Me-cha's repository access are established; remaining Phase 5 workflow acceptance has not been silently waived.
+
+Candidate reconciliation now re-reads the bounded PR inventory after linking/collecting evidence and refuses a complete scan if membership or observed PR metadata/revisions changed. GitHub pagination is not a globally atomic snapshot; this check detects observed inventory races but does not promise that a new merge cannot occur after the final provider read. Existing bounty/evidence version fencing still applies under the award lock.
+
+The new candidate-scan regression failed before the fix. Tests also verify incomplete closing-reference pagination holds selection and removed issue references do not erase saved manual links. Full verification passed: **45 files / 258 tests**, typecheck, lint and build. Live closing-reference lookup returned PR #3 → issue #1. The live scanner completed with one OPEN candidate (PR #3), no merged evidence, and no award or payout. Me-cha's recipient connection is still absent at the last check; connection instructions were provided without requesting payment addresses in chat.
+
+Remaining activation work is explicit: bind accepted verifier evidence to runtime settlement and complete/defer remaining personal-workflow gates through a reviewed decision before scheduling automatic awards. The runtime currently keeps that gate closed. Merge/exact-CI acceptance, a real sandbox recipient receipt, delayed-claim and two-author walkthroughs remain open. Do not merge or expect a transfer solely because these local checks pass.
+
+
+### Recipient connected — October 30, 2026
+
+Me-cha completed the browser payout-address flow after the GitHub App visibility issue was resolved. A metadata-only database check confirms contributor 127575583, connection version 1; retry_claims job 36 completed on its first attempt. No recipient address was displayed or copied to evidence. Bounty 1 remains FUNDED at 5,000 cents, with zero awards and zero payout batches. This verifies connection/resume-job intake, not delayed-award payout completion or PayPal account ownership. Runtime settlement activation and merge/payout acceptance remain outstanding.
+
+
+## Scoped integration prepared — October 30, 2026
+
+The user requested Phase 6 completion. A default-off `SETTLEMENT_DEMO_SCOPE` now binds one exact bounty, repository, integer amount, frozen-terms hash and configured sandbox merchant. `settlement/profile.ts` accepts only the evaluated Auto v2 / SDK 1.0.28 profile; the runtime also restricts the actual serving model to the evaluated `gpt-6-luna`. The running configuration has not been enabled: a decision on limited demo acceptance versus completing remaining Phase 5 gates is pending from the user. No merge or payout was performed by this change.
+
+The worker can now reconcile the scoped candidate inventory, enqueue stale merged evidence, wait for a matching completed review and commit the existing guarded award. It revalidates the owner sponsor against GitHub before selection; the award transaction separately locks/checks the stored grant for matching identity, model, installation, expiry and revocation. Existing committed payout reconciliation is independent of scope removal.
+
+A merge-version defect was fixed: unchanged diff hashes no longer reuse evidence from an older submission version. The verifier saves a new version and review rather than leaving settlement permanently held after merge. Tests cover wrong scope bindings, revoked sponsorship, unevaluated serving models and merge-version evidence preservation. Full suite: **46 files / 262 tests passed**; typecheck, lint and build passed before the final additional merchant guard, whose focused checks are recorded with the subsequent verification. No live request was spent by these tests.
+
+Still required for completion: approved activation decision; real qualifying merge and sandbox payout/recipient receipt; delayed-claim loop and two-author live acceptance. These are not marked complete by the successful local tests. Organization support remains deferred.
+
+
+### Activation decision — October 30, 2026
+
+The user chose **Finish all Phase 5 gates first**, rejecting limited-demo activation with deferred personal-workflow gates. `SETTLEMENT_DEMO_SCOPE` remains unset and automatic settlement is disabled. The scoped implementation remains inactive; no merge, award or payout is authorized by the earlier proposal. Continue Phase 5 before revisiting activation. Organization support remains separately deferred by the prior user decision.
+
+### Superseding activation decision — October 30, 2026
+
+The user subsequently directed proceeding to complete Phase 6, deferring the remaining Phase 5 work. [ADR 0008](../decisions/0008-scoped-phase6-sandbox-acceptance.md) records the limited acceptance and supersedes the prior activation hold. Saved `SETTLEMENT_DEMO_SCOPE` binds only bounty 1, repository 1435468752, 5,000 cents and the exact existing terms hash; the evaluated profile and merchant binding passed validation. The worker was restarted through its watcher to load this configuration. An actual application settlement scan returned `waiting` with no merge/award. Me-cha's connection exists; bounty 1 is FUNDED without funding hold, with zero awards/batches before activation. The owner was asked to merge PR #3 using a merge commit because the App has only read access to PRs.
+
+Current checks passed: typecheck, lint, build, and 46 files / 263 tests. Provider calls in tests remain mocked; the candidate/profile scan above used live GitHub and current sponsor authorization. Real merge, payout/receipt, delayed-claim and two-author acceptance remain outstanding. No new capture or payout was manually submitted.
+
+### Merge observed; missing REST merge identity repaired — October 30, 2026
+
+The owner merged PR #3 at `2026-10-30T12:00:16Z`, head `91717536b49518fb94f7e7fafe88161326fbfdf7`. Post-merge verification 9 completed RESOLVES, but settlement correctly held because the REST response omitted merge_commit_sha. The GitHub adapter now falls back to the documented GraphQL mergeCommit.oid only when the REST merged PR lacks that field. It checks repository name, stable PR ID, head SHA and merge timestamp and rejects errors/mismatched identity. The regression failed before the fix and passed afterward. Live GraphQL resolved merge SHA `ae4e27bb7808336b0f351d3a06f832e7129c16db`, now stored on submission 1.
+
+Refreshing that revision metadata produced evidence version 13; verification 10 is ERROR/VERIFIER_BUDGET_EXHAUSTED. No award or payout was created. One additional scoped review was requested from the user; no cap was raised and no review history was reset. Checks passed: typecheck, lint, build, 46 files / 264 tests. Provider calls in tests are mocked. The live merge gate is observed, but current accepted evidence and payout/receipt remain outstanding.
+
+Provider contract: [GitHub GraphQL PullRequest.mergeCommit](https://docs.github.com/en/graphql/reference/pulls). Missing authoritative merge evidence remains a hold, never a guessed SHA.
+
+### First live Phase 6 sandbox payout succeeded — October 30, 2026
+
+The user approved exactly one additional Auto review for the merged revision. A one-off invocation used a per-SHA cap of 4 with a wrapper limiting model invocation to one; the configured normal cap remains 3. Budget-rejected records were preserved and excluded under the existing budget predicate. Verification 11 completed DONE/RESOLVES after exactly one model call, with the current merged evidence.
+
+The normal settlement service committed award 1 for the full 5,000 cents to Me-cha (127575583), then reserved one immutable batch/item. PayPal sandbox batch `2ZK7VSQG386F8`, item `MSLJBZ8Q34AN4`, progressed from PENDING to SUCCESS. Reconciliation now records bounty 1 PAID with no attention. Subsequent reads reused the known provider batch identity; no replacement batch or payment was created. Database counts confirm one award, one batch and one item. Recipient addresses and credentials were not printed or retained in this evidence.
+
+Recipient-side confirmation from Me-cha was requested and remains pending. This completes the observed merge → qualified award → provider-confirmed sandbox payout path, not all Phase 6 acceptance. A real delayed-connection claim-resumption loop and two-author walkthrough remain outstanding; those paths have mocked integration coverage only. The second eligible contributor is still unavailable. No further model request was authorized or made in this step.
+
+
+### Recipient receipt confirmed — October 30, 2026
+
+The user relayed Me-cha's confirmation that the $50 sandbox payout was received and supplied a PayPal Activity screenshot showing “Test Store”, “30 Oct · Payment Received”, and +$50.00. This corroborates the previously observed provider SUCCESS and GitPay PAID state. The screenshot does not expose a transaction ID, so transaction binding relies on the recorded provider batch/item evidence plus the user's confirmation. Unrelated account activity and balance are not retained here.
+
+The primary funded issue → merged PR → award → payout → recipient receipt walkthrough is evidenced. Phase 6 remains incomplete against its full exit gate: the live delayed-claim loop and two-author walkthrough are still outstanding, with local mocked coverage only. No additional payment or model call was made to record this confirmation.
+
+
+### Remaining live-check feasibility — October 30, 2026
+
+The user asked to complete the remaining live checks if unblocked. Database inspection confirms only bounty 1 (PAID, creator deepakA18) and only Me-cha's contributor connection. A delayed-claim test is feasible without a third account: Me-cha can create a separate sandbox bounty, deepakA18 can submit the solution while leaving their payout connection absent, then connect only after the award reaches AWAITING_CLAIM. This requires new sandbox checkout, a contributor PR and a separately bound settlement scope; no existing payment or connection should be reset to simulate it.
+
+The live two-author path has two concrete blockers. Only two GitHub identities are available, while the bounty creator is ineligible, leaving at most one eligible contributor on a bounty. Independently, verifier/collect.ts currently admits only the authenticated PR author to eligibleAuthors and treats additional commit authors as unverified, making the evidence insufficient. A third account alone does not solve this: authenticated revision-bound co-contributor attribution or the planned reviewed path must be implemented and validated before an actual two-payee award can be selected. The mocked two-author payout tests start with an already constructed award and do not establish this onboarding/selection path. Do not substitute commit email/co-author trailers as proof or insert a synthetic live award.

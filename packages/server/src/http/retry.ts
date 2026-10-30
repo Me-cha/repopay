@@ -40,7 +40,9 @@ export function mountVerificationRetry(app:Express,deps:AuthenticationDependenci
     if((last?.id??'0')!==body.data.retryVersion)throw new AuthError(409,'Another review was requested. Reload the page.');
     await enqueue(tx,{kind:'verify_submission',payload:{submissionId:submission.id,headSha:submission.headSha,force:true},dedupeKey:key,maxAttempts:5});
    });
-   response.redirect(303,`https://github.com/${bounty.repoFullName}/issues/${String(bounty.issueNumber)}`);
+   // The shared form script follows redirects with same-origin fetch. An
+   // external GitHub redirect would report failure after the job was saved.
+   response.redirect(303,`/submissions/${submission.id}/retry`);
   }catch(error){safeError(response,error,request.path);}
  });
 }

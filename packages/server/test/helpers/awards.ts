@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { intentFixture } from './funding.js';
 import { required } from './auth.js';
-import { bounties,submissions,submissionEvidence,verifications } from '../../src/db/schema.js';
+import { bounties,copilotSponsors,submissions,submissionEvidence,verifications } from '../../src/db/schema.js';
 import { createSettlement } from '../../src/settlement/settle.js';
 import { candidateFingerprint,type CandidateScan } from '../../src/settlement/candidates.js';
 import { fixtureInput } from '../../src/verifier/evaluate.js';
@@ -10,6 +10,7 @@ import { buildVerifierPrompt,PROMPT_VERSION } from '../../src/verifier/prompt.js
 export async function awardFixture(twoAuthors=false){
  const f=await intentFixture();
  await f.database.orm.update(bounties).set({status:'FUNDED',captureId:'CAPTURE',fundedAt:new Date(),fundedTerms:f.terms}).where(eq(bounties.id,f.bounty.id));
+ await f.database.orm.update(copilotSponsors).set({accessExpiresAt:new Date(Date.now()+86400000),refreshExpiresAt:new Date(Date.now()+172800000)}).where(eq(copilotSponsors.repoId,'2'));
  const evidence=new Map<string,ReturnType<typeof fixtureInput>>();
  async function add(prId:string,mergedAt:string,status='DONE'){
   const sub=required((await f.database.orm.insert(submissions).values({bountyId:f.bounty.id,repoId:'2',prId,prNumber:Number(prId),authorGhId:'8',authorLogin:'author',status:'MERGED',headSha:'a'.repeat(40),baseSha:'b'.repeat(40),mergeSha:'c'.repeat(40),mergedAt:new Date(mergedAt),evidenceVersion:1}).returning())[0]);

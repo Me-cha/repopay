@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import { bounties,submissions,type Submission } from '../db/schema.js';
 import type { FundingEnv } from '../env.js';
-import type { GitHub } from '../github/app.js';
+import type { GitHub,PullRequest } from '../github/app.js';
 import { currentAccess } from '../github/permissions.js';
 import { issueReferences } from '../github/linking.js';
 import { linkPr } from '../actions/link.js';
@@ -12,6 +12,9 @@ import { collectVerification,type VerifyInput } from '../verifier/collect.js';
 export interface CandidateScan {complete:boolean;bountyVersion:number;submissions:Submission[];evidence:Map<string,VerifyInput>;hash:string}
 export function candidateFingerprint(rows:Submission[]):string {
  return createHash('sha256').update(JSON.stringify([...rows].sort((a,b)=>a.id<b.id?-1:1).map(r=>[r.id,r.prId,r.headSha,r.baseSha,r.mergeSha,r.status,r.mergedAt?.toISOString(),r.evidenceVersion]))).digest('hex');
+}
+function inventoryFingerprint(pulls:PullRequest[]):string {
+ return createHash('sha256').update(JSON.stringify([...pulls].sort((a,b)=>BigInt(a.id)<BigInt(b.id)?-1:BigInt(a.id)>BigInt(b.id)?1:0).map(p=>[p.id,p.number,p.state,p.head.sha,p.base.sha,p.merge_commit_sha,p.merged_at,p.closed_at,p.title,p.body]))).digest('hex');
 }
 export function candidateScanner(db:Database,github:GitHub,env:FundingEnv) {
  return async(bountyId:string):Promise<CandidateScan>=>{
@@ -31,6 +34,10 @@ export function candidateScanner(db:Database,github:GitHub,env:FundingEnv) {
   const rows=await db.orm.select().from(submissions).where(eq(submissions.bountyId,bountyId));
   const evidence=new Map<string,VerifyInput>();
   for(const sub of rows.filter(row=>row.status==='MERGED'))evidence.set(sub.id,await collectVerification({github,env,installationId:bounty.installationId,repo,bounty:current,submission:sub,terms:bounty.fundedTerms,expectedHeadSha:sub.headSha}));
-  return {complete:true,bountyVersion:current.version,submissions:rows,evidence,hash:candidateFingerprint(rows)};
+  // GitHub pagination is not an atomic snapshot. Hold if the bounded inventory
+  // changed while linking candidates and collecting their evidence.
+  const after=await github.pullRequests(bounty.installationId,repo);
+  const complete=after.complete&&inventoryFingerprint(listed.pulls)===inventoryFingerprint(after.pulls);
+  return {complete,bountyVersion:current.version,submissions:rows,evidence,hash:candidateFingerprint(rows)};
  };
 }

@@ -1,6 +1,7 @@
 import { expect,it } from 'vitest';
+import { eq } from 'drizzle-orm';
 import { required } from '../helpers/auth.js';
-import { awards,bounties } from '../../src/db/schema.js';
+import { awards,bounties,copilotSponsors } from '../../src/db/schema.js';
 import { createSettlement } from '../../src/settlement/settle.js';
 import { awardFixture } from '../helpers/awards.js';
 it('reverse arrival order and concurrent settlement select one earliest immutable award',async()=>{
@@ -33,5 +34,22 @@ it('late discovery records a dispute without changing the award or paying twice'
   await f.add('501','2026-10-30T01:00:00Z');await f.service.settleBounty(f.bounty.id);
   const rows=await f.database.orm.select().from(awards);expect(rows).toHaveLength(1);expect(rows[0]?.submissionId).toBe(winner.id);
   const b=required((await f.database.orm.select().from(bounties))[0]);expect(b.attentionReason).toContain('Earlier merged candidate');
+ }finally{await f.close();}
+});
+
+it('a revoked sponsor cannot create an award even after profile acceptance',async()=>{
+ const f=await awardFixture();try{
+  await f.add('501','2026-10-30T01:00:00Z');
+  await f.database.orm.update(copilotSponsors).set({revokedAt:new Date()}).where(eq(copilotSponsors.repoId,'2'));
+  expect((await f.service.settleBounty(f.bounty.id))?.kind).toBe('held');
+  expect(await f.database.orm.select().from(awards)).toHaveLength(0);
+ }finally{await f.close();}
+});
+it('a different Auto serving model cannot reuse another models evaluation',async()=>{
+ const f=await awardFixture();try{
+  await f.add('501','2026-10-30T01:00:00Z');
+  const service=createSettlement(f.database,{scan:f.scan,profileAccepted:()=>Promise.resolve(true),acceptedServingModels:['other-model']});
+  expect((await service.settleBounty(f.bounty.id))?.kind).toBe('held');
+  expect(await f.database.orm.select().from(awards)).toHaveLength(0);
  }finally{await f.close();}
 });

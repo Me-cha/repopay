@@ -128,3 +128,35 @@ The contributor added `fixes #1` to PR #3's description at the same head SHA. Gi
 The new regression failed before the fix and passed afterward. Full verification: 44 files / 255 tests, typecheck, lint and build passed. PR #3's edit was queued through normal reconciliation after the fix; existing review history is retained.
 
 The replay completed: verification 2 is DONE, Auto served `gpt-6-luna`, verdict RESOLVES with no unmet requirements. Check Run 124024067200 records the second review at the unchanged head SHA; verification 1's PARTIAL remains preserved. This establishes live metadata-update review, not a new-code-commit walkthrough, manual failed-attempt retry, second-contributor acceptance or payout. Automatic awards remain disabled.
+
+### Phase 5 prerequisite work resumed — October 30, 2026
+
+The user chose to finish Phase 5 gates before enabling any Phase 6 scope. Automatic settlement remains disabled. The live new-commit and competing-contributor steps were requested; the second eligible GitHub identity is still needed. A controlled GitHub user-authorization revocation/recovery window remains to be coordinated after the new revision is observed.
+
+A local regression reproduced a consent race: revoking and reconnecting the same sponsor while inference was running could let the earlier result pass the identity-only recheck. Sponsor materialization now includes the persisted token generation, and the verifier rejects an in-flight result when that generation changes. The failing regression passed after the fix. Full checks passed: **46 files / 263 tests**, typecheck, lint and build. This is local coverage, not evidence that the real revocation webhook/retry walkthrough has completed. No additional model evaluation requests were made.
+
+### New code revision verified; competing contributor unavailable — October 30, 2026
+
+Read-only GitHub and database checks confirmed PR #3 remains open and unmerged at `d6e58e6cb3b3b42db6f73ce9541447be8235f72d`. Its patch includes the requested empty-body assertion and preserves existing tests. Both external GitHub Actions test checks succeeded. Verification 3 recorded PARTIAL and verification 4 recorded RESOLVES on this head; Check Runs 124036046118 and 124036186873 are completed/neutral. The two previous-head reviews remain stored. This establishes the new-code-revision gate, not an ERROR-to-success retry. No award exists.
+
+The user confirmed no second eligible contributor account is available. The two-contributor live acceptance is therefore blocked, not waived or complete. Live sponsor revocation/recovery remains pending. Phase 6 stays inactive under the user's instruction to finish Phase 5 first.
+
+### Owner authorization revoked — October 30, 2026
+
+After the user revoked the demo App's owner authorization in GitHub, the database records sponsor `deepakA18` revoked at `2026-10-30T11:29:16.200775Z`, token generation advanced to 1, and zero remaining owner sessions. No award exists. This verifies persisted revocation/session invalidation; a review attempted while revoked and subsequent sponsor reconnection/retry remain pending. The current head already has two review attempts, so a revoked attempt will consume its third configured slot; recovery must respect the existing attempt cap rather than resetting review history or silently raising limits.
+
+### Revoked review blocked and retry redirect repaired — October 30, 2026
+
+The contributor's browser retry persisted verification 5, attempt 3 on `d6e58e6cb3b3b42db6f73ce9541447be8235f72d`, as ERROR/VERIFIER_UNAVAILABLE while the sponsor remained revoked. A subsequent retry persisted verification 6, attempt 4, as ERROR/VERIFIER_BUDGET_EXHAUSTED. GitHub checks 124039776198 and 124039841635 both completed neutral; PR #3 remains open/unmerged and bounty 1 remains FUNDED. The revoked-grant lookup fails before invoking the model; the budget rejection also precedes invocation. These results establish live rejection, not successful recovery.
+
+The shared form script uses fetch, but the retry POST returned a cross-origin GitHub redirect after committing its job. That produces an interrupted-response message despite a saved request. The POST now redirects to its same-origin retry page. The integration test asserts this redirect for duplicate POSTs while retaining the single-enqueue assertion. Typecheck, lint and the full suite passed: 46 files / 263 tests. Sponsor reconnection was requested; current-head limits and stored history remain unchanged. Successful recovery and the unavailable second contributor still block completion.
+
+### Sponsor reconnected — October 30, 2026
+
+After the owner completed reconnection, a database read confirms sponsor `deepakA18`, model `auto`, cleared revoked_at, token generation 2 and an unexpired access grant. No new verification has run since reconnection. The current head remains capped; reconnection does not reset attempt history. A meaningful contributor test revision is requested for a fresh review, with old errors preserved. This confirms restored stored consent, not yet a successful post-reconnection Copilot call or completion of the failed-review recovery gate.
+
+### Post-reconnection review succeeded — October 30, 2026
+
+PR #3 now has head `91717536b49518fb94f7e7fafe88161326fbfdf7`, including the empty-field-name regression. Both external GitHub Actions test checks passed on that head. Verification 7 completed PARTIAL with the sole unmet requirement to confirm the serializer test command passes; verification 8 completed RESOLVES with no unmet requirements. Both used Auto serving model `gpt-6-luna`. GitPay Check Runs 124043951459 and 124044055304 are completed/neutral. The sponsor remains active at token generation 2. The PR remains open/unmerged and there are zero awards.
+
+This establishes successful Copilot use after real revocation and reconnection, on a new revision. It does not establish successful manual retry of an ERROR on the same revision: the old revision remains capped and its failed attempts are preserved. The unavailable second eligible contributor, remaining explicit retry acceptance and other unchecked phase requirements keep Phase 5 incomplete; Phase 6 activation remains disabled. Verification here used live read-only GitHub/database checks; no additional evaluation run or code changes were needed.
