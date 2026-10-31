@@ -80,7 +80,7 @@ it('PR projection gives revision-bound commands, recovers a lost response and ne
  const f=await awardFixture();try{const sub=await f.add('501','2026-10-30T00:00:00Z');await f.database.orm.update(submissions).set({status:'OPEN',mergedAt:null,mergeSha:null}).where(eq(submissions.id,sub.id));
  await f.database.withTransaction(tx=>enqueue(tx,{kind:'sync_submission',payload:{submissionId:sub.id},dedupeKey:'projection',maxAttempts:3}));const job=await claimJob(f.database,'projection',120);if(!job)throw new Error('missing projection');
  f.state.lostResponse=true;await expect(syncSubmission(f.database,f.api,f.env,job,sub.id)).rejects.toThrow('lost');await syncSubmission(f.database,f.api,f.env,job,sub.id);
- const body=f.comments.find(c=>c.body?.includes('gitpay:submission:'))?.body;expect(body).toContain('RESOLVES');expect(body).toContain(`/bounty contribute #12 ${sub.headSha} ${sub.baseSha}`);expect(body).toContain('Manage Copilot sponsor');expect(body).toContain('/retry');
+ const body=f.comments.find(c=>c.body?.includes('gitpay:submission:'))?.body;expect(body).toContain('RESOLVES');expect(body).toContain(`/bounty contribute #12 ${sub.headSha} ${sub.baseSha}`);expect(body).toContain('Manage Copilot sponsor');expect(body).toContain('/bounty retry #12');expect(body).not.toContain('/submissions/');
  expect(f.api.createComment).toHaveBeenCalledTimes(1);
  await f.database.orm.update(submissions).set({baseSha:'d'.repeat(40),evidenceVersion:2}).where(eq(submissions.id,sub.id));await syncSubmission(f.database,f.api,f.env,job,sub.id);
  const refreshed=f.comments.find(c=>c.body?.includes('gitpay:submission:'))?.body;expect(refreshed).toContain('Current revision awaits review');expect(refreshed).not.toContain('**RESOLVES**');
@@ -93,5 +93,22 @@ it('committed award projects recipient allocations and connection link to the wi
  await syncBounty(f.database,f.api,f.env,job,f.bounty.id);
  expect(f.api.createComment).toHaveBeenCalledWith('1',expect.anything(),winner.prNumber,expect.stringContaining('gitpay:award:'));
  const body=f.comments.find(c=>c.body?.includes('gitpay:award:'))?.body;expect(body).toContain('@fixture-author: $25.00');expect(body).toContain('@second: $25.00');expect(body).toContain('/connect');expect(body).toContain('payment progress');expect(body).not.toContain('destinationEnc');
+ }finally{await f.close();}
+});
+
+it('maintainer comment cancels only an unfunded draft, preserves history and blocks capture races',async()=>{
+ const {cancelCommentDraft}=await import('../../src/actions/cancel.js');const {eq}=await import('drizzle-orm');
+ const f=await githubFixture();try{
+ const create=await f.job(createWork());await handleJob(f.database,f.api,testEnv,create);await finishJob(f.database,create);
+ const projection=await claimJob(f.database,'projection',120);if(projection)await finishJob(f.database,projection);
+ const bounty=(await f.database.orm.select().from(bounties))[0];if(!bounty)throw new Error('missing bounty');
+ const cancel=await f.job(createWork({commentId:'200',command:{kind:'cancel'}}));
+ f.state.permission='read';await expect(cancelCommentDraft(f.database,f.api,cancel,bounty.id)).rejects.toThrow(/write permission/);f.state.permission='write';
+ await f.database.orm.update(bounties).set({captureRequestKey:'capture-started'}).where(eq(bounties.id,bounty.id));await expect(cancelCommentDraft(f.database,f.api,cancel,bounty.id)).rejects.toThrow(/cannot be cancelled/);
+ await f.database.orm.update(bounties).set({captureRequestKey:null}).where(eq(bounties.id,bounty.id));
+ await handleJob(f.database,f.api,testEnv,cancel);await handleJob(f.database,f.api,testEnv,cancel);
+ expect((await f.database.orm.select().from(bounties))[0]?.status).toBe('CANCELLED');expect(f.comments.some(c=>c.body?.includes('draft is already cancelled'))).toBe(true);
+ const replacement=(await f.database.orm.insert(bounties).values({installationId:bounty.installationId,repoId:bounty.repoId,repoFullName:bounty.repoFullName,issueNumber:bounty.issueNumber,amountCents:100,createdByGhId:bounty.createdByGhId,createdVia:'command'}).returning())[0];if(!replacement)throw new Error('missing replacement');
+ await handleJob(f.database,f.api,testEnv,cancel);expect((await f.database.orm.select().from(bounties).where(eq(bounties.id,replacement.id)))[0]?.status).toBe('OPEN');
  }finally{await f.close();}
 });

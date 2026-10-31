@@ -1,3 +1,5 @@
+import { cancelCommentDraft } from '../actions/cancel.js';
+import { retryCommentReview } from '../actions/retry.js';
 import { attestCommentContribution } from '../actions/attribution.js';
 import { reconcileBounty } from '../github/reconciliation.js';
 import type { Phase6 } from '../settlement/service.js';
@@ -25,7 +27,7 @@ export interface Phase5Jobs {
  syncPullRequest:(installationId:string,repoId:string,prNumber:number)=>Promise<void>;
  refreshVerificationSha:(installationId:string,repoId:string,sha:string)=>Promise<void>;
  manualLink:(installationId:string,repoId:string,issueNumber:number,prNumber:number)=>Promise<void>;
- verifySubmission:(submissionId:string,headSha:string,force?:boolean,lease?:LeasedJob)=>Promise<void>;
+ verifySubmission:(submissionId:string,headSha:string,force?:boolean,lease?:LeasedJob,expectedBaseSha?:string)=>Promise<void>;
 }
 export async function handleJob(db:Database,github:GitHub,env:GitHubRuntimeEnv,job:LeasedJob,funding?:FundingService,phase5?:Phase5Jobs,phase6?:Phase6):Promise<void> {
  const work=workFor(job);
@@ -33,7 +35,7 @@ export async function handleJob(db:Database,github:GitHub,env:GitHubRuntimeEnv,j
  if(work.kind==='retry_claims'){await retryClaims(work.ghId,work.connectionVersion);await phase6?.retryClaims(work.ghId,work.connectionVersion);return;}
  if(work.kind==='sync_pull_request'){if(!phase5)throw new Error('Submission worker unavailable');await phase5.syncPullRequest(work.installationId,work.repoId,work.prNumber);return;}
  if(work.kind==='refresh_verification_sha'){if(!phase5)throw new Error('Verification worker unavailable');await phase5.refreshVerificationSha(work.installationId,work.repoId,work.sha);return;}
- if(work.kind==='verify_submission'){if(!phase5)throw new Error('Verification worker unavailable');await phase5.verifySubmission(work.submissionId,work.headSha,work.force,job);return;}
+ if(work.kind==='verify_submission'){if(!phase5)throw new Error('Verification worker unavailable');await phase5.verifySubmission(work.submissionId,work.headSha,work.force,job,work.baseSha);return;}
  if(work.kind==='reconcile_funding'){if(!funding)throw new Error('Funding worker unavailable');await funding.reconcile(work.attemptId);return;}
  if(work.kind==='sync_submission'){await syncSubmission(db,github,env,job,work.submissionId);return;}
  if(work.kind==='sync_bounty'){await syncBounty(db,github,env,job,work.bountyId);return;}
@@ -54,30 +56,31 @@ export async function handleJob(db:Database,github:GitHub,env:GitHubRuntimeEnv,j
  }
  const {installation,repo}=await currentAccess(github,work.installationId,work.repoId);
  const commentPrNumber=work.kind==='run_command'&&work.isPullRequest?work.issueNumber:undefined;
- if(work.kind==='run_command'&&(work.command.kind==='contribute'||work.command.kind==='confirm-contributor')){
+ if(work.kind==='run_command'&&(work.command.kind==='contribute'||work.command.kind==='confirm-contributor'||work.command.kind==='retry')){
   const command=work.command;
   try{
-   if(!work.isPullRequest)throw new AuthError(400,'Post contribution commands in the linked PR Conversation tab, not on the issue.');
+   if(!work.isPullRequest)throw new AuthError(400,'Post review and contribution commands in the linked PR Conversation tab, not on the issue.');
    const links=await db.orm.select({sub:submissions,issue:bounties.issueNumber,status:bounties.status}).from(submissions).innerJoin(bounties,eq(bounties.id,submissions.bountyId)).where(and(eq(submissions.repoId,work.repoId),eq(submissions.prNumber,work.issueNumber)));
    const choices=links.filter(row=>['FUNDED','NEEDS_REVIEW'].includes(row.status)&&(!command.issueNumber||row.issue===command.issueNumber));
    const target=choices[0];
-   if(choices.length!==1||!target)throw new AuthError(409,'Use the funded linked issue number after the command, for example `/bounty contribute #11 <head SHA> <base SHA> <reason>`. No confirmation was recorded.');
+   if(choices.length!==1||!target)throw new AuthError(409,'Use the funded linked issue number after the command, for example `/bounty retry #11` or `/bounty contribute #11 <head SHA> <base SHA> <reason>`. No action was taken.');
+   if(command.kind==='retry'){const result=await retryCommentReview(db,github,job,target.sub.id);await reply(db,github,env,job,work.installationId,repo,work.issueNumber,`${result.queued?'Fresh review queued':'A review was already requested; no duplicate was queued'} for head \`${result.headSha}\`. Results will appear in this PR’s GitPay comment and Checks tab. Repository attempt limits still apply. No merge, award or payment was triggered.`);return;}
    const saved=await attestCommentContribution(db,github,job,target.sub.id);
-   const next=command.kind==='contribute'?`A different maintainer must post this on this PR, replacing the reason:\n\n\`/bounty confirm-contributor #${String(target.issue)} @${saved?.claimantLogin??'contributor'} ${command.headSha} ${command.baseSha} I verified this contribution because ...\``:`Both confirmations are recorded for this revision. [Request a fresh review](${new URL('/submissions/'+target.sub.id+'/retry',env.PUBLIC_URL).href}) within the repository’s review allowance.`;
+   const next=command.kind==='contribute'?`A different maintainer must post this on this PR, replacing the reason:\n\n\`/bounty confirm-contributor #${String(target.issue)} @${saved?.claimantLogin??'contributor'} ${command.headSha} ${command.baseSha} I verified this contribution because ...\``:`Both confirmations are recorded for this revision. A maintainer can post \`/bounty retry #${String(target.issue)} ${command.headSha} ${command.baseSha}\` on this PR within the repository’s review allowance.`;
    await reply(db,github,env,job,work.installationId,repo,work.issueNumber,`Contribution ${command.kind==='contribute'?'declaration':'confirmation'} saved for head \`${command.headSha}\` and base \`${command.baseSha}\`. ${next}\n\nA new head or base requires new confirmations. No review, merge, award or payment was triggered.`);
   }catch(error){if(!(error instanceof AuthError))throw error;await reply(db,github,env,job,work.installationId,repo,work.issueNumber,error.message);}
   return;
  }
  if(work.kind==='run_command'&&work.isPullRequest&&work.command.kind==='invalid'){
-  await reply(db,github,env,job,work.installationId,repo,work.issueNumber,'Use the exact contribution command from the latest GitPay check: `/bounty contribute [#issue] <full head SHA> <full base SHA> <reason>` or `/bounty confirm-contributor [#issue] @login <full head SHA> <full base SHA> <reason>`. Reasons need 10–2000 characters. Post a new comment; edits and quoted commands are not processed.');return;
+  await reply(db,github,env,job,work.installationId,repo,work.issueNumber,'Use `/bounty retry [#issue]` for a fresh review or `/bounty status [#issue]` for progress. Contribution commands from the latest GitPay check: `/bounty contribute [#issue] <full head SHA> <full base SHA> <reason>` or `/bounty confirm-contributor [#issue] @login <full head SHA> <full base SHA> <reason>`. Reasons need 10–2000 characters. Post a new comment; edits and quoted commands are not processed.');return;
  }
 
  let issueNumber=work.issueNumber;
- if(work.kind==='run_command'&&(work.command.kind==='approve'||work.command.kind==='reject')){
+ if(work.kind==='run_command'&&(work.command.kind==='approve'||work.command.kind==='reject'||work.command.kind==='status')){
   const command=work.command;let target=issueNumber;
   if(work.isPullRequest){
    const links=await db.orm.select({issue:bounties.issueNumber}).from(submissions).innerJoin(bounties,eq(bounties.id,submissions.bountyId)).where(and(eq(submissions.repoId,work.repoId),eq(submissions.prNumber,issueNumber)));
-   const choices=[...new Set(links.map(r=>r.issue))];if(command.issueNumber?!choices.includes(command.issueNumber):choices.length!==1){await reply(db,github,env,job,work.installationId,repo,issueNumber,'Specify a linked issue number: `/bounty approve #12` or `/bounty reject #12 <reason>`. No decision was made.');return;}target=command.issueNumber??choices[0]??target;
+   const choices=[...new Set(links.map(r=>r.issue))];if(command.issueNumber?!choices.includes(command.issueNumber):choices.length!==1){await reply(db,github,env,job,work.installationId,repo,issueNumber,'Specify a linked issue number after the command, for example `/bounty status #12`. No action was taken.');return;}target=command.issueNumber??choices[0]??target;
   }else if(command.issueNumber&&command.issueNumber!==issueNumber)throw new AuthError(409,'Review must target this issue.');
   issueNumber=target;
  }
@@ -90,11 +93,12 @@ export async function handleJob(db:Database,github:GitHub,env:GitHubRuntimeEnv,j
   const bounty=await bountyStatus(db,work.repoId,issueNumber);
   if(bounty) {
    await db.withTransaction(async tx=>{await assertLease(tx,job);if(bounty.currentFundingAttemptId)await enqueue(tx,{kind:'reconcile_funding',payload:{attemptId:bounty.currentFundingAttemptId},dedupeKey:`funding-status:${bounty.currentFundingAttemptId}:${String(Math.floor(Date.now()/(env.RECONCILIATION_INTERVAL_SEC*1000)))}`,maxAttempts:env.RECONCILIATION_MAX_ATTEMPTS});await enqueue(tx,{kind:'sync_bounty',payload:{bountyId:bounty.id},dedupeKey:`status:${bounty.id}:${String(Math.floor(Date.now()/(env.RECONCILIATION_INTERVAL_SEC*1000)))}`,maxAttempts:env.RECONCILIATION_MAX_ATTEMPTS});});
+   if(commentPrNumber)await db.withTransaction(async tx=>{await assertLease(tx,job);const linked=await tx.select({id:submissions.id}).from(submissions).where(and(eq(submissions.bountyId,bounty.id),eq(submissions.prNumber,commentPrNumber)));for(const sub of linked)await enqueue(tx,{kind:'sync_submission',payload:{submissionId:sub.id},dedupeKey:`pr-status:${job.id}:${sub.id}`,maxAttempts:3});});
    const amount=`${String(Math.floor(bounty.amountCents/100))}.${String(bounty.amountCents%100).padStart(2,'0')}`;
-   await reply(db,github,env,job,work.installationId,repo,issueNumber,
+   await reply(db,github,env,job,work.installationId,repo,commentPrNumber??issueNumber,
     `**GitPay status · $${amount} USD · ${bounty.status}**\n\n${awardStatusText(bounty.status,env.PUBLIC_URL)??(bounty.status==='CANCELLED'?(bounty.captureId?'Reviewed refund confirmed. History is retained.':'Draft cancelled. No payment or refund was sent.'):bounty.status==='OPEN'?(bounty.currentFundingAttemptId?'Checkout pending. Review funding status before starting a payment.':'Unfunded draft. No money has been collected. Review funding to start checkout.'):bounty.status==='FUNDED'?(bounty.fundingHold?'Funding confirmed, but disbursement is frozen pending reconciliation.':'Funding confirmed. The first qualifying merged PR wins under the frozen terms; anyone may submit work.'):'Capture pending or unknown. Do not start another payment; draft cancellation is unavailable.')}${await cancellationStatusText(db,bounty.id,env.PUBLIC_URL)}`);
   }
-  else await reply(db,github,env,job,work.installationId,repo,issueNumber,'No bounty exists for this issue. A maintainer can use `/bounty create <USD amount>`.');return;
+  else await reply(db,github,env,job,work.installationId,repo,commentPrNumber??issueNumber,'No bounty exists for this issue. A maintainer can use `/bounty create <USD amount>`.');return;
  }
  if(permission!=='write'&&command.kind!=='link'){await reply(db,github,env,job,work.installationId,repo,issueNumber,'Creating or managing a bounty requires current write, maintain or admin permission. `/bounty status` and `/bounty link <PR number>` are available to participants.');return;}
  if(command.kind==='link') {
@@ -122,6 +126,7 @@ export async function handleJob(db:Database,github:GitHub,env:GitHubRuntimeEnv,j
  }
  if(command.kind==='cancel') {
   const bounty=await bountyStatus(db,work.repoId,issueNumber);
+  if(bounty?.status==='OPEN'&&!bounty.captureRequestKey&&!bounty.captureId&&!bounty.fundedAt){try{await cancelCommentDraft(db,github,job,bounty.id);await reply(db,github,env,job,work.installationId,repo,issueNumber,'Unfunded draft cancelled. History is preserved; no money moved.');}catch(error){if(!(error instanceof AuthError))throw error;await reply(db,github,env,job,work.installationId,repo,issueNumber,error.message);}return;}
   const text=!bounty?'No bounty exists for this issue.':bounty.status==='CANCELLED'?(bounty.captureId?'This bounty has a confirmed refund. History is retained.':'This draft is already cancelled. No payment or refund was sent.'):bounty.status!=='OPEN'||bounty.captureRequestKey||bounty.captureId||bounty.fundedAt?`This bounty cannot be cancelled as an unfunded draft. ${bounty.fundedTerms?.policy.fundedCancellationEnabled?`[Request independent cancellation review](${new URL('/bounties/'+bounty.id+'/cancellation',env.PUBLIC_URL).href}). No refund is authorized by this comment.`:'Funded cancellation is disabled in these terms.'}`:`[Review draft cancellation](${new URL('/bounties/'+bounty.id+'/cancel',env.PUBLIC_URL).href}). Sign in and confirm to cancel this unfunded draft. This comment does not cancel it or move money.`;
   await reply(db,github,env,job,work.installationId,repo,issueNumber,text);return;
  }

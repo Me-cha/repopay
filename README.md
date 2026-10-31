@@ -1,5 +1,7 @@
 # GitPay
 
+**Current local change:** PR-native `/bounty retry` and `/bounty status`, issue-command unfunded cancellation, and verifier v4 contribution evidence are implemented locally. Deployment and live v4 evaluation are pending; new v4 awards cannot inherit v3 acceptance. See [ADR 0019](docs/decisions/0019-review-evidence-and-pr-retry.md).
+
 **October 31 verifier update:** prompt v3 now includes bounded exact-head source/test context. Local verification and the PR #9 live regression review passed. The first v3 evaluation failed 17/18; after correcting incomplete fixtures, the new evaluation passed 18/18 and the user accepted v3 for explicitly scoped sandbox demos. Settlement remains off without an exact approved bounty scope. Existing paid awards and delivery reconciliation remain intact. See [ADR 0016](docs/decisions/0016-source-context-review.md).
 
 **Fund an issue. Merge a qualifying solution. Pay the contributor.**
@@ -44,21 +46,22 @@ These rules prevent the normal recorded cancel-then-merge abuse path. They canno
 
 ## Commands
 
-Currently available: `/bounty create`, `/bounty status`, `/bounty fund`, and `/bounty cancel` for an unfunded draft. Cancellation opens an authenticated preview; the comment itself cannot cancel the draft. Sandbox funding requires merchant, trusted CI and an explicit Copilot model configuration. Funded cancellation remains disabled in the current deployment and all legacy funded terms. Phase 8 adds a locally verified, independently reviewed exception flow for explicitly scoped new version 5 terms; its real 72-hour refund walkthrough is deferred.
+Currently available: `/bounty create`, `/bounty status`, `/bounty fund`, and `/bounty cancel` for an unfunded draft. A write-authorized `/bounty cancel` issue comment cancels only an unfunded draft directly; funded refunds retain their separate safeguards. Sandbox funding requires merchant, trusted CI and an explicit Copilot model configuration. Funded cancellation remains disabled in the current deployment and all legacy funded terms. Phase 8 adds a locally verified, independently reviewed exception flow for explicitly scoped new version 5 terms; its real 72-hour refund walkthrough is deferred.
 
 | Command                   | Purpose                                                                                                         |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `/bounty create <amount>` | Create an unfunded USD bounty draft                                                                             |
 | `/bounty fund`            | Get an authenticated funding link                                                                               |
-| `/bounty status`          | View progress and request reconciliation                                                                        |
+| `/bounty retry [#issue] [<head SHA> <base SHA>]` | Request a fresh review on the PR; current write permission and attempt limits apply |
+| `/bounty status [#issue]`          | View progress and request reconciliation                                                                        |
 | `/bounty approve`         | Preview and confirm payment for a review case                                                                   |
 | `/bounty reject <reason>` | On the linked PR: reject its reviewed revision before merge; preserve its evidence                                              |
-| `/bounty cancel [reason]` | Cancel an unfunded draft, or request a reviewed exception for a funded bounty; funded requests require a reason |
+| `/bounty cancel [reason]` | Cancel an unfunded draft directly on its issue; funded refunds remain separately gated |
 | `/bounty link <pr>`      | Explicitly link a same-repository PR                                                                            |
 | `/bounty contribute [#issue] <head SHA> <base SHA> <reason>` | On the PR: declare your own additional contribution |
 | `/bounty confirm-contributor [#issue] @login <head SHA> <base SHA> <reason>` | On the PR: separately confirm a contributor at that revision |
 
-Review retry is offered through the authenticated **Request a fresh review** link on the PR; `/bounty retry` is not currently a working comment command.
+On the PR, a maintainer can post `/bounty retry [#issue]` (or the full revision-bound command supplied by the bot). Results and acknowledgements appear on the PR. `/bounty status [#issue]` also works there. Existing authenticated retry links remain compatible fallbacks.
 
 Maintainer commands require current repository write/maintain/admin permission; `/bounty status` is available to participants with access. Financial actions require confirmation or the deterministic settlement policy. Labels never fund or refund money.
 

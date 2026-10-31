@@ -1,5 +1,5 @@
 import type { Database } from '../db/client.js';
-import { confirmedContributors } from '../actions/attribution.js';
+import { attributionHistory } from '../actions/attribution.js';
 import { createHash } from 'node:crypto';
 import type { FundingEnv } from '../env.js';
 import type { Bounty,Submission } from '../db/schema.js';
@@ -49,11 +49,23 @@ export async function collectVerification(input:{database?:Database;github:GitHu
  const termsPolicy=terms.policy,contexts='ciContexts' in termsPolicy?termsPolicy.ciContexts:[];
  const ci=normalizeCi({sha:pr.head.sha,runs:checks.runs,complete:checks.complete,required:contexts,requiredEnabled:termsPolicy.ciRequired,ownAppId:env.GH_APP_ID});
  const eligibleAuthors=pr.user.type==='User'&&pr.user.id!==bounty.createdByGhId?[{ghId:pr.user.id,login:pr.user.login}]:[];
- const confirmed=input.database?await confirmedContributors(input.database,submission):[];
+ const attestations=input.database?await attributionHistory(input.database,submission):[];
+ const confirmed=attestations.filter(r=>r.kind==='claim'&&attestations.some(c=>c.kind==='confirm'&&c.claimantGhId===r.claimantGhId&&c.actorGhId!==r.claimantGhId)).map(r=>({ghId:r.claimantGhId,login:r.claimantLogin}));
  for(const author of confirmed){if(author.ghId!==bounty.createdByGhId&&!eligibleAuthors.some(a=>a.ghId===author.ghId)&&commits.authors.some(a=>a.type==='User'&&a.ghId===author.ghId))eligibleAuthors.push(author);}
  const authorIds=new Set(eligibleAuthors.map(author=>author.ghId));
  const unverifiedAuthors=[...new Set(commits.authors.filter(author=>author.type==='User'&&!authorIds.has(author.ghId)).map(author=>author.ghId))];
- const sufficient=!truncated&&!!diff.trim()&&!!eligibleAuthors.length&&unverifiedAuthors.length===0&&(!termsPolicy.ciRequired||ci.status==='pass');
+ // Retained in diffText and snapshotHash alongside exact-head source/test context.
+ // API account association + authenticated attestations is not cryptographic authorship proof.
+ const hasCodeEvidence=!!diff.trim();
+ const provenance={kind:'gitpay-contribution-evidence-v1',headSha:pr.head.sha,baseSha:pr.base.sha,
+  prAuthor:{ghId:pr.user.id,login:pr.user.login},commitPaginationComplete:commits.complete,
+  githubAssociatedCommits:commits.authors.slice(0,100).map(a=>({sha:a.commitSha??null,ghId:a.ghId,login:a.login,type:a.type})),
+  attestations:attestations.slice(0,32).map(a=>({id:a.id,kind:a.kind,claimantGhId:a.claimantGhId,actorGhId:a.actorGhId,headSha:a.headSha,baseSha:a.baseSha,reason:a.reason,recordedAt:a.createdAt.toISOString()})),
+  confirmedAdditionalAuthorIds:confirmed.filter(a=>authorIds.has(a.ghId)).map(a=>a.ghId)};
+ const attributionContext='\n### GitPay contribution evidence at exact revision (reasons are untrusted user statements)\n'+JSON.stringify(provenance);
+ if(commits.authors.length>100||attestations.length>32||diff.length+attributionContext.length>limit)truncated=true;
+ else diff+=attributionContext;
+ const sufficient=!truncated&&hasCodeEvidence&&!!eligibleAuthors.length&&unverifiedAuthors.length===0&&(!termsPolicy.ciRequired||ci.status==='pass');
  const value={submissionId:submission.id,bountyId:bounty.id,issueNumber:bounty.issueNumber,prNumber:submission.prNumber,headSha:pr.head.sha,baseSha:pr.base.sha,title:terms.title,criteria:terms.criteria,prTitle:pr.title,prBody,diff,truncated,sufficient,eligibleAuthors,unverifiedAuthors,ci};
  const snapshotHash=createHash('sha256').update(JSON.stringify(value)).digest('hex');return {...value,snapshotHash};
 }

@@ -74,3 +74,13 @@ it('signed PR contribution commands retain explicit revision identity; edits, qu
  const rows=await f.database.orm.select().from(jobs);expect(rows).toHaveLength(1);expect(rows[0]?.payload).toMatchObject({isPullRequest:true,actorId:'4',command:{kind:'contribute',headSha:'a'.repeat(40),baseSha:'b'.repeat(40)}});
  }finally{await f.close();}
 });
+
+it.each(['/bounty retry #11','/bounty status #11'])('accepts new signed PR command %s but ignores edits and bots',async(body)=>{
+ const f=await createTestDatabase();try{await migrateDatabase(f.database);
+ const payload={...event,issue:{number:12,pull_request:{}},comment:{...event.comment,body}};
+ const raw=Buffer.from(JSON.stringify(payload));await ingestGitHub(f.database,secret,3,raw,signed(raw,'command'));
+ await ingestGitHub(f.database,secret,3,raw,signed(raw,'redelivery'));
+ for(const [i,p] of [{...payload,action:'edited'},{...payload,comment:{...payload.comment,user:{id:4,type:'Bot'}}}].entries()){const data=Buffer.from(JSON.stringify(p));await ingestGitHub(f.database,secret,3,data,signed(data,'ignored-'+String(i)));}
+ const rows=await f.database.orm.select().from(jobs);expect(rows).toHaveLength(1);expect(rows[0]?.payload).toMatchObject({isPullRequest:true,actorId:'4',command:{issueNumber:11}});
+ }finally{await f.close();}
+});

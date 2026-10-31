@@ -38,14 +38,13 @@ it('confirmation and installation reconciliation lock rows in the same order, av
  expect(response.status).toBe(303);expect((await f.database.orm.select().from(bounties))[0]?.status).toBe('CANCELLED');
  }finally{await f.close();}
 });
-it('cancel command produces a preview link without cancelling; cancelled projection explains no refund',async()=>{
+it('cancel command directly cancels an unfunded draft; projection explains no refund',async()=>{
  expect(parseCommand('/bounty cancel')).toEqual({kind:'cancel'});
  const f=await githubFixture();try{
  const create=await f.job(createWork());await handleJob(f.database,f.api,testEnv,create);await finishJob(f.database,create);
  const sync=await claimJob(f.database,'sync',120);if(!sync)throw new Error('missing');await handleJob(f.database,f.api,testEnv,sync);await finishJob(f.database,sync);
  const cancel=await f.job(createWork({commentId:'20',command:{kind:'cancel'}}));await handleJob(f.database,f.api,testEnv,cancel);await finishJob(f.database,cancel);
- const [bounty]=await f.database.orm.select().from(bounties);if(!bounty)throw new Error('missing bounty');expect(bounty.status).toBe('OPEN');expect(f.comments.some(c=>c.body?.includes(`/bounties/${bounty.id}/cancel`))).toBe(true);
- await f.database.orm.update(bounties).set({status:'CANCELLED'});
+ const [bounty]=await f.database.orm.select().from(bounties);if(!bounty)throw new Error('missing bounty');expect(bounty.status).toBe('CANCELLED');expect(f.comments.some(c=>c.body?.includes('Unfunded draft cancelled'))).toBe(true);
  const projection=await f.job({kind:'sync_bounty',bountyId:bounty.id});await handleJob(f.database,f.api,testEnv,projection);
  const body=f.comments.find(c=>c.body?.includes('gitpay:bounty:'))?.body;expect(body).toContain('CANCELLED');expect(body).toContain('No payment or refund');expect(body).not.toContain('Review cancellation');
  }finally{await f.close();}

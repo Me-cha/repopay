@@ -23,3 +23,12 @@ it('contribution commands require explicit complete revisions and a separate nam
  for(const text of [`/bounty contribute ${head.slice(0,7)} ${base} ${reason}`,`/bounty contribute @second ${head} ${base} ${reason}`,`/bounty confirm-contributor ${head} ${base} ${reason}`])expect(parseCommand(text)?.kind).toBe('invalid');
  expect(parseCommand(`> /bounty contribute ${head} ${base} ${reason}`)).toBeNull();
 });
+
+it('parses PR retry and issue-scoped status without accepting partial or malformed revision bindings',()=>{
+ expect(parseCommand('/bounty retry')).toEqual({kind:'retry'});
+ expect(parseCommand('/bounty retry #11')).toEqual({kind:'retry',issueNumber:11});
+ expect(parseCommand(`/bounty retry #11 ${'a'.repeat(40)} ${'b'.repeat(40)}`)).toEqual({kind:'retry',issueNumber:11,headSha:'a'.repeat(40),baseSha:'b'.repeat(40)});
+ expect(parseCommand('/bounty retry #11 bad')).not.toMatchObject({kind:'retry'});
+ expect(parseCommand('/bounty status #11')).toEqual({kind:'status',issueNumber:11});
+ expect(parseCommand('> /bounty retry')).toBeNull();
+});

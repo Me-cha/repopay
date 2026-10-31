@@ -87,3 +87,8 @@ it.each(['AWAITING_CLAIM','PAYING','CANCELLED'])('removes misleading open and pa
  .delete('/repos/owner/repo/issues/4/labels/bounty-paid').reply(200,[]);
  await app.badge('1',repo,4,status);expect(api.isDone()).toBe(true);
 });
+
+it('retains API-validated commit SHAs without commit emails or messages in attribution metadata',async()=>{
+ const app=createGitHub(env);token();nock('https://api.github.com').get('/repos/owner/repo/pulls/12/commits?per_page=100&page=1').reply(200,[{sha:'a'.repeat(40),author:{id:8,login:'contributor',type:'User'},commit:{message:'untrusted content',author:{email:'private@example.test'}}},{sha:'b'.repeat(40),author:null}]);
+ const evidence=await app.pullRequestCommits('1',repo,12);expect(evidence).toEqual({authors:[{ghId:'8',login:'contributor',type:'User',commitSha:'a'.repeat(40)}],complete:true});expect(JSON.stringify(evidence)).not.toContain('private@example.test');expect(JSON.stringify(evidence)).not.toContain('untrusted content');
+});

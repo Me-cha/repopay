@@ -1,5 +1,7 @@
 # GitPay MVP — phase plan
 
+**Latest local work (October 31):** [ADR 0019](../decisions/0019-review-evidence-and-pr-retry.md) adds immutable contribution context, PR-native retry/status and issue-native unfunded cancellation. Current verifier v4 needs new live evaluation and acceptance; historical v3 acceptance does not authorize v4 awards. Deployment/live checks remain pending.
+
 **Status (October 30, 2026):** Phases 0, 1 and 4 have recorded completion evidence. Phase 2 retains a deferred live revocation check; Phase 3 has a real capture with receipt/recovery gates open. Phase 5 Auto v2 passed its 18/18 live evaluation; the October 31 funded competing-PR case passed; same-revision failed-review recovery also passed; remaining Phase 5 gates stay open (ADR 0007). Phase 6 has local policy, award selection, payout reconciliation and delayed claims; automatic selection is enabled only for the existing $50 isolated sandbox demo under ADR 0008, with remaining Phase 5 checks deferred and the first Phase 6 sandbox payout successful and delayed-claim/two-author live acceptance outstanding. See [review findings](../evidence/00-05-review.md) and [Phase 6 evidence](../evidence/06-summary.md).
 
 **Phase 8 local status:** Exceptional cancellation/refund implementation passes 57 files / 303 tests, typecheck, lint and build. Migration 0014 is applied locally; cancellation remains disabled and live acceptance deferred. See [Phase 8 evidence](../evidence/08-summary.md).

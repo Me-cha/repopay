@@ -21,7 +21,7 @@ GitPay/
 ├── docker-compose.yml, render.yaml, drizzle.config.ts
 ├── .github/{pull_request_template.md,workflows/ci.yml}
 ├── docs/{setup.md,operations.md,deployment.md,demo.md,copilot-verifier-research.md}
-├── docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md,0003-nemotron-only-and-preflight-scope.md,0004-funding-recovery.md,0005-copilot-verifier.md,0006-fixed-lightweight-copilot-and-sponsorship.md,0007-copilot-auto-model.md,0008-scoped-phase6-sandbox-acceptance.md,0009-maintainer-review-records.md,0010-cancellation-refund-boundaries.md,0011-scoped-dashboard.md,0012-recovery-checkpoints.md,0013-deployment-and-restore-hold.md,0014-exact-revision-test-context.md,0015-premerge-pr-feedback.md,0016-source-context-review.md,0017-confirmed-contributor-attribution.md,0018-github-contributor-commands.md}
+├── docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md,0003-nemotron-only-and-preflight-scope.md,0004-funding-recovery.md,0005-copilot-verifier.md,0006-fixed-lightweight-copilot-and-sponsorship.md,0007-copilot-auto-model.md,0008-scoped-phase6-sandbox-acceptance.md,0009-maintainer-review-records.md,0010-cancellation-refund-boundaries.md,0011-scoped-dashboard.md,0012-recovery-checkpoints.md,0013-deployment-and-restore-hold.md,0014-exact-revision-test-context.md,0015-premerge-pr-feedback.md,0016-source-context-review.md,0017-confirmed-contributor-attribution.md,0018-github-contributor-commands.md,0019-review-evidence-and-pr-retry.md}
 ├── docs/phases/{README.md,review-todo.md,live-walkthroughs.md,copilot-migration.md,00.md … 12.md}
 ├── docs/evidence/                 # Phase 00–12 summaries, walkthroughs and acceptance records
 ├── packages/server/
@@ -31,7 +31,7 @@ GitPay/
 │   ├── src/db/{client.ts,transaction.ts,schema.ts,migrate.ts,compatibility.ts,migrations/}
 │   ├── src/github/{app.ts,handlers.ts,commands.ts,permissions.ts,comments.ts,oauth.ts,linking.ts,ci.ts,reconciliation.ts}
 │   ├── src/jobs/{queue.ts,runner.ts,kinds.ts,scheduler.ts}
-│   ├── src/actions/{create.ts,status.ts,cancel.ts,guards.ts,tokens.ts,fund.ts,connect.ts,link.ts,approve.ts,reject.ts,attribution.ts}
+│   ├── src/actions/{create.ts,status.ts,cancel.ts,guards.ts,tokens.ts,fund.ts,connect.ts,link.ts,approve.ts,reject.ts,attribution.ts,retry.ts}
 │   ├── src/http/{routes.ts,auth.ts,session.ts,confirm.ts,api.ts,fund.ts,sponsor.ts,connect.ts,retry.ts,review.ts,cancellation.ts,dashboard.ts,sse.ts,attribution.ts}
 │   ├── src/operations/attention.ts # Safe retry classification and preserved failed-job identity
 │   ├── src/read-models/{contracts.ts,bounties.ts,payouts.ts}
@@ -101,10 +101,12 @@ Verifier test context uses installation-authenticated, exact-head Contents reads
 
 PR feedback and pre-merge rejection follow ADR 0015: `actions/approve.ts` retains financial approval and revision-bound decisions; PR comment transport targets rejection explicitly, `http/review.ts` has approval only, migration 0017 preserves nullable pre-merge rejection identity.
 
-Current verifier prompt v3 includes bounded exact-head source and test context (ADR 0016). Historical v2 acceptance alone does not authorize v3 awards; the corrected 18/18 v3 evaluation and explicit user acceptance now permit default-off exact-bounty sandbox scopes (ADR 0008). Existing committed award delivery continues.
+Historical verifier prompt v3 includes bounded exact-head source and test context (ADR 0016). Historical v2 acceptance alone does not authorize v3 awards; the corrected 18/18 v3 evaluation and explicit user acceptance now permit default-off exact-bounty sandbox scopes (ADR 0008). Existing committed award delivery continues.
 
-`actions/attribution.ts` and `http/attribution.ts` own revision-bound contributor declarations and separate maintainer attestations (migration 0018); the verifier and final candidate scan consume the same immutable evidence. See ADR 0017. Live two-author payout remains pending. The first Auto v3 evaluation on October 31 failed 17/18; the corrected-fixture run passed 18/18 and was accepted for scoped sandbox demos. New awards still require explicit exact-bounty scope.
+`actions/attribution.ts` and `http/attribution.ts` own revision-bound contributor declarations and separate maintainer attestations (migration 0018); the verifier and final candidate scan consume the same immutable evidence. See ADR 0017. Live two-author payout remains pending. The first Auto v3 evaluation on October 31 failed 17/18; the corrected-fixture run passed 18/18 and was accepted for scoped sandbox demos. New v4 awards remain blocked pending separate evaluation and acceptance, even with an exact-bounty scope.
 
 October 31 latest: the corrected complete-context Auto v3 evaluation passed 18/18; the user explicitly accepted v3 / SDK 1.0.28 for default-off, exact-bounty sandbox demos (ADR 0008). The prior 17/18 failure remains historical evidence. Hosted two-author workflow acceptance and other unchecked cases remain pending; no settlement environment scope was enabled. See [evaluation evidence](docs/evidence/05-auto-v3-result.md).
 
 PR contribution commands and actionable GitHub projections follow ADR 0018. `actions/attribution.ts` shares browser-session and signed-comment authorization with revision/award fences; `github/commands.ts`, `handlers.ts` and `jobs/runner.ts` route declarations/confirmations. `github/comments.ts` owns issue, submission and winning-PR projections; `sync_submission` is durable projection-only work, independently retryable without model calls. Do not reintroduce browser-only contributor confirmation or merge-first rejection.
+
+ADR 0019: `actions/retry.ts` owns signed PR-comment review requests and durable coalescing; `actions/cancel.ts` also owns signed issue-command unfunded cancellation. `verifier/collect.ts` retains bounded commit/attestation evidence in the immutable diff/context snapshot. Current prompt is v4; evaluated v3 acceptance does not authorize v4 awards. Bot work actions are GitHub-native, with authenticated legacy pages kept only as compatible fallbacks. See `docs/decisions/0019-review-evidence-and-pr-retry.md`.

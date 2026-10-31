@@ -36,7 +36,7 @@ export async function assertInstallation(tx:Transaction,bounty:Bounty) {
  if(!installation||installation.suspendedAt||installation.deletedAt)throw new AuthError(403,'Restore GitHub App access before continuing.');
 }
 export function assertContext(ctx:ActorContext,bounty:Bounty,action:ActionKind) {
- if(ctx.source!=='confirmation'||ctx.authorization.repoId!==bounty.repoId||ctx.authorization.action!==action||ctx.authorization.role!=='maintainer')throw new AuthError(403,'This action is not authorized.');
+ if((ctx.source!=='confirmation'&&!(action==='cancel_draft'&&ctx.source==='github_comment'))||ctx.authorization.repoId!==bounty.repoId||ctx.authorization.action!==action||ctx.authorization.role!=='maintainer')throw new AuthError(403,'This action is not authorized.');
 }
 export function assertCancellable(bounty:Bounty) {
  if(bounty.status!=='OPEN'||bounty.captureRequestKey||bounty.captureId||bounty.fundedAt)throw new AuthError(409,'This bounty cannot be cancelled as an unfunded draft. Funding or cancellation review must be resolved first.');

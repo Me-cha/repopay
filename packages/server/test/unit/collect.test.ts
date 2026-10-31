@@ -98,3 +98,17 @@ it.each(['unavailable','budget','too-many','missing-blob','oversize'])('holds in
  const evidence=await collectVerification({github:f.api,env:f.env,installationId:'1',repo,bounty:f.bounty,submission:linked.submission,terms,expectedHeadSha:'a'.repeat(40)});
  expect(evidence.truncated).toBe(true);expect(evidence.sufficient).toBe(false);expect(read.mock.calls.length).toBeLessThanOrEqual(4);expect(evidence.diff.length).toBeLessThanOrEqual(terms.policy.maxDiffChars);
 });
+
+it('bounds contribution metadata and preserves incomplete evidence instead of silently omitting provenance',async()=>{
+ f=await intentFixture();const linked=await linkPr(f.database,f.bounty,pr());vi.mocked(f.api.pullRequest).mockResolvedValue(pr());
+ vi.mocked(f.api.pullRequestCommits).mockResolvedValue({authors:Array.from({length:101},()=>({ghId:'8',login:'contributor',type:'User',commitSha:'c'.repeat(40)})),complete:true});
+ const repo=await f.api.repository('1','2');const evidence=await collectVerification({github:f.api,env:f.env,installationId:'1',repo,bounty:f.bounty,submission:linked.submission,terms:f.terms,expectedHeadSha:linked.submission.headSha});
+ expect(evidence.truncated).toBe(true);expect(evidence.sufficient).toBe(false);expect(evidence.diff.length).toBeLessThanOrEqual(f.terms.policy.maxDiffChars);
+});
+
+it('contribution metadata alone cannot make an empty PR sufficient',async()=>{
+ f=await intentFixture();const linked=await linkPr(f.database,f.bounty,pr());vi.mocked(f.api.pullRequest).mockResolvedValue(pr());
+ const repo=await f.api.repository('1','2');const terms=structuredClone(f.terms);terms.policy.ciRequired=false;
+ const evidence=await collectVerification({github:f.api,env:f.env,installationId:'1',repo,bounty:f.bounty,submission:linked.submission,terms,expectedHeadSha:linked.submission.headSha});
+ expect(evidence.diff).toContain('gitpay-contribution-evidence-v1');expect(evidence.truncated).toBe(false);expect(evidence.sufficient).toBe(false);
+});

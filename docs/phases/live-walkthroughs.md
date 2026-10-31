@@ -154,4 +154,15 @@ October 31 update: the full Auto v3 evaluation completed and **failed (17/18)**.
 
 - [ ] Deploy and verify ADR 0018 PR declaration/maintainer confirmation on the final PR #12 revision; verify issue/PR bot next-action discovery, stale-command rejection and no automatic model/payment effect.
 
+- [x] Hosted PR-native declaration and action discovery: Mecha-Test-Account's declaration on PR #12 was acknowledged as saved; the canonical bot comment shows pending maintainer confirmation and review/status/sponsor links. See [hosted evidence](../evidence/11-hosted.md). Separate maintainer confirmation and the remaining checks above are still pending.
+
+- [x] Hosted separate maintainer confirmation: deepakA18's PR #12 command was acknowledged as saved for the same head/base; canonical bot projection now shows Mecha-Test-Account as maintainer confirmed. Fresh review and payout acceptance remain pending.
+
+- [x] Hosted fresh review after both confirmations: Check Run 124609710405 completed PARTIAL (90% coverage, 88% confidence), CI pass. The separately approved one-review allowance is consumed. This verifies retry execution, not solution/payout acceptance.
+- [ ] Correct verifier attribution evidence: the latest review's sole unmet requirement is exact-revision contribution/confirmation proof, which the collector validates but the model payload does not describe. Preserve frozen criteria and the historical verdict; verify the correction before requesting another bounded live review.
+
 - [x] Locally implement and verify PR-native contribution commands plus role-specific issue/PR action discovery (ADR 0018). 379 tests, typecheck, lint and build passed; hosted confirmation/acknowledgement acceptance remains separate.
+
+- [x] Locally correct attribution payload and implement PR retry/status plus signed issue-command unfunded cancellation (ADR 0019). Preserve historical review and frozen criteria; no model requests or money effects during implementation.
+- [ ] Deploy ADR 0019, refresh PR #12 with `/bounty status #11`, and verify `/bounty retry #11` acknowledges and publishes on the PR under a separately authorized request allowance. Confirm no work-flow redirect to GitPay.
+- [ ] Evaluate verifier v4, including complete/missing/stale contributor-confirmation evidence, before accepting any new v4 award scope. Historical 18/18 v3 evaluation is not v4 evidence.

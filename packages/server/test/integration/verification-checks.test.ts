@@ -53,6 +53,9 @@ describe('verification job recovery',()=>{
    await service.verifySubmission(linked.submission.id,pr.head.sha);
    await service.verifySubmission(linked.submission.id,pr.head.sha);
    expect(verifier).toHaveBeenCalledTimes(1);
+   const snapshots=await funding.database.orm.select().from(submissionEvidence);expect(snapshots[0]?.diffText).toContain('gitpay-contribution-evidence-v1');
+   expect(vi.mocked(funding.api.updateCheckRun).mock.calls[0]?.[3].summary).toContain('/bounty retry #12');
+   await service.verifySubmission(linked.submission.id,pr.head.sha,true,undefined,'d'.repeat(40));expect(verifier).toHaveBeenCalledTimes(1);
    expect(funding.api.createCheckRun).toHaveBeenCalledTimes(1);
    expect(funding.api.updateCheckRun).toHaveBeenCalledWith('1',await funding.api.repository('1','2'),'900',expect.objectContaining({status:'completed',conclusion:'neutral'}));
    const rows=await funding.database.orm.select().from(verifications);expect(rows).toHaveLength(1);expect(rows[0]?.status).toBe('DONE');expect(rows[0]?.usageMetrics).toMatchObject({totalNanoAiu:500,totalPremiumRequestCost:0.1,inputTokens:10,outputTokens:12});

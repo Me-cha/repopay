@@ -1,4 +1,7 @@
+import { z } from 'zod';
 import { randomUUID } from 'node:crypto';
+import { buildVerifierPrompt } from '../../src/verifier/prompt.js';
+import { retryCommentReview } from '../../src/actions/retry.js';
 import { handleJob } from '../../src/jobs/runner.js';
 import type { Work,LeasedJob } from '../../src/jobs/kinds.js';
 import { jobs } from '../../src/db/schema.js';
@@ -15,7 +18,7 @@ async function setup(){
  const maintainer=await f.auth.requireSession(f.login.cookie);
  f.provider.identity=()=>Promise.resolve({id:'9',login:'second'});
  const u=new URL(await f.auth.beginLogin('/','second-binding')),login=await f.auth.completeLogin('code',required(u.searchParams.get('state')),'second-binding'),contributor=await f.auth.requireSession(login.cookie);
- vi.mocked(f.api.pullRequestCommits).mockResolvedValue({authors:[{ghId:'8',login:'author',type:'User'},{ghId:'9',login:'second',type:'User'}],complete:true});
+ vi.mocked(f.api.pullRequestCommits).mockResolvedValue({authors:[{ghId:'8',login:'author',type:'User',commitSha:'a'.repeat(40)},{ghId:'9',login:'second',type:'User',commitSha:'c'.repeat(40)}],complete:true});
  const input={headSha:sub.headSha,baseSha:sub.baseSha,kind:'claim',claimantGhId:'9',reason:'Implemented the array serialization and regression tests.'};
  const attest=(kind='claim',actor=contributor,overrides={})=>attestContribution(f.database,f.auth,f.api,actor,sub.id,{...input,kind,...overrides});
  return {...f,sub,maintainer,contributor,attest,input};
@@ -32,6 +35,9 @@ it('requires both independent confirmations, concurrent replay is idempotent and
  const sub=required((await f.database.orm.select().from(submissions))[0]);expect(sub.evidenceVersion).toBe(3);
  const evidence=await collectVerification({database:f.database,github:f.api,env:f.env,installationId:'1',repo:await f.api.repository('1','2'),bounty:f.bounty,submission:sub,terms:f.terms,expectedHeadSha:sub.headSha});
  expect(evidence.eligibleAuthors.map(a=>a.ghId)).toEqual(['8','9']);expect(evidence.unverifiedAuthors).toEqual([]);
+ const prompt=buildVerifierPrompt(evidence);expect(prompt).toContain('githubAssociatedCommits');expect(prompt).toContain('c'.repeat(40));expect(prompt).toContain('Implemented the array serialization');
+ const block=z.object({attestations:z.array(z.object({actorGhId:z.string()})),confirmedAdditionalAuthorIds:z.array(z.string())}).parse(JSON.parse(evidence.diff.split('reasons are untrusted user statements)\n')[1]??'{}'));expect(block.attestations).toHaveLength(2);expect(block.confirmedAdditionalAuthorIds).toEqual(['9']);expect(block.attestations.map((a:{actorGhId:string})=>a.actorGhId)).toEqual(['9','4']);
+ const stale=await collectVerification({database:f.database,github:f.api,env:f.env,installationId:'1',repo:await f.api.repository('1','2'),bounty:f.bounty,submission:{...sub,headSha:'d'.repeat(40)},terms:f.terms,expectedHeadSha:sub.headSha});expect(stale.diff).not.toContain('Implemented the array serialization');expect(stale.unverifiedAuthors).toEqual(['9']);
  await expect(f.database.orm.update(contributorAttestations).set({reason:'rewritten history'})).rejects.toThrow();
  }finally{await f.close();}});
 it('rejects forged claims, creator, PR author, permission loss, incomplete commit evidence and stale remote revision',async()=>{const f=await setup();try{
@@ -79,4 +85,29 @@ it('PR attestations reject self-confirmation, removed permissions, wrong scope, 
  const pr=await f.api.pullRequest('1',await f.api.repository('1','2'),501);vi.mocked(f.api.pullRequest).mockResolvedValue({...pr,base:{...pr.base,sha:'d'.repeat(40)}});
  await expect(attestCommentContribution(f.database,f.api,await commentJob(f,'4',true),f.sub.id)).rejects.toThrow(/current open PR/);
  expect(await confirmedContributors(f.database,f.sub)).toEqual([]);
+ }finally{await f.close();}});
+
+it('PR retry queues one bounded job, coalesces concurrent requests and survives acknowledgement replay',async()=>{const f=await setup();try{
+ const command={kind:'retry',headSha:f.sub.headSha,baseSha:f.sub.baseSha};
+ const first=await commentJob(f,'4',false,{command}),second=await commentJob(f,'4',false,{command});
+ await Promise.all([retryCommentReview(f.database,f.api,first,f.sub.id),retryCommentReview(f.database,f.api,second,f.sub.id)]);
+ let reviews=(await f.database.orm.select().from(jobs)).filter(j=>j.kind==='verify_submission');expect(reviews).toHaveLength(1);expect(reviews[0]?.maxAttempts).toBe(1);
+ await f.database.orm.update(jobs).set({status:'done'}).where(eq(jobs.kind,'verify_submission'));
+ await retryCommentReview(f.database,f.api,first,f.sub.id);reviews=(await f.database.orm.select().from(jobs)).filter(j=>j.kind==='verify_submission');expect(reviews).toHaveLength(1);
+ await handleJob(f.database,f.api,f.env,first);expect(f.api.createComment).toHaveBeenCalledWith('1',expect.anything(),f.sub.prNumber,expect.stringContaining('no duplicate'));
+ }finally{await f.close();}});
+it('PR retry fails closed for read-only actors, mismatched scope/revision, expired leases and funding holds',async()=>{const f=await setup();try{
+ const command={kind:'retry',headSha:f.sub.headSha,baseSha:f.sub.baseSha};
+ const make=(overrides={})=>commentJob(f,'4',false,{command,...overrides});
+ vi.mocked(f.api.permission).mockResolvedValue('read');await expect(retryCommentReview(f.database,f.api,await make(),f.sub.id)).rejects.toThrow(/write permission/);vi.mocked(f.api.permission).mockResolvedValue('write');
+ await expect(retryCommentReview(f.database,f.api,await make({repoId:'999'}),f.sub.id)).rejects.toThrow(/scope/);
+ await expect(retryCommentReview(f.database,f.api,await make({command:{...command,baseSha:'d'.repeat(40)}}),f.sub.id)).rejects.toThrow(/revision changed/);
+ const expired=await make();await f.database.orm.update(jobs).set({lockedUntil:new Date(0)}).where(eq(jobs.id,expired.id));await expect(retryCommentReview(f.database,f.api,expired,f.sub.id)).rejects.toThrow(/lease/);
+ await f.database.orm.update(bounties).set({fundingHold:true}).where(eq(bounties.id,f.bounty.id));await expect(retryCommentReview(f.database,f.api,await make(),f.sub.id)).rejects.toThrow(/state changed/);
+ expect((await f.database.orm.select().from(jobs)).filter(j=>j.kind==='verify_submission')).toHaveLength(0);
+ }finally{await f.close();}});
+it('PR status replies on the PR and ambiguous linked bounties cannot trigger reviews',async()=>{const f=await setup();try{
+ await handleJob(f.database,f.api,f.env,await commentJob(f,'9',false,{command:{kind:'status'}}));expect(f.api.createComment).toHaveBeenCalledWith('1',expect.anything(),f.sub.prNumber,expect.stringContaining('GitPay status'));
+ await handleJob(f.database,f.api,f.env,await commentJob(f,'4',false,{command:{kind:'retry',issueNumber:999}}));expect(f.api.createComment).toHaveBeenCalledWith('1',expect.anything(),f.sub.prNumber,expect.stringContaining('linked issue number'));
+ expect((await f.database.orm.select().from(jobs)).filter(j=>j.kind==='verify_submission')).toHaveLength(0);
  }finally{await f.close();}});

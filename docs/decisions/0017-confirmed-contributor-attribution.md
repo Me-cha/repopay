@@ -11,3 +11,5 @@ Writes serialize on the bounty/submission with award selection, invalidate evide
 Migration 0018 introduces append-only contributor attestations. Live two-author allocation and recipient receipts remain required separately.
 
 Interaction update: [ADR 0018](0018-github-contributor-commands.md) supersedes browser-only confirmation as the primary path. Signed PR commands now reuse these same immutable revision-bound guards; the browser path remains a fallback.
+
+Follow-up: [ADR 0019](0019-review-evidence-and-pr-retry.md) replaces the primary browser retry link with a signed PR command and carries current-revision attribution evidence into the verifier snapshot.

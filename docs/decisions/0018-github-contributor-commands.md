@@ -14,3 +14,5 @@ The worker acknowledges on the same PR. A declaration acknowledgement supplies t
 Issue comments expose owner sponsor setup, funding, status and history. A durable `sync_submission` projection publishes review outcome, current revision, contribution commands, retry and owner sponsor links on the PR. Stale evidence is not presented as a current verdict. The issue's NEEDS_REVIEW state links to authenticated financial approval. Award projection announces immutable per-recipient cents and payout connection/progress links on the winning PR, excluding recipient emails and tokens. Other PRs are not announced as winners. The dashboard remains read-only and authenticated pages retain their existing authorization.
 
 No migration, prompt change, payment-policy change, model allowance increase or hosted deployment is implied by this implementation. Existing historical attestations, reviews and awards remain intact.
+
+Follow-up: [ADR 0019](0019-review-evidence-and-pr-retry.md) replaces the primary browser retry link with a signed PR command and carries current-revision attribution evidence into the verifier snapshot.
