@@ -1,3 +1,5 @@
+> Foundation milestone: follow [ADR 0021](decisions/0021-foundation-mvp-scope.md). The local v5 profile permits only an exact approved sandbox bounty scope; `SETTLEMENT_DEMO_SCOPE` remains blank by default. A deployment alone is not authorization to activate payouts or consume new model requests. Confirm current review/evidence and finish the hosted payout receipt check; the broad evaluation/recovery campaign is deferred.
+
 # Hosted sandbox deployment
 
 Phase 11 includes a prepared Render Blueprint and local release safeguards. The user manually deployed https://gitpay.onrender.com/ with Free web service and Free Postgres (1 GB), choosing fresh demo issues rather than importing local financial history. Health, GitHub sign-in/intake, unfunded cancellation and the user-observed dashboard are verified; full hosted acceptance remains pending. See [hosted evidence](evidence/11-hosted.md).

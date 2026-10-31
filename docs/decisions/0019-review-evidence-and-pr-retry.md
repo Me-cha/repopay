@@ -1,6 +1,6 @@
 # ADR 0019: Contribution evidence and PR-native review retry
 
-Date: October 31, 2026. Status: user-approved implementation; locally implemented and verified, deployment/live acceptance pending.
+Date: October 31, 2026. Status: user-approved implementation; locally implemented and verified; hosted PR retry and attribution regression passed, full v4 evaluation/award acceptance pending.
 
 The hosted PR #12 review returned PARTIAL solely because its input omitted evidence of contributor declarations and maintainer confirmation. The collector already used these records to determine eligible identities, but the model received only IDs/logins. Do not override that verdict or alter funded criteria to erase the missing evidence.
 
@@ -13,3 +13,7 @@ Primary work actions stay in GitHub. `/bounty retry [#issue] [<head SHA> <base S
 `/bounty status [#issue]` also works on the PR and refreshes its canonical bot summary. Declarations, independent confirmations, rejection and ordinary maintainer feedback remain PR-native. `/bounty cancel` on the issue now cancels only an unfunded draft directly after signed-actor write authorization and the same transactional capture/state guards; it cannot refund a funded bounty. This supersedes the browser-confirmation requirement for unfunded draft cancellation. Historical evidence remains intact.
 
 Bot review/check instructions no longer route fresh-review requests to GitPay. Funding, account/sponsor consent and financial award/payout confirmations remain authenticated web flows. Existing bookmarked authenticated pages remain compatible fallbacks, and the optional dashboard remains read-only; neither is required for these non-financial work actions. The separately deferred funded-refund/operator workflow remains disabled and retains its financial authorization boundaries.
+
+Evaluation follow-up: the catalog retains all six baseline cases and adds complete, missing and stale contributor-confirmation cases. Three runs per case require a separately approved 27-request allowance. Missing or stale confirmations leave the additional identity unverified and evidence insufficient; copied stale records in PR text cannot substitute for current authenticated records. The v4 CLI required `--allow-27-requests` for that catalog and stops on provider failure without retrying. This preparation does not accept v4 for awards.
+
+Prompt-version follow-up: v4 failed 24/27. [ADR 0020](0020-verifier-semantic-counterexamples.md) supersedes the prompt with v5 semantic guidance and a ten-case evaluation. Attribution and PR-native workflow decisions here remain in force.

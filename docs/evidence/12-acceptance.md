@@ -1,8 +1,8 @@
-# Final MVP acceptance matrix
+# Foundation MVP acceptance and broader evidence matrix
 
 Updated 2026-10-31 · **Acceptance incomplete. Local implementation plus recorded scoped live results; hosted acceptance remains pending.**
 
-This is an evidence index, not a waiver of phase exit criteria. Local tests use real disposable PostgreSQL schemas with mocked GitHub/PayPal/Copilot boundaries. Browser tests use a local synthetic fixture server. Historical real observations remain valid only for the recorded scenario, scope and revision. See [local command results](12-summary.md) and the authoritative [deferred checklist](../phases/live-walkthroughs.md). No new live evaluator, payment, issue or hosted deployment was run for Phase 12.
+The user narrowed current acceptance to the basic sandbox journey under [ADR 0021](../decisions/0021-foundation-mvp-scope.md). The [active foundation checklist](../phases/live-walkthroughs.md#active-foundation-mvp-checklist) controls this milestone; the broader matrix below is retained as deferred evidence/backlog, not a requirement to finish every scenario first. Local tests use real disposable PostgreSQL schemas with mocked GitHub/PayPal/Copilot boundaries. Browser tests use a local synthetic fixture server. Historical real observations remain valid only for the recorded scenario, scope and revision. See [local command results](12-summary.md) and the authoritative [deferred checklist](../phases/live-walkthroughs.md). No new live evaluator, payment, issue or hosted deployment was run for Phase 12.
 
 Tests below are under `packages/server/test/integration/` unless qualified. “Local pass; live pending” is not workflow acceptance.
 
@@ -31,7 +31,7 @@ The [plan review](../phases/review-todo.md) was a planning review, not runtime a
 
 | Review item | Implementation/evidence owner | Open acceptance boundary |
 | --- | --- | --- |
-| R01 canonical workflow contract | Phase index W01–W16; this matrix | Required workflows cannot be waived by a demo success |
+| R01 canonical workflow contract | Phase index W01–W16; this matrix | Broader acceptance deferred by explicit foundation scope decision |
 | R02 durable operations/evidence | Phases 5/8/10; `crash-recovery`, `cancellation-evidence` | Real missed events/access gaps |
 | R03 financial identity/privacy | Phases 3/4/6; `funding-intent`, `connect`, `payout`, `security` | Real return/recovery and role inspection |
 | R04 frozen review/payment policy | Phases 3/5/6; `settlement-profile`, verifier/policy tests | Sponsored live retry, organization support, co-author attribution |

@@ -184,16 +184,16 @@ Live permission/event configuration and the competing-PR/retry walkthrough remai
 
 ### Bounded live Auto evaluation
 
-First connect the personal repository owner's separate sponsor grant at `/bounties/{id}/copilot-sponsor`. A historical probe token in `.env` is not a substitute. Report-only `pnpm eval:verifier` makes no provider calls. With explicit approval to consume up to 18 sponsor requests, use a new output filename:
+First connect the personal repository owner's separate sponsor grant at `/bounties/{id}/copilot-sponsor`. A historical probe token in `.env` is not a substitute. Report-only `pnpm eval:verifier` makes no provider calls. With explicit approval to consume up to 30 sponsor requests, use a new output filename:
 
 ```sh
 mkdir -p .local/evaluations
 pnpm eval:verifier --live --repo-id <stable-repository-id> \
-  --output .local/evaluations/auto-run-001.json --allow-18-requests
+  --output .local/evaluations/auto-run-001.json --allow-30-requests
 pnpm eval:verifier --report .local/evaluations/auto-run-001.json
 ```
 
-Live mode verifies current repository ownership/App access, uses the stored sponsor, and runs three requests per fixture through the application adapter. It creates no payments or GitHub comments/checks. Every completed observation is synced to a private file; an existing output file is refused. A provider failure stops the run without retrying. Partial output is not a pass, and starting a new run needs a new approved budget because failed calls may consume allowance. Auto's concrete serving model, result, elapsed time and usage totals are retained. Report validation also requires current prompt/SDK versions.
+The current v5 suite contains ten cases: six code/adversarial baselines, complete/missing/stale contributor-confirmation evidence, and a real multiline-regex defect. Live mode verifies current repository ownership/App access, uses the stored sponsor, and runs three requests per fixture through the application adapter. It creates no payments or GitHub comments/checks. Every completed observation is synced to a private file; an existing output file is refused. A provider failure stops the run without retrying. Partial output is not a pass, and starting a new run needs a new approved budget because failed calls may consume allowance. Auto's concrete serving model, result, elapsed time and usage totals are retained. Report validation also requires current prompt/SDK versions.
 
 Inspect connection metadata without printing credentials:
 

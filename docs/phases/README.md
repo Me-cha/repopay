@@ -1,6 +1,12 @@
+**Active scope:** the user narrowed the current milestone to the basic sandbox journey, retaining automatic payout after a qualifying merge. Use the [foundation checklist](live-walkthroughs.md#active-foundation-mvp-checklist). Full phase-exit, model-evaluation and advanced live acceptance below remain historical/backlog scope, not current foundation blockers. See [ADR 0021](../decisions/0021-foundation-mvp-scope.md).
+
+**Latest local correction:** verifier v5 adds language/flag checks, explicit line-ending regressions and a genuine multiline-bug case. Ten-case live evaluation (30 requests) remains unrun; settlement stays gated. See [ADR 0020](../decisions/0020-verifier-semantic-counterexamples.md).
+
+**Latest v4 validation:** hosted PR #12 passed the corrected attribution review and PR-native retry. The nine-case evaluation failed (24/27 matched); full v4 acceptance and two-recipient payout remain pending. See [live checklist](live-walkthroughs.md).
+
 # GitPay MVP — phase plan
 
-**Latest local work (October 31):** [ADR 0019](../decisions/0019-review-evidence-and-pr-retry.md) adds immutable contribution context, PR-native retry/status and issue-native unfunded cancellation. Current verifier v4 needs new live evaluation and acceptance; historical v3 acceptance does not authorize v4 awards. Deployment/live checks remain pending.
+**Latest local work (October 31):** [ADR 0019](../decisions/0019-review-evidence-and-pr-retry.md) adds immutable contribution context, PR-native retry/status and issue-native unfunded cancellation. The v4 evaluation failed; the v5 correction above now needs separate live evaluation and acceptance. Historical v3 acceptance does not authorize new prompt versions.
 
 **Status (October 30, 2026):** Phases 0, 1 and 4 have recorded completion evidence. Phase 2 retains a deferred live revocation check; Phase 3 has a real capture with receipt/recovery gates open. Phase 5 Auto v2 passed its 18/18 live evaluation; the October 31 funded competing-PR case passed; same-revision failed-review recovery also passed; remaining Phase 5 gates stay open (ADR 0007). Phase 6 has local policy, award selection, payout reconciliation and delayed claims; automatic selection is enabled only for the existing $50 isolated sandbox demo under ADR 0008, with remaining Phase 5 checks deferred and the first Phase 6 sandbox payout successful and delayed-claim/two-author live acceptance outstanding. See [review findings](../evidence/00-05-review.md) and [Phase 6 evidence](../evidence/06-summary.md).
 

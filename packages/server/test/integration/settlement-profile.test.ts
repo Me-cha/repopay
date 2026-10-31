@@ -1,6 +1,3 @@
-import { vi } from 'vitest';
-// Exercise historical accepted-profile scope guards independently of current v4 acceptance.
-vi.mock('../../src/verifier/prompt.js',()=>({PROMPT_VERSION:'gitpay-verifier-v3'}));
 import { expect,it } from 'vitest';
 import { acceptsDemoProfile } from '../../src/settlement/profile.js';
 import { termsHash,makeTerms } from '../../src/domain/funded-terms.js';

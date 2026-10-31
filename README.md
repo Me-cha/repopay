@@ -1,6 +1,6 @@
 # GitPay
 
-**Current local change:** PR-native `/bounty retry` and `/bounty status`, issue-command unfunded cancellation, and verifier v4 contribution evidence are implemented locally. Deployment and live v4 evaluation are pending; new v4 awards cannot inherit v3 acceptance. See [ADR 0019](docs/decisions/0019-review-evidence-and-pr-retry.md).
+**Current MVP scope:** finish the basic GitHub → sandbox funding → PR review → qualifying merge → automatic payout journey. The broader model-evaluation, organization, refund and recovery walkthroughs are deferred by user direction. The local v5 sandbox profile requires an exact bounty scope and retains all payment guards; hosted merge-to-payout completion remains pending. See the [short foundation checklist](docs/phases/live-walkthroughs.md#active-foundation-mvp-checklist) and [scope decision](docs/decisions/0021-foundation-mvp-scope.md).
 
 **October 31 verifier update:** prompt v3 now includes bounded exact-head source/test context. Local verification and the PR #9 live regression review passed. The first v3 evaluation failed 17/18; after correcting incomplete fixtures, the new evaluation passed 18/18 and the user accepted v3 for explicitly scoped sandbox demos. Settlement remains off without an exact approved bounty scope. Existing paid awards and delivery reconciliation remain intact. See [ADR 0016](docs/decisions/0016-source-context-review.md).
 

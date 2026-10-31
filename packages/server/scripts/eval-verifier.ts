@@ -11,11 +11,12 @@ const verdict=z.enum(['RESOLVES','PARTIAL','DOES_NOT_RESOLVE']);
 const fixture=evaluationFixture;
 const input=z.object({model:z.string().min(1),promptVersion:z.string().min(1),sdkVersion:z.string().min(1),observations:z.array(z.object({caseId:z.string().min(1),attempts:z.array(z.object({validatedResult:verdictSchema.optional(),policyReason:z.string().optional(),model:z.string().trim().min(1).optional(),verdict,payable:z.boolean(),elapsedMs:z.number(),totalNanoAiu:z.number().nullable(),totalPremiumRequestCost:z.number().nullable()}).strict())}).strict())}).strict();
 const fixtures=fixture.array().parse(JSON.parse(await readFile(new URL('../test/fixtures/verifier/cases.json',import.meta.url),'utf8')));
+const requiredCalls=fixtures.length*3;
 const reportArg=process.argv.indexOf('--report');
 if(process.argv.includes('--live')){
  const argument=(name:string)=>{const index=process.argv.indexOf(name);return index>=0?process.argv[index+1]:undefined;};
  const repoId=argument('--repo-id'),output=argument('--output');
- if(!repoId||!/^\d+$/.test(repoId)||!output||!process.argv.includes('--allow-18-requests'))throw new Error('Live evaluation requires --repo-id, --output and --allow-18-requests after sponsor approval.');
+ if(!repoId||!/^\d+$/.test(repoId)||!output||!process.argv.includes(`--allow-${String(requiredCalls)}-requests`))throw new Error(`Live evaluation requires --repo-id, --output and --allow-${String(requiredCalls)}-requests after sponsor approval.`);
  const {parseFundingEnv,parseCopilotEnv}=await import('../src/env.js');
  const {createDatabase}=await import('../src/db/client.js');
  const {createAuth}=await import('../src/github/oauth.js');
@@ -39,8 +40,8 @@ if(process.argv.includes('--live')){
    count=observations.reduce((sum,row)=>sum+row.attempts.length,0);
    const content=JSON.stringify({model:'auto',promptVersion:PROMPT_VERSION,sdkVersion:COPILOT_SDK_VERSION,observations},null,2)+'\n';
    await file.truncate(0);await file.write(content,0,'utf8');await file.sync();
-   process.stdout.write(`Evaluation progress: ${String(count)}/18\n`);
-  },async evidence=>{const scoped=await scopedEnv();started++;return verify(evidence,scoped);});
+   process.stdout.write(`Evaluation progress: ${String(count)}/${String(requiredCalls)}\n`);
+  },async evidence=>{if(started>=requiredCalls)throw new Error('Approved request cap reached');const scoped=await scopedEnv();started++;return verify(evidence,scoped);});
   process.stdout.write(JSON.stringify(report,null,2)+'\n');if(!report.passed)process.exitCode=1;
  }catch{
   process.stderr.write(`Live evaluation stopped after ${String(started)} started requests (${String(count)} completed). Partial observations retained; no automatic retry. Check sponsor access/provider availability.\n`);process.exitCode=1;

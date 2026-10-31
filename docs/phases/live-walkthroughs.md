@@ -1,4 +1,21 @@
-# Final live walkthrough checklist
+# Foundation MVP checklist and deferred walkthroughs
+
+## Active foundation MVP checklist
+
+User scope decision: validate the basics now; defer the broader matrix below. Automatic payout after a qualifying merge remains required. See [ADR 0021](../decisions/0021-foundation-mvp-scope.md). Unchecked historical scenarios below are backlog, not additional foundation release gates. Financial/identity safeguards remain mandatory.
+
+- [x] Create a bounty and receive bot status/labels: hosted issue #10, then funded issue #11.
+- [x] Sign in and connect the owner Copilot Auto sponsor: hosted evidence recorded.
+- [x] Fund an issue through PayPal sandbox and show FUNDED: issue #11 / hosted bounty 2 (application confirmation recorded).
+- [x] Link a PR, publish Copilot feedback and request a review on the PR: #12 RESOLVES, PR-native retry acknowledged.
+- [x] Maintainer feedback/rejection before merge: live PR #9 rejection retained; no merge needed to reject.
+- [x] Connect a recipient and deliver a sandbox award: historical $50 and $1 receipt-confirmed flows; reuse this evidence.
+- [x] Basic funding/connection/dashboard browser journeys: six local Chromium cases passed on October 31; providers mocked.
+- [ ] Deploy the foundation-scoped release and finish the current hosted qualifying-merge → automatic payout → recipient receipt/status flow. PR #12 remains open; local readiness is not hosted payout acceptance.
+
+Do not run another full model-evaluation campaign for this foundation milestone. No further inference allowance is implied. Two-author edge cases, organizations, funded refunds, exhaustive recovery/restore and recording remain deferred; existing committed funds/claims must still be preserved.
+
+
 
 
 October 31 latest: delayed-claim award 2 resumed after Mecha-Test-Account connected. Bounty 3 is PAID; one $1 payout batch/item is recorded with provider SUCCESS. Recipient receipt was confirmed by the user; delayed-claim walkthrough passed. All 14 approved model requests are used.
@@ -159,10 +176,19 @@ October 31 update: the full Auto v3 evaluation completed and **failed (17/18)**.
 - [x] Hosted separate maintainer confirmation: deepakA18's PR #12 command was acknowledged as saved for the same head/base; canonical bot projection now shows Mecha-Test-Account as maintainer confirmed. Fresh review and payout acceptance remain pending.
 
 - [x] Hosted fresh review after both confirmations: Check Run 124609710405 completed PARTIAL (90% coverage, 88% confidence), CI pass. The separately approved one-review allowance is consumed. This verifies retry execution, not solution/payout acceptance.
-- [ ] Correct verifier attribution evidence: the latest review's sole unmet requirement is exact-revision contribution/confirmation proof, which the collector validates but the model payload does not describe. Preserve frozen criteria and the historical verdict; verify the correction before requesting another bounded live review.
+- [x] Correct verifier attribution evidence while preserving frozen criteria and historical verdict: v4 Check Run 124615632605 recognizes exact-revision contribution/confirmation proof and returns RESOLVES (100% coverage, 98% confidence), CI pass. The separately approved one-request allowance is consumed; full v4 evaluation and award acceptance remain separate.
 
 - [x] Locally implement and verify PR-native contribution commands plus role-specific issue/PR action discovery (ADR 0018). 379 tests, typecheck, lint and build passed; hosted confirmation/acknowledgement acceptance remains separate.
 
 - [x] Locally correct attribution payload and implement PR retry/status plus signed issue-command unfunded cancellation (ADR 0019). Preserve historical review and frozen criteria; no model requests or money effects during implementation.
-- [ ] Deploy ADR 0019, refresh PR #12 with `/bounty status #11`, and verify `/bounty retry #11` acknowledges and publishes on the PR under a separately authorized request allowance. Confirm no work-flow redirect to GitPay.
+- [x] Deploy ADR 0019 and verify PR-native status/retry on PR #12: command 6547201886 received queued acknowledgement 6547203768; Check Run 124615632605 and canonical comment 6546843904 publish RESOLVES. No GitPay page was needed to request or read this review. PR remains open/unmerged. See [hosted evidence](../evidence/11-hosted.md).
+- [x] Hosted ADR 0019 status and instruction refresh: PR #12 comment 6547174879 received bot reply 6547176797 (USD 1.00 FUNDED); canonical comment 6546843904 now supplies revision-bound `/bounty retry #11` and PR-native status instructions. Both confirmations remain recorded, head/base unchanged, PR open/unmerged. This verifies deployed behavior; live retry execution and v4 model acceptance remain pending.
 - [ ] Evaluate verifier v4, including complete/missing/stale contributor-confirmation evidence, before accepting any new v4 award scope. Historical 18/18 v3 evaluation is not v4 evidence.
+
+- [x] Prepare the nine-case v4 evaluation (27 requests): six baseline cases and complete/missing/stale contributor evidence. No live calls made during preparation.
+
+- [x] Run the separately approved 27-request v4 evaluation and preserve the failed result: 24/27 matched; all three false PARTIAL results cite incorrect JavaScript regex semantics. Missing/stale confirmations and adversarial cases passed. [Evidence](../evidence/05-auto-v4-result.md). Allowance exhausted.
+- [ ] Resolve the v4 semantic false-negative failure and obtain separately authorized passing evaluation before any v4 award acceptance; do not repeat requests or enable settlement based on the partial pass.
+
+- [x] Prepare v5 correction for false semantic defect claims: language/flag-aware review guidance, explicit line-ending regression evidence, and a real multiline-bug negative case; preserve failed v4 results and fixtures. Local verification is separate from live effectiveness.
+- [ ] Run a separately approved v5 evaluation (ten cases × three runs = 30 requests), inspect all results, and obtain scoped acceptance before v5 awards. No new allowance is implied.

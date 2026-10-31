@@ -12,8 +12,8 @@ import { candidateFingerprint,type CandidateScan } from './candidates.js';
 
 export interface SettlementDependencies {
  scan:(bountyId:string)=>Promise<CandidateScan>;
- // Trusted server policy only. Default closed until live evaluation acceptance
- // is established for the funded profile; never accept this from an HTTP body.
+ // Trusted server policy only. Default closed without an accepted exact sandbox
+ // scope (ADR 0021); never accept this from an HTTP body.
  profileAccepted?:(bounty:Bounty)=>Promise<boolean>;
  acceptedServingModels?:readonly string[];
 }
@@ -37,7 +37,7 @@ export function createSettlement(db:Database,deps:SettlementDependencies) {
    if(existing){const winner=merged[0];if(winner&&winner.id!==existing.submissionId&&((winner.mergedAt?.getTime()??Infinity)<existing.mergedAt.getTime()||((winner.mergedAt?.getTime()??Infinity)===existing.mergedAt.getTime()&&BigInt(winner.prId)<BigInt(rows.find(r=>r.id===existing.submissionId)?.prId??winner.prId))))await hold('Earlier merged candidate discovered after award; independent investigation required');return {kind:'awarded' as const,award:existing};}
    if(!['FUNDED','NEEDS_REVIEW'].includes(bounty.status)||!bounty.captureId||!bounty.fundedAt)return hold('Confirmed captured funding required');
    const terms=bounty.fundedTerms;if(!terms||!isSponsoredTerms(terms))return hold('Unsupported funded verifier profile');
-   if(!accepted||bounty.version!==before.version)return hold('Live verifier profile acceptance required before automatic award');
+   if(!accepted||bounty.version!==before.version)return hold('Accepted sandbox profile and exact bounty scope required before automatic award');
    const [sponsor]=await tx.select().from(copilotSponsors).where(eq(copilotSponsors.repoId,bounty.repoId)).for('share');
    if(!sponsor||sponsor.revokedAt||sponsor.sponsorGhId!==terms.sponsor.id||sponsor.installationId!==bounty.installationId||sponsor.modelId!==terms.policy.model||sponsor.accessExpiresAt<=new Date())return hold('Current repository sponsor required before automatic award');
    const candidate=merged[0];if(!candidate)return {kind:'waiting' as const};

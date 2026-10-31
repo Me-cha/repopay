@@ -1,3 +1,5 @@
+> Current foundation milestone: [ADR 0021](docs/decisions/0021-foundation-mvp-scope.md) narrows acceptance to basic sandbox flows and retains automatic qualifying-merge payouts. Full phase/evaluation and advanced live scenarios below remain the longer-term plan; they are not all blockers for this milestone. No financial or identity guard is waived.
+
 # GitPay: Implementation Plan (v4, Codex-first)
 
 > "Fund an issue. Merge a qualifying solution. Pay the contributor."
@@ -883,6 +885,8 @@ Cancellation analysis may summarize original requirements, all submission snapsh
 | diff                                                           | `pulls.listFiles` paginated `patch`                                                                   | `MAX_DIFF_CHARS`; skip lockfiles, `dist/`, `*.min.*`, binaries, generated; truncate largest files first; set `input_truncated`     |
 | CI                                                             | `checks.listForRef(head_sha)` excluding our check + combined status                                   | `pass` only when the funded policy is satisfied and at least one genuine external check succeeds; neutral/skipped-only is not pass |
 | eligible authors                                               | PR author plus exact-revision contributor and separate maintainer attestations for API commit authors; trailers alone are ineligible | exclude bots and the bounty creator; a trailer alone cannot add a payable recipient                                                |
+
+Verifier semantic refinement: [ADR 0020](docs/decisions/0020-verifier-semantic-counterexamples.md) requires language/flag-aware counterexamples and consistent regression evidence. Prompt v5 remains unaccepted; runtime never executes contributor code.
 
 Evidence rules (implemented in 03/05, consumed in 06/07):
 

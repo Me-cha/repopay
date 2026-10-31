@@ -8,16 +8,16 @@ import { PROMPT_VERSION } from './prompt.js';
 import { COPILOT_SDK_VERSION } from '../models/copilot.js';
 import { summarizeEvaluation,type EvaluationObservation } from './evaluation.js';
 
-export const evaluationFixture=z.object({id:z.string().min(1),title:z.string(),body:z.string(),criteria:z.string(),diff:z.string(),sufficient:z.boolean(),expected:z.enum(['RESOLVES','PARTIAL','DOES_NOT_RESOLVE'])}).strict();
+export const evaluationFixture=z.object({id:z.string().min(1),title:z.string(),body:z.string(),criteria:z.string(),diff:z.string(),sufficient:z.boolean(),truncated:z.boolean().optional(),eligibleAuthors:z.array(z.object({ghId:z.string(),login:z.string()}).strict()).optional(),unverifiedAuthors:z.array(z.string()).optional(),expected:z.enum(['RESOLVES','PARTIAL','DOES_NOT_RESOLVE'])}).strict();
 export type EvaluationFixture=z.infer<typeof evaluationFixture>;
 export function fixtureInput(fixture:EvaluationFixture):VerifyInput {
  const sha='a'.repeat(40);
- return {submissionId:'1',bountyId:'1',issueNumber:1,prNumber:2,headSha:sha,baseSha:'b'.repeat(40),title:fixture.title,criteria:fixture.criteria,prTitle:fixture.title,prBody:fixture.body,diff:fixture.diff,truncated:!fixture.sufficient,sufficient:fixture.sufficient,eligibleAuthors:[{ghId:'8',login:'fixture-author'}],unverifiedAuthors:[],ci:{status:'pass',testedSha:sha,complete:true,required:[{name:'test',appId:'1',status:'pass'}],externalSuccessCount:1,reason:'Synthetic evaluation CI'},snapshotHash:createHash('sha256').update(JSON.stringify(fixture)).digest('hex')};
+ return {submissionId:'1',bountyId:'1',issueNumber:1,prNumber:2,headSha:sha,baseSha:'b'.repeat(40),title:fixture.title,criteria:fixture.criteria,prTitle:fixture.title,prBody:fixture.body,diff:fixture.diff,truncated:fixture.truncated??!fixture.sufficient,sufficient:fixture.sufficient,eligibleAuthors:fixture.eligibleAuthors??[{ghId:'8',login:'fixture-author'}],unverifiedAuthors:fixture.unverifiedAuthors??[],ci:{status:'pass',testedSha:sha,complete:true,required:[{name:'test',appId:'1',status:'pass'}],externalSuccessCount:1,reason:'Synthetic evaluation CI'},snapshotHash:createHash('sha256').update(JSON.stringify(fixture)).digest('hex')};
 }
 // This function has no GitHub publishing or payment dependencies. Tests inject a
 // verifier; the live command uses the exact application adapter and sponsor grant.
 export async function evaluateFixtures(fixtures:EvaluationFixture[],env:CopilotEnv,checkpoint:(observations:EvaluationObservation[])=>Promise<void>,verifyFn:typeof verify=verify) {
- if(fixtures.length!==6||new Set(fixtures.map(f=>f.id)).size!==6)throw new Error('Evaluation requires six distinct fixtures');
+ if(![6,9,10].includes(fixtures.length)||new Set(fixtures.map(f=>f.id)).size!==fixtures.length)throw new Error('Evaluation requires six, nine or ten distinct fixtures');
  const observations:EvaluationObservation[]=[];
  for(const fixture of fixtures){
   const observation:EvaluationObservation={caseId:fixture.id,attempts:[]};observations.push(observation);
