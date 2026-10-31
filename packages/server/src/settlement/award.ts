@@ -9,7 +9,7 @@ import type { Allocation } from '../policy/allocate.js';
 export async function orderedCandidates(tx:Transaction,rows:Submission[],scan:CandidateScan) {
  if(!rows.length)return [];
  const rejected=await tx.select().from(reviewDecisions).where(and(eq(reviewDecisions.kind,'reject'),eq(reviewDecisions.bountyId,rows[0]?.bountyId??'0')));
- return rows.filter(r=>r.status==='MERGED'&&r.mergedAt&&!rejected.some(d=>d.submissionId===r.id&&d.headSha===r.headSha&&d.baseSha===r.baseSha&&d.mergeSha===r.mergeSha&&d.snapshotHash===scan.evidence.get(r.id)?.snapshotHash)).sort((a,b)=>(a.mergedAt?.getTime()??0)-(b.mergedAt?.getTime()??0)||(BigInt(a.prId)<BigInt(b.prId)?-1:1));
+ return rows.filter(r=>r.status==='MERGED'&&r.mergedAt&&!rejected.some(d=>d.submissionId===r.id&&d.headSha===r.headSha&&d.baseSha===r.baseSha&&(d.mergeSha===null||d.mergeSha===r.mergeSha)&&d.snapshotHash===scan.evidence.get(r.id)?.snapshotHash)).sort((a,b)=>(a.mergedAt?.getTime()??0)-(b.mergedAt?.getTime()??0)||(BigInt(a.prId)<BigInt(b.prId)?-1:1));
 }
 // Both automatic and manual awards use this final guard under the bounty lock.
 export async function commitAward(tx:Transaction,bounty:Bounty,scan:CandidateScan,candidate:Submission,evidenceId:string,verificationId:string,allocation:Allocation) {

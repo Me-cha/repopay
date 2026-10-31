@@ -85,12 +85,13 @@ export async function handleJob(db:Database,github:GitHub,env:GitHubRuntimeEnv,j
   await reply(db,github,env,job,work.installationId,repo,issueNumber,`Linked PR #${String(command.prNumber)} as a submission. This does not reserve the bounty; anyone may submit a solution.`);return;
  }
  if(command.kind==='reject') {
+  if(!commentPrNumber){await reply(db,github,env,job,work.installationId,repo,issueNumber,'Reject on the specific PR using `/bounty reject <reason>`. No merge is required. No decision was made.');return;}
   const bounty=await bountyStatus(db,work.repoId,issueNumber);if(!bounty||!phase6)throw new AuthError(409,'Review service unavailable.');
   // A completed decision survives projection failure; retries must not reject the next candidate.
   const marker=`review-command:${job.id}`;
   const prior=await db.orm.select({id:bountyActivity.id}).from(bountyActivity).where(and(eq(bountyActivity.bountyId,bounty.id),eq(bountyActivity.action,marker)));
   if(!prior.length)await phase6.rejectComment(work.actorId,bounty.id,command.reason,job,commentPrNumber);
-  await reply(db,github,env,job,work.installationId,repo,issueNumber,'Submission rejected for award consideration. Evidence and cancellation claims remain preserved; no refund was authorized.');return;
+  await reply(db,github,env,job,work.installationId,repo,commentPrNumber,'Submission rejected for award consideration. Evidence and cancellation claims remain preserved; no refund was authorized.');return;
  }
  if(command.kind==='approve') {
   const bounty=await bountyStatus(db,work.repoId,issueNumber);

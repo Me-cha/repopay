@@ -65,3 +65,5 @@ Run `pnpm db:check` after migrations. Runtime health requires the exact migratio
 ## Final handoff tooling
 
 Run `pnpm demo:seed` for a provider-free preview. Execution creates ordinary issues only, requires exact repository confirmation, and is a separate live action; see [demo instructions](docs/demo.md). Seeder unit tests use a fake CLI; no real issue creation is part of CI. The [Postman guide](postman/README.md) documents the disabled synthetic ping. No new application environment variables are required. Keep final workflow acceptance in [the matrix](docs/evidence/12-acceptance.md), not inferred from test counts.
+
+PR feedback is handled on GitHub before merge; financial approval remains separate. Run migrations (including 0017 for pre-merge rejection) with `pnpm db:migrate` when updating an existing local database. For partial demo submissions, use `Refs #N` and explicit bounty linking to avoid accidental issue closure.

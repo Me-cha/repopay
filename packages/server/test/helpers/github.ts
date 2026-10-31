@@ -18,6 +18,7 @@ export function fakeGitHub() {
   pullRequestPage:vi.fn(()=>Promise.resolve({pulls:[],hasMore:false})),
   pullRequests:vi.fn(()=>Promise.resolve({pulls:[],complete:true})),
   pullRequest:vi.fn<GitHub['pullRequest']>((_inst,_repo,number)=>Promise.resolve({id:'501',number,state:'open',draft:false,title:'Fix parser',body:'Fixes #12',merged_at:null,closed_at:null,user:{id:'8',login:'contributor',type:'User'},head:{sha:'a'.repeat(40)},base:{sha:'b'.repeat(40),repo:{id:'2'}}})),
+  fileAtRevision:vi.fn<GitHub['fileAtRevision']>(()=>Promise.reject(new Error('File context not configured'))),
   pullRequestFiles:vi.fn<GitHub['pullRequestFiles']>(()=>Promise.resolve({files:[],complete:true})),pullRequestCommits:vi.fn<GitHub['pullRequestCommits']>(()=>Promise.resolve({authors:[],complete:true})),checkRuns:vi.fn<GitHub['checkRuns']>(()=>Promise.resolve({runs:[],complete:true})),
   createCheckRun:vi.fn<GitHub['createCheckRun']>(()=>Promise.resolve('900')),updateCheckRun:vi.fn<GitHub['updateCheckRun']>(async()=>{}),
   comments:vi.fn<GitHub['comments']>(()=>Promise.resolve(comments)),

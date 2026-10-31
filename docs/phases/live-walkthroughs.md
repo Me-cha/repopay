@@ -1,19 +1,25 @@
 # Final live walkthrough checklist
 
-Updated October 30, 2026.
+
+October 31 latest: delayed-claim award 2 resumed after Mecha-Test-Account connected. Bounty 3 is PAID; one $1 payout batch/item is recorded with provider SUCCESS. Recipient receipt was confirmed by the user; delayed-claim walkthrough passed. All 14 approved model requests are used.
+
+Updated October 31, 2026.
 
 ## Execution decision
 
-The user directed finishing local implementation and verification first, then running the remaining live walkthroughs together after all phases are implemented. The proposed Phase 7 $1 sandbox setup is deferred; do not create it or initiate additional live model/payment exercises now. Existing committed payment reconciliation remains intact.
+The user directed finishing local implementation and verification first, then running the remaining live walkthroughs together after all phases are implemented. The user subsequently authorized the bounded Phase 5/6 validation session on issue #4 / bounty 3. The user extended its allowance to 14 total requests (14 used), with a scoped PR #6 revision-attempt exception from 3 to 5. The Phase 7 $1 sandbox setup was subsequently authorized and funded. The user now requests all remaining work except the real 72-hour refund walkthrough; bounded model allowances and deployment resource approval still apply. Existing committed payment reconciliation remains intact.
 
 This is a scheduling deferral, not a waiver or a passing result. Keep each phase's local verification separate from its live acceptance. Add newly discovered cases here as later phases are implemented. Numbered phase files remain authoritative for the full acceptance requirements, including unresolved local checks. Do not reinterpret every unchecked item as live-only.
+
+October 31: the resumed competing-PR case passed on issue #4 / bounty 3: $1 capture COMPLETED, PR #5 RESOLVES, PR #6 PARTIAL, both linked/open, no award. Used 2 of 6 approved Auto requests. See [observed evidence](../evidence/05-demo-walkthrough.md#funded-competing-pr-acceptance--pass-october-31). Other deferred scenarios are not activated by this result.
 
 ## Phase 5 — PR review
 
 Already evidenced: Auto v2 evaluation 18/18, real exact-revision Check Runs, new-code review, owner authorization revocation/session invalidation, blocked review while revoked, and successful review on a new revision after reconnection. See [Phase 5 evidence](../evidence/05-summary.md).
 
-- [ ] Two distinct eligible contributors submit competing PRs on one funded issue; both are linked and reviewed. **Blocked:** a second eligible contributor account is unavailable; the creator cannot earn their bounty.
-- [ ] A failed review recovers through the authenticated retry flow on the **same revision**, with preserved failure history. Prepare sufficient bounded request allowance before starting; do not reset counters or history.
+- [x] Two distinct eligible contributors submit competing PRs on one funded issue; both are linked and reviewed. October 31: Me-cha PR #5 and Mecha-Test-Account PR #6 on funded bounty 3; RESOLVES/PARTIAL published at exact heads, both OPEN, zero awards. Creator excluded.
+- [x] A failed review recovers through the authenticated retry flow on the **same revision**, with preserved failure history. October 31: PR #5 verification 14 ERROR / VERIFIER_UNAVAILABLE → verification 15 DONE / RESOLVES at unchanged head after sponsor reconnect. Prior success/failure retained, no limit override; cumulative usage 3 of 6 approved model requests.
+- [x] Regression: unchanged required tests omitted from the PR patch are included as bounded exact-revision context; local negative tests and live verification 29 passed. Historical PARTIAL reviews retained.
 - [ ] Live sponsor expiry/refresh and remaining App-access-loss/recovery cases. Real owner revocation has already passed and need not be repeated unnecessarily.
 - [ ] Audit the remaining [Phase 5](05.md) acceptance items against their exact tests/evidence, including CI updates without a push and duplicate events. Retain local gaps as implementation work.
 - [ ] Organization sponsorship remains explicitly blocked pending an eligible organization and an implemented/verified flow; scheduling it later does not supply either prerequisite.
@@ -22,20 +28,38 @@ Already evidenced: Auto v2 evaluation 18/18, real exact-revision Check Runs, new
 
 Already evidenced: merged PR #3 → one $50 award → one sandbox batch/item → PayPal SUCCESS → GitPay PAID → user-confirmed recipient receipt. Do not repeat or alter that completed payment. See [Phase 6 evidence](../evidence/06-summary.md).
 
-- [ ] Delayed claim: a qualifying merged solution earns an award while its recipient has no saved connection; verify AWAITING_CLAIM, connect, and observe resumption of the same award through receipt with one payout. Feasible with reversed roles on a separate bounty: Me-cha creates it, deepakA18 contributes and connects only after award.
-- [ ] Two-author allocation: verify exact cents and both recipient outcomes, including waiting for missing connections. **Blockers:** third account needed to leave two eligible authors after creator exclusion, plus verified revision-bound co-contributor attribution. Current automatic evidence accepts only the PR author; prepared-award mocked payout tests do not prove live attribution.
+- [x] Delayed claim: complete the following steps for issue #4 / bounty 3 and PR #6. Preparation does not establish an award or payout.
+  - [x] Capture the separate $1 sandbox funding; bounty 3 is FUNDED.
+  - [x] Verify eligible contributor Mecha-Test-Account has no saved payout connection.
+  - [x] Verify corrected tests and passing exact-head CI; resolve merge conflict.
+  - [x] Fix omitted unchanged-test context and obtain live RESOLVES on the current revision. Verification 29 / Check Run 124524057517; [evidence](../evidence/05-demo-walkthrough.md#exact-revision-context-fixed-live-review-pass-october-31).
+  - [x] Prepare the exact bounty-3 settlement scope without activating it.
+  - [x] Obtain additional bounded review allowance and the required one-off revision-attempt exception before post-merge review. User approved 2 additional requests (14 total, 12 used) and PR #6 only: revision-attempt limit 3 → 5 in the one-off invocation; normal configured limits remain unchanged.
+  - [x] Activate the reviewed isolated scope, merge the qualifying PR and verify one committed award in AWAITING_CLAIM with no payout sent. October 31: scope applied only in the settlement invocation, award 2 for 100 cents, verification 31; zero payout batches, recipient unconnected. Normal environment unchanged.
+  - [x] Connect the recipient and verify the same award resumes with one payout intent. Mecha-Test-Account connection version 1; original award 2, batch 2, item 2, 100 cents.
+  - [x] Confirm recorded provider SUCCESS and GitPay PAID; batch `XCKBDAE9R9JQJ`, item `GVHRMZVAW47BA`, same award 2, one batch/item.
+  - [x] Confirm recipient sees the incoming $1 in their sandbox Personal-account Activity. User confirmed receipt October 31.
+- [ ] Two-author allocation: verify exact cents and both recipient outcomes, including waiting for missing connections. **Blocker:** verified revision-bound co-contributor attribution is still needed. Mecha-Test-Account now supplies a third account, but account availability alone does not implement attribution. Current automatic evidence accepts only the PR author; prepared-award mocked payout tests do not prove live attribution.
 - [ ] Reconcile broader [Phase 6](06.md) merge/squash/rebase, replay and provider-recovery expectations with recorded coverage; distinguish simulated faults from real provider observations.
 
 ## Phase 7 — maintainer decisions
 
+- [x] Live-check corrected pre-merge rejection (ADR 0015). PR #9 remains OPEN/unmerged; decision 2 has null merge SHA, history retained, bounty 4 FUNDED, zero awards. App PR-write permission approved; acknowledgement recovered with original job marker: [bot reply](https://github.com/deepakA18/gitpay-demo-http/pull/9#issuecomment-6543538264).
+
+
+October 31: user authorized one new $1 sandbox bounty, two contributor PRs and up to 6 Auto requests (all 6 used after PR #9 revision/metadata reviews). Issue #7 created with explicit nullish-value criteria; PR #8 merged and reached NEEDS_REVIEW; historical rejection and corrected pre-merge rejection passed; later approval remains pending.
+
 Local verification: 47 files / 273 tests, typecheck, lint and build passed; migration 0013 applied. See [Phase 7 evidence](../evidence/07-summary.md).
 
 - [ ] Separate sandbox bounty with a partial merged solution reaches NEEDS_REVIEW; inspect revision, CI, full amount and recipients, supply a reason, confirm and verify one award/payment.
-- [ ] Reject a separate candidate; verify immutable attribution/reason, preserved evidence and next merged candidate considered in stable order.
+- [x] Reject the first partial candidate through the authenticated browser; verify attributed reason and preserved evidence. October 31: decision 1 rejects submission 4 / PR #8, actor deepakA18, verification 34 retained; bounty 4 returns to FUNDED, zero awards.
+- [ ] Verify the next merged candidate is considered in stable order after that rejection. PR #9 remains unmerged while the user-requested pre-merge workflow correction is verified.
 - [ ] Show stale confirmation rejection after evidence changes, loss of permission, and a duplicate action without a second award.
 - [ ] Exercise issue/PR command routing and ambiguous PR links with explicit issue numbers in the browser/GitHub flow.
 
 ## Phase 8 — exceptional cancellation and refunds
+
+**Current user direction:** defer the real 72-hour refund walkthrough. Other independently executable work remains authorized; do not mark the deferred refund path passed.
 
 Local verification: 57 files / 303 tests, typecheck, lint and build passed; migration 0014 applied. No cancellation requests or refund intents exist in the demo database. See [Phase 8 evidence](../evidence/08-summary.md).
 
@@ -87,10 +111,21 @@ Before the final session, consolidate accounts, eligible roles, sandbox balances
 
 ## Final-session order
 
-1. Resolve identities first: second eligible contributor, an independent cancellation operator, and supported revision-bound co-author attribution. Organization sponsorship remains separately blocked. More time alone does not solve these implementation/account gaps.
+1. Eligible contributor accounts are available. Resolve an independent cancellation operator when refund testing resumes, and implement/verify revision-bound co-author attribution. Organization sponsorship remains separately blocked. More time alone does not solve these implementation/account gaps.
 2. Review the [acceptance matrix](../evidence/12-acceptance.md), agree fresh issue IDs, exact sandbox amounts, scopes, hosting costs and bounded model allowance. Preserve the completed $50 award. Reconcile Phase 2 collaborator revocation and Phase 3 abandoned checkout/restart/receipt cases.
 3. When explicitly authorized, configure and validate held hosting before activation. Complete the hosted preflight/restore checklist. The [demo seeder](../demo.md) prepares ordinary issues only; its real execution/rerun and Postman GUI import remain manual checks.
-4. Begin the genuine cancellation case early: new v5 funding, independent reviewer and confirmed public notice. Wait the full real 72 hours; run the other approved scenarios during this period. Never shorten funded terms or modify timestamps to finish a recording.
+4. Deferred by current user direction: begin the genuine cancellation case only when resumed: new v5 funding, independent reviewer and confirmed public notice. Wait the full real 72 hours; run the other approved scenarios during this period. Never shorten funded terms or modify timestamps to finish a recording.
 5. Complete competing PR/retry/CI, delayed claim, supported split and manual review/rejection scenarios; inspect recipient receipts and immutable identities. Demonstrate valid-work cancellation protection and actual-role dashboard access.
 6. Finish genuine refund and provider recovery/hosted restore evidence. Record safe issue/PR/award/provider identifiers and observed outcomes in the matrix; retain pending results as pending.
 7. Record the <=3-minute outline and separate genuine-refund evidence. Review privacy and claims; verify official event rules before any submission; request final user acceptance. This checklist does not itself authorize live operations or publication.
+
+October 31 source-context correction: ADR 0016 / prompt v3 is locally verified; read-only PR #9 evidence contains scalar source and tests. A subsequently authorized seventh request produced RESOLVES on the same PR #9 revision. Phase 7 allowance is exhausted (7/7); full v3 evaluation and profile acceptance remain pending. Historical v2 acceptance does not authorize v3 awards.
+
+- [x] Correct false-PARTIAL source-context regression and verify same-revision live result: PR #9 verification 38 RESOLVES / CI pass with prompt v3, Check Run 124546610761. Phase 7 allowance now 7/7 used. Full v3 evaluation/profile acceptance remains pending; PR unmerged, no award.
+
+October 31 update: the full Auto v3 evaluation completed and **failed (17/18)**. Current v3 awards remain disabled by evaluated-profile binding. See [evaluation result](../evidence/05-auto-v3-result.md). Two-party revision-bound attribution is implemented locally; its two-recipient live payout is still pending. The real 72-hour refund test remains deferred.
+
+- [x] Implement authenticated additional-contributor declaration plus separate maintainer confirmation, head/base binding, stale-proof evidence integration and award fencing (ADR 0017).
+- [x] Run the approved 18-request v3 evaluation and preserve the failed 17/18 result.
+- [ ] Diagnose v3 false PARTIAL and obtain a passing evaluation before accepting its settlement profile.
+- [ ] Perform the new two-confirmation flow with real accounts and verify two-recipient payout receipts.

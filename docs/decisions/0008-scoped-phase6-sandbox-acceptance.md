@@ -17,3 +17,7 @@ The existing capture, complete candidate scan, eligible-author checks, stable me
 The $50 demo may proceed through merge, award and sandbox payout. Additional live funding/recipient scenarios still require concrete setup; unavailable delayed-claim or two-author walkthroughs cannot be reported as completed. Phase 6 completion remains tied to its recorded definition of done.
 
 See [Phase 6 evidence](../evidence/06-summary.md) and [Phase 5 evidence](../evidence/05-summary.md).
+
+## October 31 — isolated delayed-claim extension
+
+The user authorized the separate $1 delayed-claim walkthrough on issue #4 / bounty 3, then merged PR #6. Its scope is bountyId 3, repoId 1435468752, amountCents 100, termsHash `f75eeea40846abb95c0e4090ab1d09844a86b1172cefb6b4c46296c8447eb104`. Scope was supplied only to the normal settlement invocation; the persistent environment was not broadened. Two separately approved extra Auto requests used a process-local PR #6 revision-attempt limit of five; normal limits and historical attempts remain intact. Award 2 reached AWAITING_CLAIM with no recipient connection or payout batch. This is limited demo acceptance of the existing profile with ADR 0014 test context, not full phase/semantic reevaluation acceptance. Remaining connection/resumption/receipt evidence is required.

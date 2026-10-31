@@ -53,9 +53,36 @@ it('comment rejection is revision-targeted and a repeated leased job cannot reje
   await f.database.withTransaction(tx=>enqueue(tx,{kind:'run_command',payload:{installationId:'1',repoId:'2',issueNumber:12,commentId:'100',actorId:'4',command:{kind:'reject',reason:'Missing behavior'}},dedupeKey:'review-test',maxAttempts:3}));
   const lease=required(await claimJob(f.database,'review-test',60));
   const service=createReviewService(f.database,f.env,{scan:f.scan,authorize:(s,b)=>authorizeAction(f.auth,f.api,s,b,'review'),profileAccepted:()=>Promise.resolve(true),authorizeComment:()=>Promise.resolve({actorGhId:githubId('4'),source:'github_comment',authorization:{repoId:githubId('2'),action:'review',role:'maintainer',checkedAt:new Date()}})});
-  await expect(service.rejectComment('4',f.bounty.id,'wrong PR',lease,21)).rejects.toThrow();
+  await expect(service.rejectComment('4',f.bounty.id,'wrong PR',lease,99)).rejects.toThrow();
   await service.rejectComment('4',f.bounty.id,'Missing behavior',lease,20);
   await service.rejectComment('4',f.bounty.id,'Missing behavior',lease,20);
   expect(await f.database.orm.select().from(reviewDecisions)).toHaveLength(1);
+ }finally{await f.close();}
+});
+
+it('PR comment rejects an unmerged reviewed revision without awarding or discarding evidence',async()=>{
+ const f=await setup();try{
+  await f.database.orm.update(bounties).set({status:'FUNDED'}).where(eq(bounties.id,f.bounty.id));
+  await f.database.orm.update(submissions).set({status:'OPEN',mergedAt:null,mergeSha:null}).where(eq(submissions.id,f.sub.id));
+  const {enqueue,claimJob}=await import('../../src/jobs/queue.js');const {githubId}=await import('../../src/domain/types.js');
+  await f.database.withTransaction(tx=>enqueue(tx,{kind:'run_command',payload:{installationId:'1',repoId:'2',issueNumber:20,commentId:'101',actorId:'4',command:{kind:'reject',reason:'Missing behavior'}},dedupeKey:'premerge-reject',maxAttempts:3}));
+  const lease=required(await claimJob(f.database,'premerge',60));let permitted=true;
+  const service=createReviewService(f.database,f.env,{scan:f.scan,authorize:(s,b)=>authorizeAction(f.auth,f.api,s,b,'review'),profileAccepted:()=>Promise.resolve(true),authorizeComment:()=>{if(!permitted)return Promise.reject(new Error('Permission lost'));return Promise.resolve({actorGhId:githubId('4'),source:'github_comment',authorization:{repoId:githubId('2'),action:'review',role:'maintainer',checkedAt:new Date()}});}});
+  permitted=false;await expect(service.rejectComment('4',f.bounty.id,'Missing behavior',lease,20)).rejects.toThrow();permitted=true;
+  await f.database.orm.update(submissions).set({evidenceVersion:2}).where(eq(submissions.id,f.sub.id));await expect(service.rejectComment('4',f.bounty.id,'Stale',lease,20)).rejects.toThrow();
+  await f.database.orm.update(submissions).set({evidenceVersion:1}).where(eq(submissions.id,f.sub.id));
+  await service.rejectComment('4',f.bounty.id,'Missing behavior',lease,20);await service.rejectComment('4',f.bounty.id,'Missing behavior',lease,20);
+  const decisions=await f.database.orm.select().from(reviewDecisions);expect(decisions).toHaveLength(1);expect(decisions[0]).toMatchObject({kind:'reject',mergeSha:null,submissionId:f.sub.id});
+  expect(await f.database.orm.select().from(verifications)).toHaveLength(1);expect(await f.database.orm.select().from(awards)).toHaveLength(0);
+  expect((await f.database.orm.select().from(bounties))[0]?.status).toBe('FUNDED');
+  await expect(service.issueApproveToken(f.session,f.bounty.id,'pay anyway','8')).rejects.toThrow();
+  await f.database.orm.update(submissions).set({status:'MERGED',mergedAt:new Date(),mergeSha:'c'.repeat(40)}).where(eq(submissions.id,f.sub.id));
+  expect((await f.service.settleBounty(f.bounty.id))?.kind).toBe('waiting');
+  expect(await f.database.orm.select().from(awards)).toHaveLength(0);
+ }finally{await f.close();}
+});
+it('old financial rejection POST is retired and cannot mutate',async()=>{
+ const f=await setup();try{
+ const post=await f.request('/bounties/'+f.bounty.id+'/review/reject',form('obsolete',{submissionId:f.sub.id,reason:'reject'}));expect(post.status).toBe(410);expect(await f.database.orm.select().from(reviewDecisions)).toHaveLength(0);
  }finally{await f.close();}
 });

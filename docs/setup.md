@@ -264,3 +264,17 @@ The deploy-compatibility test rehearses PostgreSQL 16 dump/restore only in a gen
 `pnpm demo:seed` previews two preparation issues without credentials or writes. Explicit issue creation is restricted to the isolated detached demo repository and requires the confirmation flags in [the demo guide](demo.md). It creates fresh ordinary issues, never a payment. No new environment variables are needed; GitHub CLI authentication is separate from the application and runtime sponsor.
 
 Import the [Postman collection](../postman/gitpay.postman_collection.json) for read-only local inspection. Its optional signed ping is inert, loopback-only and disabled by default; follow [the collection guide](../postman/README.md). Do not export a populated environment or cookies. Remaining live exercises stay deferred in the [final checklist](phases/live-walkthroughs.md).
+
+## Exact-revision test context
+
+The GitHub App needs **Contents: read-only** for bounded changed-test context. Existing demo access was verified October 31; no permission update was required. If installing a new App or upgrading permissions, approve the installation update after configuring it. Missing Contents access produces incomplete evidence, not a replacement token fallback. No additional environment variable, migration or increased model allowance is required for file reads. Limits and behavior: [ADR 0014](decisions/0014-exact-revision-test-context.md).
+
+After pulling the pre-merge rejection update, run `pnpm db:migrate` before restarting the server/worker. Migration 0017 retains all existing review records and permits unmerged rejection records. No new environment variables or provider permissions are required.
+
+PR-local feedback requires the demo installation to permit comment publication on pull requests. For the pre-merge rejection workflow set **Pull requests: Read and write**, retain Issues write/Checks write, and approve the installation permission update. The October 31 live installation with Pull requests read could read comments but received 403 when publishing the rejection acknowledgement. Permission changes must be approved on the installation, not only saved in App settings.
+
+Prompt v3/source-context update needs no new environment variable or migration. Existing Contents read access is reused. New awards remain gated until v3 is explicitly accepted; do not change the evaluated profile constant merely to continue a demo. Model retries need an unexhausted approved allowance.
+
+### Additional contributors
+
+Apply migration 0018 with `pnpm db:migrate`. Before merging a multi-author PR, each additional API-identified commit author opens `/submissions/<submission-id>/contributors`, signs in and records their contribution. A different repository maintainer signs in at the same page and confirms it with a reason. Any head/base change requires both confirmations again. Request a fresh review after confirmation within the approved sponsor allowance; confirmation alone does not invoke Copilot or authorize payment. Existing awards cannot be changed.

@@ -21,7 +21,7 @@ GitPay/
 ├── docker-compose.yml, render.yaml, drizzle.config.ts
 ├── .github/{pull_request_template.md,workflows/ci.yml}
 ├── docs/{setup.md,operations.md,deployment.md,demo.md,copilot-verifier-research.md}
-├── docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md,0003-nemotron-only-and-preflight-scope.md,0004-funding-recovery.md,0005-copilot-verifier.md,0006-fixed-lightweight-copilot-and-sponsorship.md,0007-copilot-auto-model.md,0008-scoped-phase6-sandbox-acceptance.md,0009-maintainer-review-records.md,0010-cancellation-refund-boundaries.md,0011-scoped-dashboard.md,0012-recovery-checkpoints.md,0013-deployment-and-restore-hold.md}
+├── docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md,0003-nemotron-only-and-preflight-scope.md,0004-funding-recovery.md,0005-copilot-verifier.md,0006-fixed-lightweight-copilot-and-sponsorship.md,0007-copilot-auto-model.md,0008-scoped-phase6-sandbox-acceptance.md,0009-maintainer-review-records.md,0010-cancellation-refund-boundaries.md,0011-scoped-dashboard.md,0012-recovery-checkpoints.md,0013-deployment-and-restore-hold.md,0014-exact-revision-test-context.md,0015-premerge-pr-feedback.md,0016-source-context-review.md,0017-confirmed-contributor-attribution.md}
 ├── docs/phases/{README.md,review-todo.md,live-walkthroughs.md,copilot-migration.md,00.md … 12.md}
 ├── docs/evidence/                 # Phase 00–12 summaries, walkthroughs and acceptance records
 ├── packages/server/
@@ -31,8 +31,8 @@ GitPay/
 │   ├── src/db/{client.ts,transaction.ts,schema.ts,migrate.ts,compatibility.ts,migrations/}
 │   ├── src/github/{app.ts,handlers.ts,commands.ts,permissions.ts,comments.ts,oauth.ts,linking.ts,ci.ts,reconciliation.ts}
 │   ├── src/jobs/{queue.ts,runner.ts,kinds.ts,scheduler.ts}
-│   ├── src/actions/{create.ts,status.ts,cancel.ts,guards.ts,tokens.ts,fund.ts,connect.ts,link.ts,approve.ts,reject.ts}
-│   ├── src/http/{routes.ts,auth.ts,session.ts,confirm.ts,api.ts,fund.ts,sponsor.ts,connect.ts,retry.ts,review.ts,cancellation.ts,dashboard.ts,sse.ts}
+│   ├── src/actions/{create.ts,status.ts,cancel.ts,guards.ts,tokens.ts,fund.ts,connect.ts,link.ts,approve.ts,reject.ts,attribution.ts}
+│   ├── src/http/{routes.ts,auth.ts,session.ts,confirm.ts,api.ts,fund.ts,sponsor.ts,connect.ts,retry.ts,review.ts,cancellation.ts,dashboard.ts,sse.ts,attribution.ts}
 │   ├── src/operations/attention.ts # Safe retry classification and preserved failed-job identity
 │   ├── src/read-models/{contracts.ts,bounties.ts,payouts.ts}
 │   ├── src/util/crypto.ts
@@ -96,3 +96,11 @@ Mark a phase complete only when its definition of done is evidenced. Update task
 Per the user's October 30 direction, finish local implementation/verification first and defer remaining live walkthroughs to the end. Keep `docs/phases/live-walkthroughs.md` current from Phase 5 onward. Do not start the proposed Phase 7 $1 demo or further live model/payment exercises until that validation session is authorized. Preserve committed award reconciliation and distinguish local completion from live acceptance.
 
 Phase 12 handoff: `scripts/demo-seed.ts` owns explicit, exact-repository ordinary issue preparation; dry run is the default and it never uses application credentials or creates payments. `docs/demo.md` owns the recording outline; `docs/evidence/12-acceptance.md` maps final workflow evidence. Live exercises and publishing remain separate from local implementation.
+
+Verifier test context uses installation-authenticated, exact-head Contents reads with blob-hash verification; `github/app.ts` owns bounded file decoding and `verifier/collect.ts` owns selection, shared evidence limits and revision fencing. See [ADR 0014](docs/decisions/0014-exact-revision-test-context.md). No ambient credentials or worker-side test execution.
+
+PR feedback and pre-merge rejection follow ADR 0015: `actions/approve.ts` retains financial approval and revision-bound decisions; PR comment transport targets rejection explicitly, `http/review.ts` has approval only, migration 0017 preserves nullable pre-merge rejection identity.
+
+Current verifier prompt v3 includes bounded exact-head source and test context (ADR 0016). Historical v2 acceptance does not authorize v3 awards; settlement remains closed for new awards pending explicit v3 acceptance. Existing committed award delivery continues.
+
+`actions/attribution.ts` and `http/attribution.ts` own revision-bound contributor declarations and separate maintainer attestations (migration 0018); the verifier and final candidate scan consume the same immutable evidence. See ADR 0017. Live two-author payout remains pending. Auto v3 evaluation on October 31 failed 17/18; current v3 awards remain gated.

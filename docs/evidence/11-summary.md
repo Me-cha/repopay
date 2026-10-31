@@ -38,3 +38,11 @@ No new database migration was needed. The current local database passed the comp
 ## Deferred evidence
 
 Paid account/plan approval, actual hosted URL/IDs, hosted Copilot runtime, read-only provider preflight, role workflows, delayed claim, independent refund after real notice, restarts/access loss and hosted restore/PITR remain on [the final live checklist](../phases/live-walkthroughs.md). Local results cannot satisfy those gates. Exact migration history is a release compatibility check, not full schema-drift detection or automatic provider recovery. Hold must be set on every restored service before connecting it; standalone human provider probes remain outside that guard.
+
+## October 31 quote preparation
+
+User authorized preparing a Render quote, not provisioning. Signed into the existing workspace and observed no services. The public GitPay repository preview stayed on Loading; the database creation page rendered blank after navigation/reload. No resource was created, credential uploaded or price accepted. Account-specific quote and deployment remain pending; user asked to verify whether the database form loads in their browser.
+
+Prepared resource specification remains Singapore: one `1c-2g` web service, one `1c-2g` worker, one `0.5c-1g` PostgreSQL 16 database with 5 GB disk. An actual account quote (including workspace fees, storage, tax and usage) is required before provisioning; no guessed price is recorded as approval-ready.
+
+User correction: Render setup works in their browser; they are creating resources manually and selected Free Postgres with 1 GB storage. Creation/readiness has not yet been verified. The paid 5 GB database in `render.yaml` is a different configuration and must not be applied to this selection without approval. The free database has a 30-day lifetime per https://render.com/docs/free; hosted backup/restore acceptance remains pending.

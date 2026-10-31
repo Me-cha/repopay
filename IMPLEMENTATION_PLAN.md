@@ -248,7 +248,7 @@ Unauthorized or invalid-state commands get a short reply explaining why and what
 ### 4.3 Labels
 
 - `bounty:$<amount>` with `/^bounty:\$(\d{1,6})(?:\.(\d{2}))?$/i` → create OPEN draft if no active bounty exists for the issue. If one exists, reply with its amount and state; never change it.
-- App-managed badge labels are best-effort projections written by `sync_bounty`. `bounty-open` means open for submissions and remains on OPEN, CAPTURING, FUNDED and NEEDS_REVIEW bounties; it is removed after an award or cancellation. It does not assert funding. The bot comment supplies authoritative funding/delivery status. Separate `bounty-funded` and `bounty-paid` badges remain planned.
+- App-managed badge labels are best-effort projections written by `sync_bounty`. `bounty-open` means open for submissions and remains on OPEN, CAPTURING, FUNDED and NEEDS_REVIEW bounties; it is removed after an award or cancellation. It does not assert funding. The bot comment supplies authoritative funding/delivery status. `bounty-paid` is projected only for PAID and removed for all other states, including returned payouts. Separate `bounty-funded` remains planned.
 - Any unlabel/rename/delete: no financial effect. Optional reply hint: "Labels don't affect funds. Use `/bounty cancel`."
 
 ### 4.4 Confirm pages (`/a/:token`)
@@ -882,7 +882,7 @@ Cancellation analysis may summarize original requirements, all submission snapsh
 | PR title, body                                                 | Pulls API                                                                                             | 8k chars                                                                                                                           |
 | diff                                                           | `pulls.listFiles` paginated `patch`                                                                   | `MAX_DIFF_CHARS`; skip lockfiles, `dist/`, `*.min.*`, binaries, generated; truncate largest files first; set `input_truncated`     |
 | CI                                                             | `checks.listForRef(head_sha)` excluding our check + combined status                                   | `pass` only when the funded policy is satisfied and at least one genuine external check succeeds; neutral/skipped-only is not pass |
-| eligible authors                                               | PR author plus GitHub API commit authors with stable IDs; co-author trailers are untrusted hints only | exclude bots and the bounty creator; a trailer alone cannot add a payable recipient                                                |
+| eligible authors                                               | PR author plus exact-revision contributor and separate maintainer attestations for API commit authors; trailers alone are ineligible | exclude bots and the bounty creator; a trailer alone cannot add a payable recipient                                                |
 
 Evidence rules (implemented in 03/05, consumed in 06/07):
 
@@ -1180,3 +1180,15 @@ Recovery ownership refinement: [ADR 0012](docs/decisions/0012-recovery-checkpoin
 Deployment ownership refinement: [ADR 0013](docs/decisions/0013-deployment-and-restore-hold.md) adds `db/compatibility.ts`, `scripts/check-migrations.ts`, the held Render Blueprint and `docs/deployment.md`. Phase progress and hosted evidence remain in their own files.
 
 Final handoff ownership: `docs/demo.md` describes the sandbox recording; `docs/evidence/12-acceptance.md` traces workflow acceptance. `scripts/demo-seed.ts` defaults to a dry run and requires exact isolated repository confirmation to create ordinary unfunded preparation issues; it has no financial or merge authority. `postman/gitpay.postman_collection.json` contains scoped reads and a guarded loopback synthetic ping. These tools do not replace live acceptance.
+
+Verifier context refinement: [ADR 0014](docs/decisions/0014-exact-revision-test-context.md) adds exact-head, blob-verified full content for up to four changed test files (16 KiB each), labelled as context and sharing the frozen diff limit. Missing/oversize context remains insufficient; snapshots retain original patches and historical verdicts.
+
+### PR feedback refinement (October 31)
+
+[ADR 0015](docs/decisions/0015-premerge-pr-feedback.md) supersedes merge-first submission rejection and browser financial-page rejection. Rejection may target a current reviewed unmerged PR through its GitHub comment command; financial approval and award selection remain merge-gated. Prior records remain preserved.
+
+### Source-context refinement (October 31)
+
+[ADR 0016](docs/decisions/0016-source-context-review.md) extends exact-head context to changed source files and versions the context-aware prompt as v3. Historical v2 quality acceptance is not transferred to v3; existing settlement gating remains closed for new v3 awards pending explicit acceptance.
+
+Revision-bound attribution is implemented in `actions/attribution.ts` and `http/attribution.ts`, backed by migration 0018. Head/base changes require fresh declarations and separate maintainer confirmations before merge; existing awards are immutable. See [ADR 0017](docs/decisions/0017-confirmed-contributor-attribution.md).

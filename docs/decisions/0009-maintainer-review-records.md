@@ -13,3 +13,5 @@ Approval is a two-step authenticated flow: choose the validated suggested split 
 `/bounty approve` posts a review link; `/bounty reject <reason>` executes an attributed non-payment rejection after current permission checks. On PRs linked to multiple bounties, the issue number is mandatory. Rejection jobs persist an atomic receipt to prevent a replay from rejecting a later candidate. A browser rejection is also available. Review history is available in the authorized bounty API.
 
 Runtime manual approval remains restricted to the existing explicit settlement scope. No new sandbox payout, funding scenario, global acceptance or production activation is implied by implementation. See [Phase 7](../phases/07.md).
+
+October 31 workflow correction: [ADR 0015](0015-premerge-pr-feedback.md) supersedes the merge-first rejection/browser rejection steps. Maintainers give feedback and record rejection on the PR before merge; financial approval stays separate and merge-gated. Historical live rejection remains recorded, but pre-merge live acceptance is still pending.

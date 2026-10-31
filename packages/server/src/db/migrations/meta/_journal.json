@@ -120,6 +120,20 @@
       "when": 1793390000000,
       "tag": "0016_reconciliation",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793449000000,
+      "tag": "0017_premerge_rejection",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793450000000,
+      "tag": "0018_contributor_attestations",
+      "breakpoints": true
     }
   ]
 }

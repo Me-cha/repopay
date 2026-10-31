@@ -19,7 +19,7 @@ import type { LeasedJob } from '../jobs/kinds.js';
 
 function md(value:string):string{return value.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('`','\\`').replaceAll('[','\\[').replaceAll(']','\\]');}
 function checkSummary(input:{advisory:string;ci:string;reasoning?:string;unmet?:string[];retryUrl:string}) {
- return `**${input.advisory}**\n\nCI for this exact revision: **${md(input.ci)}**. This check is advisory; it does not select an award or authorize payment.\n\n${input.reasoning?md(input.reasoning):'No verifier verdict is available.'}${input.unmet?.length?`\n\nUnmet requirements:\n${input.unmet.map(value=>`- ${md(value)}`).join('\n')}`:''}\n\n[View bounty and request a fresh review](${input.retryUrl})`;
+ return `**${input.advisory}**\n\nCI for this exact revision: **${md(input.ci)}**. This check is advisory; it does not select an award or authorize payment. Contributors should address unmet requirements before merge. Maintainers can comment, request changes or close the PR on GitHub regardless of this assessment.\n\n${input.reasoning?md(input.reasoning):'No verifier verdict is available.'}${input.unmet?.length?`\n\nUnmet requirements:\n${input.unmet.map(value=>`- ${md(value)}`).join('\n')}`:''}\n\n[View bounty and request a fresh review](${input.retryUrl}) · [Confirm additional contributors before merge](${input.retryUrl.replace(/\/retry$/,'/contributors')})`;
 }
 // Name why evidence is insufficient instead of a generic "ambiguous" message.
 function insufficientReasons(evidence:VerifyInput,prAuthorGhId:string,creatorGhId:string,ciRequired:boolean):string[] {
@@ -112,7 +112,7 @@ export function createPhase5(db:Database,github:GitHub,env:FundingEnv,auth:AuthS
    const {installation,repo}=await currentAccess(github,bounty.installationId,bounty.repoId);
    const terms=bounty.fundedTerms;if(!terms||!isSponsoredTerms(terms))throw new Error('Funded verifier profile is unsupported; maintainer review is required');
    let evidence:VerifyInput;
-   try{evidence=await collectVerification({github,env,installationId:installation.id,repo,bounty,submission:sub,terms,expectedHeadSha});}
+   try{evidence=await collectVerification({database:db,github,env,installationId:installation.id,repo,bounty,submission:sub,terms,expectedHeadSha});}
    catch(error){if(error instanceof StaleEvidenceError)return;throw error;}
    const evidenceRow=await saveEvidence(evidence,sub.evidenceVersion,lease);
    const [previous]=await db.orm.select().from(verifications).where(and(eq(verifications.submissionId,sub.id),eq(verifications.headSha,evidence.headSha),eq(verifications.evidenceId,evidenceRow.id))).orderBy(desc(verifications.attempt)).limit(1);

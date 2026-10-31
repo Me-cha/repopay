@@ -1,6 +1,7 @@
 import { readFile,open } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { z } from 'zod';
+import { verdictSchema } from '../src/verifier/schema.js';
 import { summarizeEvaluation } from '../src/verifier/evaluation.js';
 import { PROMPT_VERSION } from '../src/verifier/prompt.js';
 import { COPILOT_SDK_VERSION } from '../src/models/copilot.js';
@@ -8,7 +9,7 @@ import { evaluationFixture,evaluateFixtures } from '../src/verifier/evaluate.js'
 
 const verdict=z.enum(['RESOLVES','PARTIAL','DOES_NOT_RESOLVE']);
 const fixture=evaluationFixture;
-const input=z.object({model:z.string().min(1),promptVersion:z.string().min(1),sdkVersion:z.string().min(1),observations:z.array(z.object({caseId:z.string().min(1),attempts:z.array(z.object({model:z.string().trim().min(1).optional(),verdict,payable:z.boolean(),elapsedMs:z.number(),totalNanoAiu:z.number().nullable(),totalPremiumRequestCost:z.number().nullable()}).strict())}).strict())}).strict();
+const input=z.object({model:z.string().min(1),promptVersion:z.string().min(1),sdkVersion:z.string().min(1),observations:z.array(z.object({caseId:z.string().min(1),attempts:z.array(z.object({validatedResult:verdictSchema.optional(),policyReason:z.string().optional(),model:z.string().trim().min(1).optional(),verdict,payable:z.boolean(),elapsedMs:z.number(),totalNanoAiu:z.number().nullable(),totalPremiumRequestCost:z.number().nullable()}).strict())}).strict())}).strict();
 const fixtures=fixture.array().parse(JSON.parse(await readFile(new URL('../test/fixtures/verifier/cases.json',import.meta.url),'utf8')));
 const reportArg=process.argv.indexOf('--report');
 if(process.argv.includes('--live')){

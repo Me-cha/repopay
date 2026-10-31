@@ -1,5 +1,5 @@
 import type { IssueTerms } from '../domain/funded-terms.js';
-import { sign } from 'node:crypto';
+import { createHash, sign } from 'node:crypto';
 import { z } from 'zod';
 import { requestJson } from '../preflight/http.js';
 import type { GitHubRuntimeEnv } from '../env.js';
@@ -10,7 +10,7 @@ const repoSchema=z.object({id:apiId,full_name:z.string().regex(/^[\w.-]+\/[\w.-]
 const issueSchema=z.object({number:z.number().int().positive(),pull_request:z.unknown().optional()});
 const commentSchema=z.object({id:apiId,body:z.string().nullable(),user:z.object({id:apiId,type:z.string()}),performed_via_github_app:z.object({id:apiId}).nullable().optional()});
 const pullRequestSchema=z.object({id:apiId,number:z.number().int().positive(),state:z.enum(['open','closed']),draft:z.boolean().optional(),title:z.string().max(1000),body:z.string().nullable(),merged_at:z.string().nullable(),merge_commit_sha:z.string().regex(/^[a-f0-9]{40,64}$/i).nullable().optional(),closed_at:z.string().nullable(),user:z.object({id:apiId,login:z.string().min(1).max(100),type:z.string()}),head:z.object({sha:z.string().regex(/^[a-f0-9]{40,64}$/i)}),base:z.object({sha:z.string().regex(/^[a-f0-9]{40,64}$/i),repo:z.object({id:apiId}).nullable()})});
-const pullFileSchema=z.object({filename:z.string().max(1024),status:z.string(),additions:z.number().int().nonnegative(),deletions:z.number().int().nonnegative(),patch:z.string().nullable()});
+const pullFileSchema=z.object({sha:z.string().regex(/^[a-f0-9]{40}$/i).optional(),filename:z.string().max(1024),status:z.string(),additions:z.number().int().nonnegative(),deletions:z.number().int().nonnegative(),patch:z.string().nullable()});
 const commitSchema=z.object({sha:z.string().regex(/^[a-f0-9]{40,64}$/i),author:z.object({id:apiId,login:z.string().min(1).max(100),type:z.string()}).nullable()});
 const checkRunSchema=z.object({id:apiId,external_id:z.string().nullable().optional(),name:z.string().max(200),head_sha:z.string().regex(/^[a-f0-9]{40,64}$/i),status:z.enum(['queued','in_progress','completed']),conclusion:z.string().nullable(),app:z.object({id:apiId,name:z.string().nullable().optional()}).nullable()});
 export type PullRequest=z.infer<typeof pullRequestSchema>;
@@ -22,6 +22,7 @@ export type Repository=z.infer<typeof repoSchema>;
 export type Comment=z.infer<typeof commentSchema>;
 export class GitHubError extends Error { constructor(readonly status: number) {super(`GitHub request failed (${String(status)}); check access and retry`);} }
 export interface GitHub {
+ fileAtRevision:(installationId:string,repo:Repository,path:string,headSha:string,blobSha:string)=>Promise<string>;
  cancellationReference?:(installationId:string,repo:Repository,url:string)=>Promise<Record<string,unknown>>;
  installation:(id:string)=>Promise<Installation|null>;
  repository:(installationId:string,repoId:string)=>Promise<Repository>;
@@ -65,6 +66,15 @@ export function createGitHub(env: GitHubRuntimeEnv): GitHub {
  }
  const prefix=(repo:Repository)=>'/repos/'+repo.full_name;
  return {
+  async fileAtRevision(inst,repo,path,headSha,blobSha){
+   if(!/^[a-f0-9]{40}$/i.test(headSha)||!/^[a-f0-9]{40}$/i.test(blobSha)||path.length>1024||path.split('/').some(part=>!part||part==='.'||part==='..')||(path.includes('\\')||/\p{Cc}/u.test(path)))throw new Error('Invalid exact-revision file reference');
+   const value=z.object({type:z.literal('file'),path:z.literal(path),sha:z.literal(blobSha),size:z.number().int().min(0).max(16384),encoding:z.literal('base64'),content:z.string().max(24000),target:z.never().optional(),submodule_git_url:z.never().optional()}).parse(await call(inst,`${prefix(repo)}/contents/${path.split('/').map(encodeURIComponent).join('/')}?ref=${headSha}`));
+   const encoded=value.content.replace(/\s/g,'');
+   if(!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded))throw new Error('Invalid file encoding');
+   const bytes=Buffer.from(encoded,'base64');
+   if(bytes.length!==value.size||bytes.toString('base64')!==encoded||createHash('sha1').update(`blob ${String(bytes.length)}\0`).update(bytes).digest('hex')!==blobSha)throw new Error('File blob identity mismatch');
+   const text=new TextDecoder('utf-8',{fatal:true}).decode(bytes);if(text.includes('\0'))throw new Error('Binary test context is unavailable');return text;
+  },
   async cancellationReference(inst,repo,url){
    const u=new URL(url),suffix=u.pathname.slice(repo.full_name.length+1);
    if(u.origin!=='https://github.com'||!u.pathname.startsWith('/'+repo.full_name+'/')||u.search||u.hash)throw new Error('Invalid evidence reference');
@@ -87,22 +97,26 @@ export function createGitHub(env: GitHubRuntimeEnv): GitHub {
   async createComment(inst,repo,number,body){return commentSchema.parse(await call(inst,`${prefix(repo)}/issues/${String(number)}/comments`,'POST',{body}));},
   async updateComment(inst,repo,id,body){await call(inst,`${prefix(repo)}/issues/comments/${id}`,'PATCH',{body});},
   async badge(inst,repo,number,status='OPEN'){
-   const label='bounty-open',description='Open GitPay bounty; see the bot comment for funding status';
    const acceptingSubmissions=['OPEN','CAPTURING','FUNDED','NEEDS_REVIEW'].includes(status);
-   if(!acceptingSubmissions){
+   for(const {label,description,color,active} of [
+    {label:'bounty-open',description:'Open GitPay bounty; see the bot comment for funding status',color:'6f42c1',active:acceptingSubmissions},
+    {label:'bounty-paid',description:'GitPay payout completed; see the bot comment for delivery status',color:'0e8a16',active:status==='PAID'},
+   ]){
+   if(!active){
     try{await call(inst,`${prefix(repo)}/issues/${String(number)}/labels/${label}`,'DELETE');}
     catch(error){if(!(error instanceof GitHubError&&error.status===404))throw error;}
-    return;
+    continue;
    }
    try{
     const current=z.object({description:z.string().nullable().optional()}).parse(await call(inst,`${prefix(repo)}/labels/${label}`));
     if(current.description!==description)await call(inst,`${prefix(repo)}/labels/${label}`,'PATCH',{description});
    }catch(error){
     if(!(error instanceof GitHubError&&error.status===404))throw error;
-    try{await call(inst,`${prefix(repo)}/labels`,'POST',{name:label,color:'6f42c1',description});}
+    try{await call(inst,`${prefix(repo)}/labels`,'POST',{name:label,color,description});}
     catch(error){if(!(error instanceof GitHubError&&error.status===422))throw error;}
    }
    await call(inst,`${prefix(repo)}/issues/${String(number)}/labels`,'POST',{labels:[label]});
+   }
   },
   async closingIssues(inst,repo,number){
    const [owner,name]=repo.full_name.split('/');let after:string|null=null,prId='';const issueNumbers:number[]=[];

@@ -17,7 +17,7 @@ function inventoryFingerprint(pulls:PullRequest[]):string {
  return createHash('sha256').update(JSON.stringify([...pulls].sort((a,b)=>BigInt(a.id)<BigInt(b.id)?-1:BigInt(a.id)>BigInt(b.id)?1:0).map(p=>[p.id,p.number,p.state,p.head.sha,p.base.sha,p.merge_commit_sha,p.merged_at,p.closed_at,p.title,p.body]))).digest('hex');
 }
 export function candidateScanner(db:Database,github:GitHub,env:FundingEnv) {
- return async(bountyId:string):Promise<CandidateScan>=>{
+ return async(bountyId:string,reviewPrNumber?:number):Promise<CandidateScan>=>{
   const [bounty]=await db.orm.select().from(bounties).where(eq(bounties.id,bountyId));if(!bounty?.fundedTerms)throw new Error('Funded terms required');
   const {repo}=await currentAccess(github,bounty.installationId,bounty.repoId);
   const before=await db.orm.select().from(submissions).where(eq(submissions.bountyId,bountyId));
@@ -33,7 +33,7 @@ export function candidateScanner(db:Database,github:GitHub,env:FundingEnv) {
   const [current]=await db.orm.select().from(bounties).where(eq(bounties.id,bountyId));if(!current)throw new Error('Bounty unavailable');
   const rows=await db.orm.select().from(submissions).where(eq(submissions.bountyId,bountyId));
   const evidence=new Map<string,VerifyInput>();
-  for(const sub of rows.filter(row=>row.status==='MERGED'))evidence.set(sub.id,await collectVerification({github,env,installationId:bounty.installationId,repo,bounty:current,submission:sub,terms:bounty.fundedTerms,expectedHeadSha:sub.headSha}));
+  for(const sub of rows.filter(row=>row.status==='MERGED'||row.prNumber===reviewPrNumber))evidence.set(sub.id,await collectVerification({database:db,github,env,installationId:bounty.installationId,repo,bounty:current,submission:sub,terms:bounty.fundedTerms,expectedHeadSha:sub.headSha}));
   // GitHub pagination is not an atomic snapshot. Hold if the bounded inventory
   // changed while linking candidates and collecting their evidence.
   const after=await github.pullRequests(bounty.installationId,repo);

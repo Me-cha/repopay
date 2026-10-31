@@ -24,7 +24,7 @@ export async function evaluateFixtures(fixtures:EvaluationFixture[],env:CopilotE
   for(let run=0;run<3;run++){
    const input=fixtureInput(fixture),result=await verifyFn(input,env);
    const decision=decide({bountyCents:100,verdict:result.value,ci:input.ci.status,eligible:new Map(input.eligibleAuthors.map(a=>[a.ghId,a.login])),evidence:{truncated:input.truncated,sufficient:input.sufficient,stale:false},cfg:{minConfidence:0.9,minShare:0.05,ciRequired:true}});
-   observation.attempts.push({model:result.model,verdict:result.value.verdict,payable:decision.kind==='pay',elapsedMs:result.elapsedMs,totalNanoAiu:result.usage.totalNanoAiu,totalPremiumRequestCost:result.usage.totalPremiumRequestCost});
+   observation.attempts.push({validatedResult:result.value,policyReason:decision.reason,model:result.model,verdict:result.value.verdict,payable:decision.kind==='pay',elapsedMs:result.elapsedMs,totalNanoAiu:result.usage.totalNanoAiu,totalPremiumRequestCost:result.usage.totalPremiumRequestCost});
    await checkpoint(structuredClone(observations));
   }
  }

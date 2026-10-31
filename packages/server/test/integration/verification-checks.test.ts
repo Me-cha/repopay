@@ -43,7 +43,8 @@ describe('verification job recovery',()=>{
    const pr:PullRequest={id:'501',number:42,state:'open',draft:false,title:'Fix parser',body:'Fixes #12',merged_at:null,closed_at:null,user:{id:'8',login:'contributor',type:'User'},head:{sha:'a'.repeat(40)},base:{sha:'b'.repeat(40),repo:{id:'2'}}};
    const linked=await linkPr(funding.database,bounty,pr);
    vi.mocked(funding.api.pullRequest).mockResolvedValue(pr);
-   vi.mocked(funding.api.pullRequestFiles).mockResolvedValue({files:[{filename:'src/parser.ts',status:'modified',additions:1,deletions:0,patch:'@@ -1 +1 @@\n+throw new Error(\'invalid\')'}],complete:true});
+   vi.mocked(funding.api.fileAtRevision).mockResolvedValue('throw new Error("invalid");');
+   vi.mocked(funding.api.pullRequestFiles).mockResolvedValue({files:[{filename:'src/parser.ts',sha:'c'.repeat(40),status:'modified',additions:1,deletions:0,patch:'@@ -1 +1 @@\n+throw new Error(\'invalid\')'}],complete:true});
    vi.mocked(funding.api.pullRequestCommits).mockResolvedValue({authors:[{ghId:'8',login:'contributor',type:'User'}],complete:true});
    vi.mocked(funding.api.checkRuns).mockResolvedValue({runs:[{id:'11',name:'test',head_sha:pr.head.sha,status:'completed',conclusion:'success',app:{id:'15368'}}],complete:true});
    const verifier=vi.fn(()=>Promise.resolve({value:{verdict:'RESOLVES' as const,coverage:1,confidence:0.95,reasoning:'Adds the required input guard.',unmet_requirements:[],splits:[{gh_id:'8',share:1,why:'PR author'}]},usage:{totalNanoAiu:500,totalPremiumRequestCost:0.1,totalApiDurationMs:42,totalUserRequests:1,inputTokens:10,outputTokens:12,cacheReadTokens:0,cacheWriteTokens:0},provider:'copilot' as const,requestedModel:'auto',model:'test-model',sdkVersion:'1.0.28',billingOwnerId:'4',elapsedMs:42,promptHash:'f'.repeat(64),promptVersion:'gitpay-verifier-v1'}));
@@ -74,7 +75,8 @@ describe('verification job recovery',()=>{
   const pr:PullRequest={id:'502',number:43,state:'open',draft:false,title:'Fix parser',body:'Fixes #12',merged_at:null,closed_at:null,user:{id:'4',login:'maintainer',type:'User'},head:{sha:'c'.repeat(40)},base:{sha:'d'.repeat(40),repo:{id:'2'}}};
   const linked=await linkPr(funding.database,bounty,pr);
   vi.mocked(funding.api.pullRequest).mockResolvedValue(pr);
-  vi.mocked(funding.api.pullRequestFiles).mockResolvedValue({files:[{filename:'src/parser.ts',status:'modified',additions:1,deletions:0,patch:'@@ -1 +1 @@\n+guard()'}],complete:true});
+  vi.mocked(funding.api.fileAtRevision).mockResolvedValue('throw new Error("invalid");');
+   vi.mocked(funding.api.pullRequestFiles).mockResolvedValue({files:[{filename:'src/parser.ts',sha:'c'.repeat(40),status:'modified',additions:1,deletions:0,patch:'@@ -1 +1 @@\n+guard()'}],complete:true});
   vi.mocked(funding.api.pullRequestCommits).mockResolvedValue({authors:[{ghId:'4',login:'maintainer',type:'User'}],complete:true});
   vi.mocked(funding.api.checkRuns).mockResolvedValue({runs:[],complete:true});
   const verifier=vi.fn();
@@ -203,7 +205,8 @@ it('rejects an in-flight verdict if the sponsor reconnects before the result is 
   const pr:PullRequest={id:'501',number:42,state:'open',title:'Fix parser',body:'Fixes #12',merged_at:null,closed_at:null,user:{id:'8',login:'contributor',type:'User'},head:{sha:'a'.repeat(40)},base:{sha:'b'.repeat(40),repo:{id:'2'}}};
   const linked=await linkPr(f.database,bounty,pr);
   vi.mocked(f.api.pullRequest).mockResolvedValue(pr);
-  vi.mocked(f.api.pullRequestFiles).mockResolvedValue({files:[{filename:'parser.ts',status:'modified',additions:1,deletions:0,patch:'+validate(value)'}],complete:true});
+  vi.mocked(f.api.fileAtRevision).mockResolvedValue('validate(value);');
+  vi.mocked(f.api.pullRequestFiles).mockResolvedValue({files:[{filename:'parser.ts',sha:'c'.repeat(40),status:'modified',additions:1,deletions:0,patch:'+validate(value)'}],complete:true});
   vi.mocked(f.api.pullRequestCommits).mockResolvedValue({authors:[{ghId:'8',login:'contributor',type:'User'}],complete:true});
   vi.mocked(f.api.checkRuns).mockResolvedValue({runs:[{id:'11',name:'test',head_sha:pr.head.sha,status:'completed',conclusion:'success',app:{id:'15368'}}],complete:true});
   const verify=vi.fn(async()=>{

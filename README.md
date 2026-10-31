@@ -1,12 +1,14 @@
 # GitPay
 
+**October 31 verifier update:** prompt v3 now includes bounded exact-head source/test context. Local verification and the PR #9 live regression review passed; the full v3 evaluation failed 17/18 and remains unaccepted. Historical v2 acceptance does not enable new v3 awards. Existing paid awards and delivery reconciliation remain intact. See [ADR 0016](docs/decisions/0016-source-context-review.md).
+
 **Fund an issue. Merge a qualifying solution. Pay the contributor.**
 
 GitPay is a GitHub App under sandbox validation that connects issue bounties to PayPal. Maintainers fund an issue, contributors submit pull requests, AI assesses the proposed solution, and a qualifying merge triggers payment through a deterministic policy.
 
 The principle is **glue, not a platform**: development stays in GitHub, checkout and payouts use PayPal, and small authenticated pages handle confirmations. A dashboard (optional for users, required in the MVP) displays progress without becoming another place to manage the work.
 
-> **Project status (October 30, 2026):** Phases 0, 1 and 4 have recorded completion evidence. Phase 2 has a deferred live revocation check. Phase 3 has a recorded $40 sandbox capture, with receipt/recovery acceptance still open. Phase 5 is advisory and incomplete: Copilot **Auto** is the accepted profile, and the current v2 application-adapter evaluation passed 18/18; the live funded competing-PR/retry walkthrough is still open. The latest [Phases 0–5 review](docs/evidence/00-05-review.md) records fixes and remaining blockers. Phase 6 now has local award selection, immutable payout intents, item reconciliation and claim resumption. Automatic award selection is enabled only for the existing $50 isolated sandbox demo under ADR 0008; remaining Phase 5 checks are deferred and the first sandbox payout is provider-confirmed SUCCESS, with recipient receipt confirmed; delayed-claim/two-author live acceptance remains open. See [Phase 6 evidence](docs/evidence/06-summary.md).
+> **Project status (October 30, 2026):** Phases 0, 1 and 4 have recorded completion evidence. Phase 2 has a deferred live revocation check. Phase 3 has a recorded $40 sandbox capture, with receipt/recovery acceptance still open. Phase 5 is advisory and incomplete: Copilot **Auto** is the accepted profile, and the current v2 application-adapter evaluation passed 18/18; the October 31 funded competing-PR case passed; same-revision failed-review recovery also passed; remaining Phase 5 gates stay open. The latest [Phases 0–5 review](docs/evidence/00-05-review.md) records fixes and remaining blockers. Phase 6 now has local award selection, immutable payout intents, item reconciliation and claim resumption. Automatic award selection is enabled only for the existing $50 isolated sandbox demo under ADR 0008; remaining Phase 5 checks are deferred and the first sandbox payout is provider-confirmed SUCCESS, with recipient receipt confirmed; delayed-claim/two-author live acceptance remains open. See [Phase 6 evidence](docs/evidence/06-summary.md).
 
 Phases 7–10 now have local implementations and automated verification. Their live walkthroughs, along with outstanding Phase 5–6 cases, remain on the [final live checklist](docs/phases/live-walkthroughs.md). See [Phase 10 evidence](docs/evidence/10-summary.md). Build with `pnpm build`, then open `/dashboard/` on the running server and sign in.
 
@@ -23,7 +25,7 @@ Phase 12 handoff tooling and the [final acceptance matrix](docs/evidence/12-acce
 5. The first qualifying merged PR under the funded terms earns the bounty. A review case requires an authenticated maintainer decision before payment.
 6. Eligible contributors connect their PayPal details. A committed award remains theirs while payment details or transfer problems are resolved.
 
-The `bounty-open` label means submissions remain open, including after funding. Read the bot comment for the funding status.
+The `bounty-open` label means submissions remain open, including after funding. `bounty-paid` appears only after confirmed payout; committed awards remove `bounty-open`. A merge alone does not mean payment succeeded. Read the bot comment for funding and delivery status.
 
 Typing a command or adding a label on GitHub today does not create a payment. The App must be installed, configured and running; checkout requires authenticated confirmation.
 
@@ -50,9 +52,9 @@ Currently available: `/bounty create`, `/bounty status`, `/bounty fund`, and `/b
 | `/bounty fund`            | Get an authenticated funding link                                                                               |
 | `/bounty status`          | View progress and request reconciliation                                                                        |
 | `/bounty approve`         | Preview and confirm payment for a review case                                                                   |
-| `/bounty reject <reason>` | Reject a submission for award consideration; preserve its evidence                                              |
+| `/bounty reject <reason>` | On the linked PR: reject its reviewed revision before merge; preserve its evidence                                              |
 | `/bounty cancel [reason]` | Cancel an unfunded draft, or request a reviewed exception for a funded bounty; funded requests require a reason |
-| `/bounty link #<pr>`      | Explicitly link a same-repository PR                                                                            |
+| `/bounty link <pr>`      | Explicitly link a same-repository PR                                                                            |
 | `/bounty retry`           | Retry verification of a PR's current revision                                                                   |
 
 Maintainer commands require current repository write/maintain/admin permission; `/bounty status` is available to participants with access. Financial actions require confirmation or the deterministic settlement policy. Labels never fund or refund money.
@@ -155,3 +157,7 @@ The runtime uses repository-owner-sponsored Copilot Auto in v4 funded terms, pre
 Phase 7 maintainer review is implemented locally with a shared award guard, exact confirmation and immutable rejection history. Live acceptance remains pending; see [Phase 7 evidence](docs/evidence/07-summary.md).
 
 Remaining live walkthroughs are deferred to the final validation session after local implementation, per user direction. See the [live checklist](docs/phases/live-walkthroughs.md) for outstanding cases and prerequisites.
+
+Maintainers review contributor PRs directly on GitHub: comment, request changes or close unmerged work. Copilot supplies advisory feedback, not final acceptance. `/bounty reject <reason>` on the PR records a revision-bound bounty decision without requiring merge; ordinary comments never move money. GitPay’s payment-review page contains approval only. See [ADR 0015](docs/decisions/0015-premerge-pr-feedback.md).
+
+October 31 update: the full Auto v3 evaluation completed and **failed (17/18)**. Current v3 awards remain disabled by evaluated-profile binding. See [evaluation result](docs/evidence/05-auto-v3-result.md). Two-party revision-bound attribution is implemented locally; its two-recipient live payout is still pending. The real 72-hour refund test remains deferred.

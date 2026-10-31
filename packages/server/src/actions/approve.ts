@@ -18,22 +18,22 @@ import { verdictSchema } from '../verifier/schema.js';
 import type { Allocation } from '../policy/allocate.js';
 import { assertLease,enqueue } from '../jobs/queue.js';
 const params=z.object({submissionId:z.string(),evidenceId:z.string(),verificationId:z.string(),scanHash:z.string(),snapshotHash:z.string(),reason:z.string().trim().min(1).max(2000),allocation:z.array(z.object({ghId:z.string(),login:z.string(),cents:z.number().int().positive()}).strict()).min(1).max(10)}).strict();
-export interface ReviewDependencies {scan:(id:string)=>Promise<CandidateScan>;authorize:(session:Session,bounty:Bounty)=>Promise<ActorContext>;profileAccepted:(bounty:Bounty)=>Promise<boolean>;authorizeComment?:(actorId:string,bounty:Bounty)=>Promise<ActorContext>}
+export interface ReviewDependencies {scan:(id:string,reviewPrNumber?:number)=>Promise<CandidateScan>;authorize:(session:Session,bounty:Bounty)=>Promise<ActorContext>;profileAccepted:(bounty:Bounty)=>Promise<boolean>;authorizeComment?:(actorId:string,bounty:Bounty)=>Promise<ActorContext>}
 export function createReviewService(db:Database,env:FundingEnv,deps:ReviewDependencies) {
  async function prepare(session:Session,id:string){
   const before=await findBounty(db,id);await deps.authorize(session,before);
   const scan=await deps.scan(id),current=await findBounty(db,id),ctx=await deps.authorize(session,current);
   return {scan,ctx,accepted:await deps.profileAccepted(current)};
  }
- async function current(tx:Transaction,session:Session|undefined,id:string,prepared:Awaited<ReturnType<typeof prepare>>,requirePayable=true){
+ async function current(tx:Transaction,session:Session|undefined,id:string,prepared:Awaited<ReturnType<typeof prepare>>,requirePayable=true,rejectPrNumber?:number){
   if(session)await assertSession(tx,session,new Date());const bounty=await lockBounty(tx,id);if(!bounty)throw new AuthError(404,'Bounty not found.');
   assertContext({...prepared.ctx,source:'confirmation'},bounty,'review');await assertInstallation(tx,bounty);
   const [award]=await tx.select().from(awards).where(eq(awards.bountyId,id));
-  if(award||bounty.status!=='NEEDS_REVIEW'||bounty.fundingHold||!bounty.captureId||!bounty.fundedAt)throw new AuthError(409,'A funded bounty awaiting review with no award is required.');
+  if(award||!(rejectPrNumber?['FUNDED','NEEDS_REVIEW'].includes(bounty.status):bounty.status==='NEEDS_REVIEW')||bounty.fundingHold||!bounty.captureId||!bounty.fundedAt)throw new AuthError(409,'A funded bounty awaiting review with no award is required.');
   const rows=await tx.select().from(submissions).where(eq(submissions.bountyId,id));
   const scan=prepared.scan;
   if(!scan.complete||scan.bountyVersion!==bounty.version||candidateFingerprint(rows)!==scan.hash)throw new AuthError(409,'Candidate evidence changed or is incomplete. Refresh review.');
-  const candidate=(await orderedCandidates(tx,rows,scan))[0];if(!candidate?.mergeSha||!candidate.mergedAt)throw new AuthError(409,'An unresolved merged submission is required.');
+  const candidate=rejectPrNumber?rows.find(r=>r.prNumber===rejectPrNumber):(await orderedCandidates(tx,rows,scan))[0];if(!candidate||(!rejectPrNumber&&(!candidate.mergeSha||!candidate.mergedAt)))throw new AuthError(409,'A current targeted submission is required; approval requires a merge.');
   const fresh=scan.evidence.get(candidate.id);
   const [evidence]=await tx.select().from(submissionEvidence).where(eq(submissionEvidence.submissionId,candidate.id)).orderBy(desc(submissionEvidence.version)).limit(1);
   const [review]=await tx.select().from(verifications).where(eq(verifications.submissionId,candidate.id)).orderBy(desc(verifications.id)).limit(1);
@@ -71,9 +71,9 @@ export function createReviewService(db:Database,env:FundingEnv,deps:ReviewDepend
   const why=z.string().trim().min(1).max(2000).parse(reason);
   return db.withTransaction(async tx=>{
    if(lease){await assertLease(tx,lease);const prior=await tx.select().from(bountyActivity).where(eq(bountyActivity.action,`review-command:${lease.id}`));if(prior.length)return;}
-   const c=await current(tx,session,id,prepared,false);if((submissionId&&c.candidate.id!==submissionId)||(expectedPrNumber&&c.candidate.prNumber!==expectedPrNumber))throw new AuthError(409,'Candidate changed. Refresh the review.');
+   const c=await current(tx,session,id,prepared,false,expectedPrNumber);if((submissionId&&c.candidate.id!==submissionId)||(expectedPrNumber&&c.candidate.prNumber!==expectedPrNumber))throw new AuthError(409,'Candidate changed. Refresh the review.');
    await tx.insert(reviewDecisions).values({bountyId:id,submissionId:c.candidate.id,kind:'reject',actorGhId:prepared.ctx.actorGhId,reason:why,headSha:c.candidate.headSha,baseSha:c.candidate.baseSha,mergeSha:c.mergeSha,snapshotHash:c.fresh.snapshotHash,evidenceId:c.evidence.id,verificationId:c.review.id});
-   await tx.update(bounties).set({status:'FUNDED',version:sql`${bounties.version}+1`,needsAttention:false,attentionReason:null,updatedAt:new Date()}).where(eq(bounties.id,id));
+   await tx.update(bounties).set({...(c.candidate.status==='MERGED'?{status:'FUNDED',needsAttention:false,attentionReason:null}:{}),version:sql`${bounties.version}+1`,updatedAt:new Date()}).where(eq(bounties.id,id));
    await tx.insert(bountyActivity).values({bountyId:id,actorGhId:prepared.ctx.actorGhId,source:prepared.ctx.source,action:'submission_rejected',metadata:{submissionId:c.candidate.id,reason:why,preservesCancellationClaim:true}});
    if(lease)await tx.insert(bountyActivity).values({bountyId:id,actorGhId:prepared.ctx.actorGhId,source:'github_comment',action:`review-command:${lease.id}`});
    await enqueue(tx,{kind:'sync_bounty',payload:{bountyId:id},dedupeKey:`review-rejected:${c.candidate.id}:${c.fresh.snapshotHash}`,maxAttempts:env.RECONCILIATION_MAX_ATTEMPTS});
@@ -82,7 +82,7 @@ export function createReviewService(db:Database,env:FundingEnv,deps:ReviewDepend
  async function reject(session:Session,id:string,submissionId:string,reason:string){return rejectPrepared(session,id,submissionId,reason,await prepare(session,id));}
  async function rejectComment(actorId:string,id:string,reason:string,lease:LeasedJob,expectedPrNumber?:number){
   if(!deps.authorizeComment)throw new AuthError(403,'Comment review unavailable.');
-  const before=await findBounty(db,id);await deps.authorizeComment(actorId,before);const scan=await deps.scan(id),bounty=await findBounty(db,id),ctx=await deps.authorizeComment(actorId,bounty);
+  const before=await findBounty(db,id);await deps.authorizeComment(actorId,before);const scan=await deps.scan(id,expectedPrNumber),bounty=await findBounty(db,id),ctx=await deps.authorizeComment(actorId,bounty);
   return rejectPrepared(undefined,id,undefined,reason,{scan,ctx,accepted:false},lease,expectedPrNumber);
  }
 

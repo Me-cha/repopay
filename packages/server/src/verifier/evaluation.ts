@@ -1,5 +1,6 @@
+import type { Verdict } from './schema.js';
 export interface EvaluationCase {id:string;expected:'RESOLVES'|'PARTIAL'|'DOES_NOT_RESOLVE';sufficient:boolean}
-export interface EvaluationAttempt {model?:string|undefined;verdict:'RESOLVES'|'PARTIAL'|'DOES_NOT_RESOLVE';payable:boolean;elapsedMs:number;totalNanoAiu:number|null;totalPremiumRequestCost:number|null}
+export interface EvaluationAttempt {validatedResult?:Verdict|undefined;policyReason?:string|undefined;model?:string|undefined;verdict:'RESOLVES'|'PARTIAL'|'DOES_NOT_RESOLVE';payable:boolean;elapsedMs:number;totalNanoAiu:number|null;totalPremiumRequestCost:number|null}
 export interface EvaluationObservation {caseId:string;attempts:EvaluationAttempt[]}
 export interface EvaluationReport {model:string;promptVersion:string;sdkVersion:string;cases:{caseId:string;expected:string;attempts:number;models:(string|null)[];failures:string[];elapsedMs:number[];totalNanoAiu:(number|null)[];totalPremiumRequestCost:(number|null)[]}[];passed:boolean;liveEvidenceComplete:boolean}
 

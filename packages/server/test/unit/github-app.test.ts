@@ -1,4 +1,4 @@
-import { generateKeyPairSync } from 'node:crypto';
+import { createHash, generateKeyPairSync } from 'node:crypto';
 import nock from 'nock';
 import { expect, it } from 'vitest';
 import { createGitHub } from '../../src/github/app.js';
@@ -52,4 +52,38 @@ it('recovers missing REST merge SHA from identity-bound GraphQL evidence',async(
  expect((await app.pullRequest('1',repo,3)).merge_commit_sha).toBe('c'.repeat(40));
  nock('https://api.github.com').get('/repos/owner/repo/pulls/3').reply(200,pr).post('/graphql').reply(200,graph('99'));
  await expect(app.pullRequest('1',repo,3)).rejects.toThrow();
+});
+
+it('reads bounded full-file context with exact commit and blob identities',async()=>{
+ const app=createGitHub(env),text="test('unchanged assertion',()=>{});\n",bytes=Buffer.from(text),sha=createHash('sha1').update(`blob ${String(bytes.length)}\0`).update(bytes).digest('hex');token();
+ nock('https://api.github.com').get('/repos/owner/repo/contents/test/a%20b.test.js').query({ref:'a'.repeat(40)}).reply(200,{type:'file',path:'test/a b.test.js',sha,size:bytes.length,encoding:'base64',content:bytes.toString('base64')});
+ expect(await app.fileAtRevision('1',repo,'test/a b.test.js','a'.repeat(40),sha)).toBe(text);
+});
+it.each(['path','sha','size','encoding','binary','symlink','directory','hash'])('rejects invalid full-file context: %s',async(mode)=>{
+ const app=createGitHub(env),bytes=Buffer.from(mode==='binary'?'\0':'test();'),sha=createHash('sha1').update(`blob ${String(bytes.length)}\0`).update(bytes).digest('hex');token();
+ const value={type:'file',path:'test/a.js',sha,size:bytes.length,encoding:'base64',content:bytes.toString('base64'),...(mode==='path'?{path:'other.js'}:{}),...(mode==='sha'?{sha:'b'.repeat(40)}:{}),...(mode==='size'?{size:16385}:{}),...(mode==='encoding'?{encoding:'none'}:{}),...(mode==='symlink'?{type:'symlink',target:'../secret'}:{}),...(mode==='directory'?{type:'dir'}:{}),...(mode==='hash'?{content:Buffer.from('fake();').toString('base64')}:{} )};
+ nock('https://api.github.com').get('/repos/owner/repo/contents/test/a.js').query({ref:'a'.repeat(40)}).reply(200,value);
+ await expect(app.fileAtRevision('1',repo,'test/a.js','a'.repeat(40),sha)).rejects.toThrow();
+});
+it('rejects traversal and mutable refs before provider access',async()=>{
+ const app=createGitHub(env);
+ for(const path of ['../secret','test/../secret','/test/a.js','test//a.js','test\\a.js'])await expect(app.fileAtRevision('1',repo,path,'a'.repeat(40),'b'.repeat(40))).rejects.toThrow();
+ await expect(app.fileAtRevision('1',repo,'test/a.js','main','b'.repeat(40))).rejects.toThrow();
+});
+
+
+it('projects PAID as bounty-paid and removes bounty-open without replacing other labels',async()=>{
+ const app=createGitHub(env);token();
+ const api=nock('https://api.github.com')
+ .delete('/repos/owner/repo/issues/4/labels/bounty-open').reply(200,[])
+ .get('/repos/owner/repo/labels/bounty-paid').reply(404,{})
+ .post('/repos/owner/repo/labels',{name:'bounty-paid',color:'0e8a16',description:'GitPay payout completed; see the bot comment for delivery status'}).reply(201,{})
+ .post('/repos/owner/repo/issues/4/labels',{labels:['bounty-paid']}).reply(200,[]);
+ await app.badge('1',repo,4,'PAID');expect(api.isDone()).toBe(true);
+});
+it.each(['AWAITING_CLAIM','PAYING','CANCELLED'])('removes misleading open and paid labels for %s',async(status)=>{
+ const app=createGitHub(env);token();const api=nock('https://api.github.com')
+ .delete('/repos/owner/repo/issues/4/labels/bounty-open').reply(404,{})
+ .delete('/repos/owner/repo/issues/4/labels/bounty-paid').reply(200,[]);
+ await app.badge('1',repo,4,status);expect(api.isDone()).toBe(true);
 });

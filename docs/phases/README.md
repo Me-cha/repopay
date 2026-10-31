@@ -1,6 +1,6 @@
 # GitPay MVP — phase plan
 
-**Status (October 30, 2026):** Phases 0, 1 and 4 have recorded completion evidence. Phase 2 retains a deferred live revocation check; Phase 3 has a real capture with receipt/recovery gates open. Phase 5 Auto v2 passed its 18/18 live evaluation; the funded competing-PR/retry walkthrough remains incomplete (ADR 0007). Phase 6 has local policy, award selection, payout reconciliation and delayed claims; automatic selection is enabled only for the existing $50 isolated sandbox demo under ADR 0008, with remaining Phase 5 checks deferred and the first Phase 6 sandbox payout successful and delayed-claim/two-author live acceptance outstanding. See [review findings](../evidence/00-05-review.md) and [Phase 6 evidence](../evidence/06-summary.md).
+**Status (October 30, 2026):** Phases 0, 1 and 4 have recorded completion evidence. Phase 2 retains a deferred live revocation check; Phase 3 has a real capture with receipt/recovery gates open. Phase 5 Auto v2 passed its 18/18 live evaluation; the October 31 funded competing-PR case passed; same-revision failed-review recovery also passed; remaining Phase 5 gates stay open (ADR 0007). Phase 6 has local policy, award selection, payout reconciliation and delayed claims; automatic selection is enabled only for the existing $50 isolated sandbox demo under ADR 0008, with remaining Phase 5 checks deferred and the first Phase 6 sandbox payout successful and delayed-claim/two-author live acceptance outstanding. See [review findings](../evidence/00-05-review.md) and [Phase 6 evidence](../evidence/06-summary.md).
 
 **Phase 8 local status:** Exceptional cancellation/refund implementation passes 57 files / 303 tests, typecheck, lint and build. Migration 0014 is applied locally; cancellation remains disabled and live acceptance deferred. See [Phase 8 evidence](../evidence/08-summary.md).
 
@@ -213,3 +213,9 @@ These checks inform the design; they do not prove an integration is configured:
 The original plan review is tracked in [review-todo.md](review-todo.md). The October 30 implementation review and unresolved gates are tracked in [review evidence](../evidence/00-05-review.md). The user authorized local implementation through Phase 12; phase completion still requires the stated evidence.
 
 Phase 7 maintainer review is implemented locally with a shared award guard, exact confirmation and immutable rejection history. Live acceptance remains pending; see [Phase 7 evidence](../evidence/07-summary.md).
+
+October 31 workflow correction: [ADR 0015](../decisions/0015-premerge-pr-feedback.md) supersedes the merge-first rejection/browser rejection steps. Maintainers give feedback and record rejection on the PR before merge; financial approval stays separate and merge-gated. Historical live rejection remains recorded, but pre-merge live acceptance is still pending.
+
+October 31 source-context correction: ADR 0016 / prompt v3 is locally verified; read-only PR #9 evidence contains scalar source and tests. No new live request. Phase 7 allowance exhausted (6/6); fresh v3 review and profile acceptance remain pending. Historical v2 acceptance does not authorize v3 awards.
+
+October 31 update: the full Auto v3 evaluation completed and **failed (17/18)**. Current v3 awards remain disabled by evaluated-profile binding. See [evaluation result](../evidence/05-auto-v3-result.md). Two-party revision-bound attribution is implemented locally; its two-recipient live payout is still pending. The real 72-hour refund test remains deferred.

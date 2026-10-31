@@ -9,6 +9,8 @@ const result={value:{verdict:'RESOLVES' as const,coverage:1,confidence:1,reasoni
 it('makes exactly 18 calls, checkpoints every result and applies policy to insufficient evidence',async()=>{
  const verifier=vi.fn<typeof verify>().mockResolvedValue(result),checkpoint=vi.fn<(rows:EvaluationObservation[])=>Promise<void>>().mockResolvedValue(undefined);
  const report=await evaluateFixtures(fixtures,env,checkpoint,verifier);
+ expect(checkpoint.mock.calls[0]?.[0]?.[0]?.attempts[0]?.validatedResult).toEqual(result.value);
+ expect(checkpoint.mock.calls.at(-1)?.[0]?.at(-1)?.attempts[0]?.policyReason).toBe('Evidence is truncated');
  expect(verifier).toHaveBeenCalledTimes(18);expect(checkpoint).toHaveBeenCalledTimes(18);
  expect(checkpoint.mock.calls.at(-1)?.[0]?.at(-1)?.attempts.every(a=>!a.payable)).toBe(true);
  expect(report.passed).toBe(true);expect(report.cases.every(c=>c.models.every(m=>m==='served'))).toBe(true);

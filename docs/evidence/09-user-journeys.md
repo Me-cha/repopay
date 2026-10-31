@@ -16,3 +16,5 @@ Date: 2026-10-30. Chromium via Playwright, isolated PostgreSQL schema, seeded li
 Provider calls are mocked; operator browser journey reads the review and status screens rather than issuing a real refund. Existing Phase 7–8 integration suites exercise confirmation, CSRF, stale/replayed approval and money invariants. Server stream tests additionally cover private events, session/repository revocation, separate-connection notifications, a lower activity ID committing late and seven simultaneous browser streams sharing the listener.
 
 Run with the command in [setup](../setup.md#phase-9-dashboard-and-local-browser-verification). Screenshots and failure traces use ignored `test-results/`. Live GitHub-to-page-to-provider journeys remain on [the final checklist](../phases/live-walkthroughs.md).
+
+October 31 rerun after review/context corrections: `pnpm build` passed and `TEST_DATABASE_URL=… pnpm test:e2e` passed **11/11 Chromium tests**, including hostile-markup coverage. Disposable PostgreSQL and mocked provider boundaries; actual-role/hosted acceptance remains separately open.
