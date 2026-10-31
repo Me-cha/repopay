@@ -1,5 +1,6 @@
 import { cents } from '../domain/types.js';
-export type Command = { kind: 'create'; amount: string } | { kind: 'status' } | { kind: 'cancel' } | {kind:'fund'} | {kind:'approve';issueNumber?:number} | {kind:'reject';reason:string;issueNumber?:number} | {kind:'link';prNumber:number} | { kind: 'unavailable' } | { kind: 'invalid' };
+export type ContributionCommand = {kind:'contribute';headSha:string;baseSha:string;reason:string;issueNumber?:number}|{kind:'confirm-contributor';login:string;headSha:string;baseSha:string;reason:string;issueNumber?:number};
+export type Command = ContributionCommand | { kind: 'create'; amount: string } | { kind: 'status' } | { kind: 'cancel' } | {kind:'fund'} | {kind:'approve';issueNumber?:number} | {kind:'reject';reason:string;issueNumber?:number} | {kind:'link';prNumber:number} | { kind: 'unavailable' } | { kind: 'invalid' };
 export function parseCommand(body: string): Command | null {
   let fence: string | undefined;
   for (const raw of body.split(/\r?\n/)) {
@@ -9,6 +10,8 @@ export function parseCommand(body: string): Command | null {
     const line = raw.trim(); if (!line || line.startsWith('>')) continue;
     const create = /^\/bounty create ([^\s]+)$/i.exec(line);
     if (create?.[1]) return /^\d{1,9}(?:\.\d{1,2})?$/.test(create[1]) ? { kind: 'create', amount: create[1] } : { kind: 'invalid' };
+    const contribution=/^\/bounty (contribute|confirm-contributor)(?: #([1-9]\d{0,8}))? (?:@([a-z0-9-]{1,39}) )?([a-f0-9]{40}) ([a-f0-9]{40}) (.{10,2000})$/i.exec(line);
+    if(contribution){const [,kind,issue,login,headSha,baseSha,reason]=contribution;if(headSha&&baseSha&&reason){const fields={headSha:headSha.toLowerCase(),baseSha:baseSha.toLowerCase(),reason,...(issue?{issueNumber:Number(issue)}:{})};if(kind?.toLowerCase()==='contribute'&&!login)return {kind:'contribute',...fields};if(kind?.toLowerCase()==='confirm-contributor'&&login)return {kind:'confirm-contributor',login,...fields};}return {kind:'invalid'};}
     if (/^\/bounty status$/i.test(line)) return { kind: 'status' };
     const approve=/^\/bounty approve(?: #([1-9]\d{0,8}))?$/i.exec(line);if(approve)return {kind:'approve',...(approve[1]?{issueNumber:Number(approve[1])}:{})};
     const reject=/^\/bounty reject(?: #([1-9]\d{0,8}))? (.{1,2000})$/i.exec(line);if(reject?.[2])return {kind:'reject',reason:reject[2],...(reject[1]?{issueNumber:Number(reject[1])}:{})};

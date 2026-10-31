@@ -67,3 +67,31 @@ it('each read-only status command gets a reply, while retries reconcile the same
   expect(f.comments.filter(c=>c.body?.includes('gitpay:bounty:'))).toHaveLength(1);
  }finally{clock.mockRestore();await f.close();}
 });
+it('issue draft surfaces owner setup and state/history links without needing a hand-shared URL',async()=>{
+ const f=await githubFixture();try{
+  const create=await f.job(createWork());await handleJob(f.database,f.api,testEnv,create);await finishJob(f.database,create);
+  const job=await claimJob(f.database,'projection',120);if(!job)throw new Error('missing projection');await handleJob(f.database,f.api,testEnv,job);
+  const body=f.comments[0]?.body;
+  expect(body).toContain('Connect Copilot sponsor');expect(body).toContain('/copilot-sponsor');expect(body).toContain('/fund');expect(body).toContain('View bounty status');expect(body).toContain('history and payment progress');
+ }finally{await f.close();}
+});
+it('PR projection gives revision-bound commands, recovers a lost response and never republishes stale assessment as current',async()=>{
+ const {awardFixture}=await import('../helpers/awards.js');const {syncSubmission}=await import('../../src/github/comments.js');const {submissions}=await import('../../src/db/schema.js');const {eq}=await import('drizzle-orm');const {enqueue}=await import('../../src/jobs/queue.js');
+ const f=await awardFixture();try{const sub=await f.add('501','2026-10-30T00:00:00Z');await f.database.orm.update(submissions).set({status:'OPEN',mergedAt:null,mergeSha:null}).where(eq(submissions.id,sub.id));
+ await f.database.withTransaction(tx=>enqueue(tx,{kind:'sync_submission',payload:{submissionId:sub.id},dedupeKey:'projection',maxAttempts:3}));const job=await claimJob(f.database,'projection',120);if(!job)throw new Error('missing projection');
+ f.state.lostResponse=true;await expect(syncSubmission(f.database,f.api,f.env,job,sub.id)).rejects.toThrow('lost');await syncSubmission(f.database,f.api,f.env,job,sub.id);
+ const body=f.comments.find(c=>c.body?.includes('gitpay:submission:'))?.body;expect(body).toContain('RESOLVES');expect(body).toContain(`/bounty contribute #12 ${sub.headSha} ${sub.baseSha}`);expect(body).toContain('Manage Copilot sponsor');expect(body).toContain('/retry');
+ expect(f.api.createComment).toHaveBeenCalledTimes(1);
+ await f.database.orm.update(submissions).set({baseSha:'d'.repeat(40),evidenceVersion:2}).where(eq(submissions.id,sub.id));await syncSubmission(f.database,f.api,f.env,job,sub.id);
+ const refreshed=f.comments.find(c=>c.body?.includes('gitpay:submission:'))?.body;expect(refreshed).toContain('Current revision awaits review');expect(refreshed).not.toContain('**RESOLVES**');
+ }finally{await f.close();}
+});
+it('committed award projects recipient allocations and connection link to the winning PR only',async()=>{
+ const {awardFixture}=await import('../helpers/awards.js');const {enqueue}=await import('../../src/jobs/queue.js');const f=await awardFixture(true);try{
+ const winner=await f.add('501','2026-10-30T00:00:00Z');await f.service.settleBounty(f.bounty.id);
+ await f.database.withTransaction(tx=>enqueue(tx,{kind:'sync_bounty',payload:{bountyId:f.bounty.id},dedupeKey:'award-projection',maxAttempts:3}));const job=await claimJob(f.database,'projection',120);if(!job)throw new Error('missing projection');
+ await syncBounty(f.database,f.api,f.env,job,f.bounty.id);
+ expect(f.api.createComment).toHaveBeenCalledWith('1',expect.anything(),winner.prNumber,expect.stringContaining('gitpay:award:'));
+ const body=f.comments.find(c=>c.body?.includes('gitpay:award:'))?.body;expect(body).toContain('@fixture-author: $25.00');expect(body).toContain('@second: $25.00');expect(body).toContain('/connect');expect(body).toContain('payment progress');expect(body).not.toContain('destinationEnc');
+ }finally{await f.close();}
+});

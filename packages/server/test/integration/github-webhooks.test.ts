@@ -62,3 +62,15 @@ it('queues same-repository pull request updates and ignores GitPay check-run rec
   expect(await f.database.orm.select().from(jobs)).toHaveLength(1);
  }finally{await f.close();}
 });
+it('signed PR contribution commands retain explicit revision identity; edits, quotes and bots are ignored',async()=>{
+ const f=await createTestDatabase();try{await migrateDatabase(f.database);
+ const body=`/bounty contribute #11 ${'a'.repeat(40)} ${'b'.repeat(40)} Implemented array validation`;
+ const payload={...event,issue:{number:12,pull_request:{}},comment:{...event.comment,body}};
+ const raw=Buffer.from(JSON.stringify(payload));await ingestGitHub(f.database,secret,3,raw,signed(raw,'claim'));
+ await ingestGitHub(f.database,secret,3,raw,signed(raw,'claim-redelivery'));
+ for(const [i,p] of [{...payload,action:'edited'},{...payload,comment:{...payload.comment,body:'> '+body}},{...payload,comment:{...payload.comment,user:{id:4,type:'Bot'}}}].entries()){
+  const raw=Buffer.from(JSON.stringify(p));await ingestGitHub(f.database,secret,3,raw,signed(raw,'ignored-claim-'+String(i)));
+ }
+ const rows=await f.database.orm.select().from(jobs);expect(rows).toHaveLength(1);expect(rows[0]?.payload).toMatchObject({isPullRequest:true,actorId:'4',command:{kind:'contribute',headSha:'a'.repeat(40),baseSha:'b'.repeat(40)}});
+ }finally{await f.close();}
+});

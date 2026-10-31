@@ -1,8 +1,12 @@
+import { randomUUID } from 'node:crypto';
+import { handleJob } from '../../src/jobs/runner.js';
+import type { Work,LeasedJob } from '../../src/jobs/kinds.js';
+import { jobs } from '../../src/db/schema.js';
 import { expect,it,vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { awardFixture } from '../helpers/awards.js';
 import { csrfFrom,form,required } from '../helpers/auth.js';
-import { attestContribution,confirmedContributors } from '../../src/actions/attribution.js';
+import { attestContribution,attestCommentContribution,confirmedContributors } from '../../src/actions/attribution.js';
 import { bounties,contributorAttestations,submissions } from '../../src/db/schema.js';
 import { collectVerification } from '../../src/verifier/collect.js';
 async function setup(){
@@ -48,4 +52,31 @@ it('HTTP confirmation is CSRF protected and cannot substitute the authenticated 
  expect((await f.request(path,form(csrf,f.input))).status).toBe(403);
  const bad=form(csrf,f.input);bad.headers.Origin='https://evil.test';expect((await f.request(path,bad)).status).toBe(403);
  expect(await f.database.orm.select().from(contributorAttestations)).toHaveLength(1);
+ }finally{await f.close();}});
+
+async function commentJob(f:Awaited<ReturnType<typeof setup>>,actorId:string,confirm=false,overrides:Record<string,unknown>={}):Promise<LeasedJob>{
+ const work:Work={kind:'run_command',installationId:'1',repoId:'2',issueNumber:f.sub.prNumber,isPullRequest:true,actorId,commentId:'99',command:confirm?{kind:'confirm-contributor',login:'second',headSha:f.sub.headSha,baseSha:f.sub.baseSha,reason:f.input.reason}:{kind:'contribute',headSha:f.sub.headSha,baseSha:f.sub.baseSha,reason:f.input.reason}};
+ const payload={...work,...overrides},leaseToken=randomUUID();
+ const saved=required((await f.database.orm.insert(jobs).values({kind:'run_command',payload,status:'running',leaseOwner:'test',leaseToken,leaseHeartbeatAt:new Date(),lockedUntil:new Date(Date.now()+60000),attempts:1,maxAttempts:3}).returning())[0]);
+ return {id:saved.id,kind:saved.kind,payload,leaseOwner:'test',leaseToken,attempts:1,maxAttempts:3};
+}
+it('PR commands preserve independent identity, idempotency and copied confirmation instructions without model jobs',async()=>{const f=await setup();try{
+ const claim=await commentJob(f,'9');await handleJob(f.database,f.api,f.env,claim);await handleJob(f.database,f.api,f.env,claim);
+ expect(await confirmedContributors(f.database,f.sub)).toEqual([]);
+ expect(f.api.createComment).toHaveBeenCalledWith('1',expect.anything(),f.sub.prNumber,expect.stringContaining('/bounty confirm-contributor #12 @second'));
+ const confirm=await commentJob(f,'4',true);await handleJob(f.database,f.api,f.env,confirm);await handleJob(f.database,f.api,f.env,confirm);
+ expect(await confirmedContributors(f.database,f.sub)).toEqual([{ghId:'9',login:'second'}]);
+ expect(await f.database.orm.select().from(contributorAttestations)).toHaveLength(2);
+ const all=await f.database.orm.select().from(jobs);expect(all.filter(j=>j.kind==='sync_submission')).toHaveLength(2);expect(all.filter(j=>j.kind==='verify_submission')).toHaveLength(0);
+ }finally{await f.close();}});
+it('PR attestations reject self-confirmation, removed permissions, wrong scope, stale revisions and expired leases',async()=>{const f=await setup();try{
+ const claim=await commentJob(f,'9');await attestCommentContribution(f.database,f.api,claim,f.sub.id);
+ await expect(attestCommentContribution(f.database,f.api,await commentJob(f,'9',true),f.sub.id)).rejects.toThrow(/separate/);
+ vi.mocked(f.api.permission).mockResolvedValue('read');await expect(attestCommentContribution(f.database,f.api,await commentJob(f,'4',true),f.sub.id)).rejects.toThrow(/permission/);
+ vi.mocked(f.api.permission).mockResolvedValue('write');
+ await expect(attestCommentContribution(f.database,f.api,await commentJob(f,'4',true,{repoId:'999'}),f.sub.id)).rejects.toThrow(/scope/);
+ const expired=await commentJob(f,'4',true);await f.database.orm.update(jobs).set({lockedUntil:new Date(0)}).where(eq(jobs.id,expired.id));await expect(attestCommentContribution(f.database,f.api,expired,f.sub.id)).rejects.toThrow(/lease/);
+ const pr=await f.api.pullRequest('1',await f.api.repository('1','2'),501);vi.mocked(f.api.pullRequest).mockResolvedValue({...pr,base:{...pr.base,sha:'d'.repeat(40)}});
+ await expect(attestCommentContribution(f.database,f.api,await commentJob(f,'4',true),f.sub.id)).rejects.toThrow(/current open PR/);
+ expect(await confirmedContributors(f.database,f.sub)).toEqual([]);
  }finally{await f.close();}});

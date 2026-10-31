@@ -1,3 +1,4 @@
+import { attestCommentContribution } from '../actions/attribution.js';
 import { reconcileBounty } from '../github/reconciliation.js';
 import type { Phase6 } from '../settlement/service.js';
 import type { FundingService } from '../settlement/funding.js';
@@ -12,7 +13,7 @@ import { GitHubError } from '../github/app.js';
 import { AuthError } from '../github/oauth.js';
 import { currentAccess } from '../github/permissions.js';
 import { parseUsd } from '../github/commands.js';
-import { reply, syncBounty } from '../github/comments.js';
+import { reply, syncBounty, syncSubmission } from '../github/comments.js';
 import { createDraft } from '../actions/create.js';
 import { retryClaims } from '../settlement/claims.js';
 import { bountyStatus,awardStatusText,cancellationStatusText } from '../actions/status.js';
@@ -34,6 +35,7 @@ export async function handleJob(db:Database,github:GitHub,env:GitHubRuntimeEnv,j
  if(work.kind==='refresh_verification_sha'){if(!phase5)throw new Error('Verification worker unavailable');await phase5.refreshVerificationSha(work.installationId,work.repoId,work.sha);return;}
  if(work.kind==='verify_submission'){if(!phase5)throw new Error('Verification worker unavailable');await phase5.verifySubmission(work.submissionId,work.headSha,work.force,job);return;}
  if(work.kind==='reconcile_funding'){if(!funding)throw new Error('Funding worker unavailable');await funding.reconcile(work.attemptId);return;}
+ if(work.kind==='sync_submission'){await syncSubmission(db,github,env,job,work.submissionId);return;}
  if(work.kind==='sync_bounty'){await syncBounty(db,github,env,job,work.bountyId);return;}
  if(work.kind==='refresh_installation') {
   const current=await github.installation(work.installationId);
@@ -52,6 +54,24 @@ export async function handleJob(db:Database,github:GitHub,env:GitHubRuntimeEnv,j
  }
  const {installation,repo}=await currentAccess(github,work.installationId,work.repoId);
  const commentPrNumber=work.kind==='run_command'&&work.isPullRequest?work.issueNumber:undefined;
+ if(work.kind==='run_command'&&(work.command.kind==='contribute'||work.command.kind==='confirm-contributor')){
+  const command=work.command;
+  try{
+   if(!work.isPullRequest)throw new AuthError(400,'Post contribution commands in the linked PR Conversation tab, not on the issue.');
+   const links=await db.orm.select({sub:submissions,issue:bounties.issueNumber,status:bounties.status}).from(submissions).innerJoin(bounties,eq(bounties.id,submissions.bountyId)).where(and(eq(submissions.repoId,work.repoId),eq(submissions.prNumber,work.issueNumber)));
+   const choices=links.filter(row=>['FUNDED','NEEDS_REVIEW'].includes(row.status)&&(!command.issueNumber||row.issue===command.issueNumber));
+   const target=choices[0];
+   if(choices.length!==1||!target)throw new AuthError(409,'Use the funded linked issue number after the command, for example `/bounty contribute #11 <head SHA> <base SHA> <reason>`. No confirmation was recorded.');
+   const saved=await attestCommentContribution(db,github,job,target.sub.id);
+   const next=command.kind==='contribute'?`A different maintainer must post this on this PR, replacing the reason:\n\n\`/bounty confirm-contributor #${String(target.issue)} @${saved?.claimantLogin??'contributor'} ${command.headSha} ${command.baseSha} I verified this contribution because ...\``:`Both confirmations are recorded for this revision. [Request a fresh review](${new URL('/submissions/'+target.sub.id+'/retry',env.PUBLIC_URL).href}) within the repository’s review allowance.`;
+   await reply(db,github,env,job,work.installationId,repo,work.issueNumber,`Contribution ${command.kind==='contribute'?'declaration':'confirmation'} saved for head \`${command.headSha}\` and base \`${command.baseSha}\`. ${next}\n\nA new head or base requires new confirmations. No review, merge, award or payment was triggered.`);
+  }catch(error){if(!(error instanceof AuthError))throw error;await reply(db,github,env,job,work.installationId,repo,work.issueNumber,error.message);}
+  return;
+ }
+ if(work.kind==='run_command'&&work.isPullRequest&&work.command.kind==='invalid'){
+  await reply(db,github,env,job,work.installationId,repo,work.issueNumber,'Use the exact contribution command from the latest GitPay check: `/bounty contribute [#issue] <full head SHA> <full base SHA> <reason>` or `/bounty confirm-contributor [#issue] @login <full head SHA> <full base SHA> <reason>`. Reasons need 10–2000 characters. Post a new comment; edits and quoted commands are not processed.');return;
+ }
+
  let issueNumber=work.issueNumber;
  if(work.kind==='run_command'&&(work.command.kind==='approve'||work.command.kind==='reject')){
   const command=work.command;let target=issueNumber;
@@ -112,7 +132,7 @@ export async function handleJob(db:Database,github:GitHub,env:GitHubRuntimeEnv,j
 }
 async function markAttention(db:Database,job:LeasedJob) {
  const work=workFor(job);
- if(work.kind==='reconcile_funding'||work.kind==='retry_claims'||work.kind==='sync_pull_request'||work.kind==='refresh_verification_sha')return;
+ if(work.kind==='reconcile_funding'||work.kind==='retry_claims'||work.kind==='sync_pull_request'||work.kind==='refresh_verification_sha'||work.kind==='sync_submission')return;
  await db.withTransaction(async tx=>{
   await assertLease(tx,job);
   if(work.kind==='verify_submission'){

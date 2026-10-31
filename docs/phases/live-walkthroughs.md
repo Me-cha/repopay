@@ -147,3 +147,11 @@ October 31 update: the full Auto v3 evaluation completed and **failed (17/18)**.
 - [x] Run newly authorized corrected-fixture evaluation: 18/18 passed, reviewed and accepted by the user for scoped sandbox demos only.
 
 - [x] Hosted signed-out access boundary (October 31): `/dashboard/` and `/bounties/1` returned 303 to `/login`; `/api/bounties/1` returned 401; none exposed the demo repository name or cancelled bounty state. `/healthz` remained 200. This does not establish private-repository cross-account isolation, token expiry or permission-revocation behavior.
+
+- [x] Hosted owner sponsor consent: user screenshot confirms connected sponsor deepakA18 for deepakA18/gitpay-demo-http, Auto selected, profile checked 2026-10-31T16:32:25.266Z. Callback mismatch was resolved. This verifies consent/profile display, not a hosted model request; six-request walkthrough allowance remains unused by this step.
+
+- [x] Hosted bounty 2 / issue #11 funding projection: read-only GitHub verification of comment 6546042262 reports USD 1.00 FUNDED / confirmed funding. This is application bot evidence, not independent PayPal capture inspection. No new PR linked to #11 was visible at this check. Bot displays an empty required-CI list; inspect frozen CI configuration before any merge/award acceptance.
+
+- [ ] Deploy and verify ADR 0018 PR declaration/maintainer confirmation on the final PR #12 revision; verify issue/PR bot next-action discovery, stale-command rejection and no automatic model/payment effect.
+
+- [x] Locally implement and verify PR-native contribution commands plus role-specific issue/PR action discovery (ADR 0018). 379 tests, typecheck, lint and build passed; hosted confirmation/acknowledgement acceptance remains separate.

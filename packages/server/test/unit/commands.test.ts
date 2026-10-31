@@ -16,3 +16,10 @@ it('review commands bind optional issue identity and require a rejection reason'
  expect(parseCommand('/bounty reject #12 Missing required behavior')).toEqual({kind:'reject',issueNumber:12,reason:'Missing required behavior'});
  expect(parseCommand('/bounty reject')).toEqual({kind:'unavailable'});
 });
+it('contribution commands require explicit complete revisions and a separate named confirmation',()=>{
+ const head='a'.repeat(40),base='b'.repeat(40),reason='Implemented array validation';
+ expect(parseCommand(`/bounty contribute #11 ${head} ${base} ${reason}`)).toEqual({kind:'contribute',issueNumber:11,headSha:head,baseSha:base,reason});
+ expect(parseCommand(`/bounty confirm-contributor @second ${head} ${base} ${reason}`)).toEqual({kind:'confirm-contributor',login:'second',headSha:head,baseSha:base,reason});
+ for(const text of [`/bounty contribute ${head.slice(0,7)} ${base} ${reason}`,`/bounty contribute @second ${head} ${base} ${reason}`,`/bounty confirm-contributor ${head} ${base} ${reason}`])expect(parseCommand(text)?.kind).toBe('invalid');
+ expect(parseCommand(`> /bounty contribute ${head} ${base} ${reason}`)).toBeNull();
+});

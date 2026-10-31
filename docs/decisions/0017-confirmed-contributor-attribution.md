@@ -9,3 +9,5 @@ The PR author remains GitHub-authenticated. An additional commit author is eligi
 Writes serialize on the bounty/submission with award selection, invalidate evidence/version-bound financial confirmations, and cannot change an existing award. They do not enqueue model calls, reserve money or send payments. A fresh review is needed after confirmation. The shared policy still requires complete evidence and exact-cent allocations. No special settlement exception or evaluated model profile is enabled by this change.
 
 Migration 0018 introduces append-only contributor attestations. Live two-author allocation and recipient receipts remain required separately.
+
+Interaction update: [ADR 0018](0018-github-contributor-commands.md) supersedes browser-only confirmation as the primary path. Signed PR commands now reuse these same immutable revision-bound guards; the browser path remains a fallback.

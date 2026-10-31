@@ -55,7 +55,10 @@ Currently available: `/bounty create`, `/bounty status`, `/bounty fund`, and `/b
 | `/bounty reject <reason>` | On the linked PR: reject its reviewed revision before merge; preserve its evidence                                              |
 | `/bounty cancel [reason]` | Cancel an unfunded draft, or request a reviewed exception for a funded bounty; funded requests require a reason |
 | `/bounty link <pr>`      | Explicitly link a same-repository PR                                                                            |
-| `/bounty retry`           | Retry verification of a PR's current revision                                                                   |
+| `/bounty contribute [#issue] <head SHA> <base SHA> <reason>` | On the PR: declare your own additional contribution |
+| `/bounty confirm-contributor [#issue] @login <head SHA> <base SHA> <reason>` | On the PR: separately confirm a contributor at that revision |
+
+Review retry is offered through the authenticated **Request a fresh review** link on the PR; `/bounty retry` is not currently a working comment command.
 
 Maintainer commands require current repository write/maintain/admin permission; `/bounty status` is available to participants with access. Financial actions require confirmation or the deterministic settlement policy. Labels never fund or refund money.
 
@@ -163,3 +166,5 @@ Maintainers review contributor PRs directly on GitHub: comment, request changes 
 October 31 update: the full Auto v3 evaluation completed and **failed (17/18)**. That historical run did not authorize v3 awards; the later corrected 18/18 run and explicit scoped acceptance are recorded below. See [evaluation result](docs/evidence/05-auto-v3-result.md). Two-party revision-bound attribution is implemented locally; its two-recipient live payout is still pending. The real 72-hour refund test remains deferred.
 
 October 31 latest: the corrected complete-context Auto v3 evaluation passed 18/18; the user explicitly accepted v3 / SDK 1.0.28 for default-off, exact-bounty sandbox demos (ADR 0008). The prior 17/18 failure remains historical evidence. Hosted two-author workflow acceptance and other unchecked cases remain pending; no settlement environment scope was enabled. See [evaluation evidence](docs/evidence/05-auto-v3-result.md).
+
+GitHub bot comments provide the next action on the issue or PR: sponsor setup/funding/status on the issue, review feedback and copyable contribution commands on the PR, and recipient connection/payment progress on the winning PR. Account consent, payout details and financial confirmations use authenticated links. See [ADR 0018](docs/decisions/0018-github-contributor-commands.md); hosted acceptance of the new command flow remains pending.

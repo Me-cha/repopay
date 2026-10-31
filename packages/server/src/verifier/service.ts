@@ -14,12 +14,13 @@ import { parseCopilotEnv } from '../env.js';
 import { isSponsoredTerms } from '../domain/funded-terms.js';
 import { REVIEW_UNAVAILABLE_REASON } from '../domain/types.js';
 import { PROMPT_VERSION } from './prompt.js';
-import { assertLease } from '../jobs/queue.js';
+import { contributionCommands } from '../github/comments.js';
+import { assertLease,enqueue } from '../jobs/queue.js';
 import type { LeasedJob } from '../jobs/kinds.js';
 
 function md(value:string):string{return value.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('`','\\`').replaceAll('[','\\[').replaceAll(']','\\]');}
-function checkSummary(input:{advisory:string;ci:string;reasoning?:string;unmet?:string[];retryUrl:string}) {
- return `**${input.advisory}**\n\nCI for this exact revision: **${md(input.ci)}**. This check is advisory; it does not select an award or authorize payment. Contributors should address unmet requirements before merge. Maintainers can comment, request changes or close the PR on GitHub regardless of this assessment.\n\n${input.reasoning?md(input.reasoning):'No verifier verdict is available.'}${input.unmet?.length?`\n\nUnmet requirements:\n${input.unmet.map(value=>`- ${md(value)}`).join('\n')}`:''}\n\n[View bounty and request a fresh review](${input.retryUrl}) · [Confirm additional contributors before merge](${input.retryUrl.replace(/\/retry$/,'/contributors')})`;
+function checkSummary(input:{advisory:string;ci:string;reasoning?:string;unmet?:string[];retryUrl:string;headSha:string;baseSha:string;issueNumber:number}) {
+ return `**${input.advisory}**\n\nCI for this exact revision: **${md(input.ci)}**. This check is advisory; it does not select an award or authorize payment. Contributors should address unmet requirements before merge. Maintainers can comment, request changes or close the PR on GitHub regardless of this assessment.\n\n${input.reasoning?md(input.reasoning):'No verifier verdict is available.'}${input.unmet?.length?`\n\nUnmet requirements:\n${input.unmet.map(value=>`- ${md(value)}`).join('\n')}`:''}\n\n[View bounty and request a fresh review](${input.retryUrl})\n\n${contributionCommands(input.issueNumber,input.headSha,input.baseSha)}`;
 }
 // Name why evidence is insufficient instead of a generic "ambiguous" message.
 function insufficientReasons(evidence:VerifyInput,prAuthorGhId:string,creatorGhId:string,ciRequired:boolean):string[] {
@@ -97,7 +98,7 @@ export function createPhase5(db:Database,github:GitHub,env:FundingEnv,auth:AuthS
   } finally {await client.query('select pg_advisory_unlock(hashtext($1))',[lock]);}
  }
  async function setAttempt(attemptId:string,values:Partial<typeof verifications.$inferInsert>,lease?:LeasedJob) {
-  await db.withTransaction(async tx=>{if(lease)await assertLease(tx,lease);await tx.update(verifications).set(values).where(eq(verifications.id,attemptId));});
+  await db.withTransaction(async tx=>{if(lease)await assertLease(tx,lease);const [saved]=await tx.update(verifications).set(values).where(eq(verifications.id,attemptId)).returning();if(saved&&values.completedAt)await enqueue(tx,{kind:'sync_submission',payload:{submissionId:saved.submissionId},dedupeKey:`review-projection:${attemptId}`,maxAttempts:env.RECONCILIATION_MAX_ATTEMPTS});});
  }
  async function verifySubmission(submissionId:string,expectedHeadSha:string,force=false,lease?:LeasedJob) {
   const checkLease=async()=>{if(lease)await db.withTransaction(tx=>assertLease(tx,lease));};
@@ -150,8 +151,8 @@ export function createPhase5(db:Database,github:GitHub,env:FundingEnv,auth:AuthS
      await tx.update(bounties).set({needsAttention:false,attentionReason:null,updatedAt:new Date()}).where(and(eq(bounties.id,bounty.id),eq(bounties.attentionReason,REVIEW_UNAVAILABLE_REASON)));
     });
    };
-   if(!evidence.sufficient){await finish({status:'ERROR',errorCode:'INSUFFICIENT_EVIDENCE'},'GitPay did not review this revision',checkSummary({advisory:'This revision was not sent for model review.',ci:evidence.ci.status,reasoning:insufficientReasons(evidence,sub.authorGhId,bounty.createdByGhId,terms.policy.ciRequired).join('\n\n'),retryUrl}));return;}
-   if(!await withinAttemptBudget(client,bounty.repoId,sub.id,evidence.headSha)){await finish({status:'ERROR',errorCode:'VERIFIER_BUDGET_EXHAUSTED'},'GitPay review paused',checkSummary({advisory:'The repository review-attempt limit has been reached for today or this PR revision. No model request was made for this attempt.',ci:evidence.ci.status,retryUrl}));return;}
+   if(!evidence.sufficient){await finish({status:'ERROR',errorCode:'INSUFFICIENT_EVIDENCE'},'GitPay did not review this revision',checkSummary({advisory:'This revision was not sent for model review.',ci:evidence.ci.status,reasoning:insufficientReasons(evidence,sub.authorGhId,bounty.createdByGhId,terms.policy.ciRequired).join('\n\n'),retryUrl,headSha:evidence.headSha,baseSha:evidence.baseSha,issueNumber:bounty.issueNumber}));return;}
+   if(!await withinAttemptBudget(client,bounty.repoId,sub.id,evidence.headSha)){await finish({status:'ERROR',errorCode:'VERIFIER_BUDGET_EXHAUSTED'},'GitPay review paused',checkSummary({advisory:'The repository review-attempt limit has been reached for today or this PR revision. No model request was made for this attempt.',ci:evidence.ci.status,retryUrl,headSha:evidence.headSha,baseSha:evidence.baseSha,issueNumber:bounty.issueNumber}));return;}
    try {
     const sponsor=await auth.getCopilotSponsor(bounty.repoId);
     if(sponsor.sponsorGhId!==terms.sponsor.id||sponsor.modelId!==terms.policy.model||sponsor.installationId!==bounty.installationId)throw new Error('Sponsor binding is unavailable');
@@ -163,8 +164,8 @@ export function createPhase5(db:Database,github:GitHub,env:FundingEnv,auth:AuthS
     const currentSponsor=await auth.getCopilotSponsor(bounty.repoId);
     if(currentSponsor.tokenGeneration!==sponsor.tokenGeneration||currentSponsor.sponsorGhId!==terms.sponsor.id||currentSponsor.modelId!==terms.policy.model||currentSponsor.installationId!==bounty.installationId)throw new Error('Sponsor changed during review');
     // Under Auto terms this is the serving model Copilot reported, not `auto`.
-    await finish({status:'DONE',model:output.model,result:output.value,usageMetrics:{...output.usage},elapsedMs:output.elapsedMs,promptHash:output.promptHash},`${output.value.verdict} · confidence ${(output.value.confidence*100).toFixed(0)}%`,checkSummary({advisory:`Model assessment: ${output.value.verdict} · coverage ${(output.value.coverage*100).toFixed(0)}% · confidence ${(output.value.confidence*100).toFixed(0)}%.`,ci:evidence.ci.status,reasoning:output.value.reasoning,unmet:output.value.unmet_requirements,retryUrl}));
-   }catch(error){const code=safeErrorCode(error);await finish({status:'ERROR',errorCode:code},'GitPay review unavailable',checkSummary({advisory:`No model verdict was recorded (${code}).`,ci:evidence.ci.status,retryUrl}));}
+    await finish({status:'DONE',model:output.model,result:output.value,usageMetrics:{...output.usage},elapsedMs:output.elapsedMs,promptHash:output.promptHash},`${output.value.verdict} · confidence ${(output.value.confidence*100).toFixed(0)}%`,checkSummary({advisory:`Model assessment: ${output.value.verdict} · coverage ${(output.value.coverage*100).toFixed(0)}% · confidence ${(output.value.confidence*100).toFixed(0)}%.`,ci:evidence.ci.status,reasoning:output.value.reasoning,unmet:output.value.unmet_requirements,retryUrl,headSha:evidence.headSha,baseSha:evidence.baseSha,issueNumber:bounty.issueNumber}));
+   }catch(error){const code=safeErrorCode(error);await finish({status:'ERROR',errorCode:code},'GitPay review unavailable',checkSummary({advisory:`No model verdict was recorded (${code}).`,ci:evidence.ci.status,retryUrl,headSha:evidence.headSha,baseSha:evidence.baseSha,issueNumber:bounty.issueNumber}));}
   } catch(error){destroy=true;throw error;} finally {
    if(acquired){try{const result=await client.query<{unlocked:boolean}>('select pg_advisory_unlock(hashtext($1)) as unlocked',[lock]);if(result.rows[0]?.unlocked!==true)destroy=true;}catch{destroy=true;}}
    client.off('error',onError);
