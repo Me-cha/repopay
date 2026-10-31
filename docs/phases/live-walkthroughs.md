@@ -39,7 +39,7 @@ Already evidenced: merged PR #3 → one $50 award → one sandbox batch/item →
   - [x] Connect the recipient and verify the same award resumes with one payout intent. Mecha-Test-Account connection version 1; original award 2, batch 2, item 2, 100 cents.
   - [x] Confirm recorded provider SUCCESS and GitPay PAID; batch `XCKBDAE9R9JQJ`, item `GVHRMZVAW47BA`, same award 2, one batch/item.
   - [x] Confirm recipient sees the incoming $1 in their sandbox Personal-account Activity. User confirmed receipt October 31.
-- [ ] Two-author allocation: verify exact cents and both recipient outcomes, including waiting for missing connections. **Blocker:** verified revision-bound co-contributor attribution is still needed. Mecha-Test-Account now supplies a third account, but account availability alone does not implement attribution. Current automatic evidence accepts only the PR author; prepared-award mocked payout tests do not prove live attribution.
+- [ ] Two-author allocation: verify exact cents and both recipient outcomes, including waiting for missing connections. Revision-bound contributor declaration plus independent maintainer attestation is implemented locally (ADR 0017). Remaining: a real two-contributor PR, both confirmations at the final revision, accepted verifier profile, exact-cent award and both recipient receipts. Mocked payout tests do not prove live attribution.
 - [ ] Reconcile broader [Phase 6](06.md) merge/squash/rebase, replay and provider-recovery expectations with recorded coverage; distinguish simulated faults from real provider observations.
 
 ## Phase 7 — maintainer decisions
@@ -92,7 +92,7 @@ Local results and fault boundaries: [Phase 10 evidence](../evidence/10-summary.m
 
 ## Phase 11 — hosted validation
 
-Local preparation: [Phase 11 summary](../evidence/11-summary.md). No hosted deployment exists from this work.
+Local preparation: [Phase 11 summary](../evidence/11-summary.md). The user deployed https://gitpay.onrender.com/; public web health and database/schema readiness were verified October 31. Remaining hosted checks are below.
 
 - [ ] Approve actual Render pricing/region/resources, configure shared secrets and stable HTTPS origin, and validate the account-specific Blueprint.
 - [ ] Deploy one reviewed commit with the web-owned migration step and both services held; verify schema health and SDK runtime readiness.
@@ -127,5 +127,23 @@ October 31 update: the full Auto v3 evaluation completed and **failed (17/18)**.
 
 - [x] Implement authenticated additional-contributor declaration plus separate maintainer confirmation, head/base binding, stale-proof evidence integration and award fencing (ADR 0017).
 - [x] Run the approved 18-request v3 evaluation and preserve the failed 17/18 result.
-- [ ] Diagnose v3 false PARTIAL and obtain a passing evaluation before accepting its settlement profile.
+- [x] Diagnose v3 false PARTIAL, correct incomplete fixtures and obtain a passing 18/18 evaluation before user-authorized scoped v3 acceptance.
 - [ ] Perform the new two-confirmation flow with real accounts and verify two-recipient payout receipts.
+
+- [x] Hosted web health and homepage: https://gitpay.onrender.com/ returned GitPay; `/healthz` returned HTTP 200 / ready on October 31. Worker, hold and provider readiness remain unverified.
+
+- [x] Hosted GitHub callback and deepakA18 browser sign-in confirmed. User-supplied record counts were zero; user selected fresh demo issues rather than restoring local financial history.
+
+- [x] Hosted fresh draft intake and inline processing: demo issue #10, `$1.00 USD · OPEN`, `bounty-open`, bot links to hosted bounty 1 (October 31). No funding/payment acceptance claimed.
+
+- [x] Hosted `/bounty status` produces a new reply: issue #10, comment 6545780123, OPEN / unfunded, October 31.
+- [x] Hosted authenticated unfunded cancellation: issue #10 shows CANCELLED in the user's status screenshot and canonical GitHub bot comment; `bounty-open` removed, issue remains open, historical replies retained. Zero committed/delivered amounts; no payment or refund sent. See [hosted evidence](../evidence/11-hosted.md).
+
+- [x] Hosted dashboard cancelled-draft display and refresh: user confirmed issue #10 looked correct at `/dashboard/?tab=bounties` after checking CANCELLED, zero awarded/delivered and retained history. User-observed acceptance; not an independent browser inspection.
+
+- [x] Run the separately approved three-request v3 diagnostic and retain reasoning: two RESOLVES, one PARTIAL explicitly citing missing `isValid` implementation. See [diagnostic evidence](../evidence/05-auto-v3-result.md). Allowance 3/3 used. Fixture correction and full profile acceptance remain open.
+
+- [x] Replace ambiguous evaluation fixtures with explicit requirements and complete source context; locally establish full-fix behavior and partial-fix counterexamples.
+- [x] Run newly authorized corrected-fixture evaluation: 18/18 passed, reviewed and accepted by the user for scoped sandbox demos only.
+
+- [x] Hosted signed-out access boundary (October 31): `/dashboard/` and `/bounties/1` returned 303 to `/login`; `/api/bounties/1` returned 401; none exposed the demo repository name or cancelled bounty state. `/healthz` remained 200. This does not establish private-repository cross-account isolation, token expiry or permission-revocation behavior.

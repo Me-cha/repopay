@@ -1,4 +1,7 @@
 import { expect,it,vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { runInNewContext } from 'node:vm';
+import { evaluationFixture } from '../../src/verifier/evaluate.js';
 import { evaluateFixtures,type EvaluationFixture } from '../../src/verifier/evaluate.js';
 import { parseCopilotEnv } from '../../src/env.js';
 import type { EvaluationObservation } from '../../src/verifier/evaluation.js';
@@ -19,4 +22,24 @@ it('stops on provider error without retrying or discarding completed observation
  const verifier=vi.fn<typeof verify>().mockResolvedValueOnce(result).mockRejectedValue(new Error('provider unavailable')),checkpoint=vi.fn<(rows:EvaluationObservation[])=>Promise<void>>().mockResolvedValue(undefined);
  await expect(evaluateFixtures(fixtures,env,checkpoint,verifier)).rejects.toThrow();
  expect(verifier).toHaveBeenCalledTimes(2);expect(checkpoint).toHaveBeenCalledTimes(1);
+});
+it('evaluation source establishes the full fix and an actual partial-fix counterexample',()=>{
+ const cases=evaluationFixture.array().parse(JSON.parse(readFileSync(new URL('../fixtures/verifier/cases.json',import.meta.url),'utf8')));
+ const parser=(id:string)=>{
+  const row=cases.find(c=>c.id===id);
+  if(!row)throw new Error(`Missing fixture ${id}`);
+  const line=row.diff.split('\n').find(line=>line.startsWith('{')&&line.includes('"path": "parser.js"'));
+  if(!line)throw new Error(`Missing parser context ${id}`);
+  const context=JSON.parse(line) as {content:string};
+  // Execute only this repository's controlled synthetic fixture, never PR evidence.
+  return runInNewContext(context.content.replace('export function','function')+'; parseCode',{}, {timeout:1000}) as (value:unknown)=>number;
+ };
+ const full=parser('full-fix'),partial=parser('partial-fix');
+ for(const [value,expected] of [['0',0],['007',7],['9999',9999]] as const)expect(full(value)).toBe(expected);
+ for(const value of ['', 'abc', '-1', '1.5', ' 1', '1 ', '12345', null, 12, undefined, {}, []])expect(()=>full(value)).toThrow('Invalid code');
+ expect(partial('007')).toBe(7);
+ expect(()=>partial('abc')).toThrow('Invalid code');
+ expect(partial('12345')).toBe(12345);
+ for(const id of ['fake-test-fix','injected-instructions','unrelated-change'])expect(parser(id)('abc')).toBeNaN();
+ expect(cases.find(c=>c.id==='insufficient-truncated')?.sufficient).toBe(false);
 });

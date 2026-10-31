@@ -1,6 +1,6 @@
 # GitPay
 
-**October 31 verifier update:** prompt v3 now includes bounded exact-head source/test context. Local verification and the PR #9 live regression review passed; the full v3 evaluation failed 17/18 and remains unaccepted. Historical v2 acceptance does not enable new v3 awards. Existing paid awards and delivery reconciliation remain intact. See [ADR 0016](docs/decisions/0016-source-context-review.md).
+**October 31 verifier update:** prompt v3 now includes bounded exact-head source/test context. Local verification and the PR #9 live regression review passed. The first v3 evaluation failed 17/18; after correcting incomplete fixtures, the new evaluation passed 18/18 and the user accepted v3 for explicitly scoped sandbox demos. Settlement remains off without an exact approved bounty scope. Existing paid awards and delivery reconciliation remain intact. See [ADR 0016](docs/decisions/0016-source-context-review.md).
 
 **Fund an issue. Merge a qualifying solution. Pay the contributor.**
 
@@ -12,7 +12,7 @@ The principle is **glue, not a platform**: development stays in GitHub, checkout
 
 Phases 7–10 now have local implementations and automated verification. Their live walkthroughs, along with outstanding Phase 5–6 cases, remain on the [final live checklist](docs/phases/live-walkthroughs.md). See [Phase 10 evidence](docs/evidence/10-summary.md). Build with `pnpm build`, then open `/dashboard/` on the running server and sign in.
 
-Phase 11 deployment preparation and local restore safeguards are implemented. Render has **not** been provisioned or validated live. See [deployment instructions](docs/deployment.md) and [Phase 11 evidence](docs/evidence/11-summary.md).
+Phase 11 deployment preparation and local restore safeguards are implemented. The user deployed https://gitpay.onrender.com/ with a fresh database. Hosted health, GitHub sign-in/intake, unfunded cancellation and user-observed dashboard checks passed; hosted provider/payment/recovery acceptance remains pending. See [deployment instructions](docs/deployment.md) and [Phase 11 evidence](docs/evidence/11-summary.md).
 
 Phase 12 handoff tooling and the [final acceptance matrix](docs/evidence/12-acceptance.md) are prepared locally. **Full MVP acceptance remains pending**; see the [demo outline](docs/demo.md) and [verification record](docs/evidence/12-summary.md).
 
@@ -86,7 +86,7 @@ flowchart LR
 | Runtime AI            | Copilot SDK with personal-repository owner sponsorship; Zod validation                        |
 | Web                   | Server-rendered confirmation pages; React/Vite + AG Grid for the optional dashboard      |
 | Validation            | Vitest, integration tests, property tests, verifier evaluations and sandbox walkthroughs |
-| Deployment target     | Render Blueprint prepared; not deployed or accepted                                      |
+| Deployment target     | Render web deployed manually; full hosted acceptance pending                                      |
 
 Codex is the coding assistant; Copilot SDK is the selected runtime verifier provider. The model receives no unrestricted authority to move money. See [the provider decision](docs/decisions/0005-copilot-verifier.md).
 
@@ -160,4 +160,6 @@ Remaining live walkthroughs are deferred to the final validation session after l
 
 Maintainers review contributor PRs directly on GitHub: comment, request changes or close unmerged work. Copilot supplies advisory feedback, not final acceptance. `/bounty reject <reason>` on the PR records a revision-bound bounty decision without requiring merge; ordinary comments never move money. GitPay’s payment-review page contains approval only. See [ADR 0015](docs/decisions/0015-premerge-pr-feedback.md).
 
-October 31 update: the full Auto v3 evaluation completed and **failed (17/18)**. Current v3 awards remain disabled by evaluated-profile binding. See [evaluation result](docs/evidence/05-auto-v3-result.md). Two-party revision-bound attribution is implemented locally; its two-recipient live payout is still pending. The real 72-hour refund test remains deferred.
+October 31 update: the full Auto v3 evaluation completed and **failed (17/18)**. That historical run did not authorize v3 awards; the later corrected 18/18 run and explicit scoped acceptance are recorded below. See [evaluation result](docs/evidence/05-auto-v3-result.md). Two-party revision-bound attribution is implemented locally; its two-recipient live payout is still pending. The real 72-hour refund test remains deferred.
+
+October 31 latest: the corrected complete-context Auto v3 evaluation passed 18/18; the user explicitly accepted v3 / SDK 1.0.28 for default-off, exact-bounty sandbox demos (ADR 0008). The prior 17/18 failure remains historical evidence. Hosted two-author workflow acceptance and other unchecked cases remain pending; no settlement environment scope was enabled. See [evaluation evidence](docs/evidence/05-auto-v3-result.md).

@@ -1,6 +1,12 @@
 # Hosted sandbox deployment
 
-Phase 11 prepares a Render Blueprint and local release safeguards. **Nothing has been provisioned or deployed.** Hosted workflows remain deferred with the other live walkthroughs.
+Phase 11 includes a prepared Render Blueprint and local release safeguards. The user manually deployed https://gitpay.onrender.com/ with Free web service and Free Postgres (1 GB), choosing fresh demo issues rather than importing local financial history. Health, GitHub sign-in/intake, unfunded cancellation and the user-observed dashboard are verified; full hosted acceptance remains pending. See [hosted evidence](evidence/11-hosted.md).
+
+## Current manually configured demo
+
+The running demo uses `WORKER_MODE=inline` on the web service, with no separately provisioned worker reported. Its start command is `pnpm db:migrate:hosted && pnpm db:check && pnpm start:hosted`; migration is run before listening because the selected service does not use a pre-deploy command. Build with `corepack enable && corepack prepare pnpm@10.29.3 --activate && pnpm install --frozen-lockfile --prod=false && pnpm build`. Set `PUBLIC_URL=https://gitpay.onrender.com` and keep shared encryption keys stable across releases.
+
+GitHub callback/intake were moved to this origin for fresh issue #10. The PayPal webhook and historical financial records have not been migrated by this smoke test. Keep discovery and funded cancellation disabled, and settlement scope absent until a separately reviewed test is ready. Inline hosted Copilot operation, provider continuity and recovery remain unverified. The paid Blueprint below is an alternative topology, not a description of the user's current Free deployment; do not sync it into that deployment without resource approval.
 
 ## Topology and cost review
 

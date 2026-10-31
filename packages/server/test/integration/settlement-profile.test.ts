@@ -1,6 +1,4 @@
-import { expect,it,vi } from 'vitest';
-// Exercise the historical evaluated profile independently of the new unevaluated prompt.
-vi.mock('../../src/verifier/prompt.js',()=>({PROMPT_VERSION:'gitpay-verifier-v2'}));
+import { expect,it } from 'vitest';
 import { acceptsDemoProfile } from '../../src/settlement/profile.js';
 import { termsHash,makeTerms } from '../../src/domain/funded-terms.js';
 import { intentFixture } from '../helpers/funding.js';
