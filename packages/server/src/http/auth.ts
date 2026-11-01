@@ -8,8 +8,52 @@ import { checkCsrf,cookie,csrfFor,requireSession,setCookie } from './session.js'
 export interface AuthenticationDependencies {database:Database;env:AuthEnv;auth:AuthService;github:GitHub}
 export const escapeHtml=(value:string)=>value.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]??''));
 export const dollars=(value:number)=>`$${String(Math.floor(value/100))}.${String(value%100).padStart(2,'0')}`;
+export const formatIST=(d:Date|string|null|undefined):string=>{if(!d)return '—';const date=typeof d==='string'?new Date(d):d;if(isNaN(date.getTime()))return String(d);return new Intl.DateTimeFormat('en-IN',{timeZone:'Asia/Kolkata',year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hour12:true}).format(date)+' IST';};
 export function htmlPage(title:string,content:string):string {
- return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · GitPay</title><style>body{margin:0;background:#f5f6f8;color:#18202b;font:17px/1.6 system-ui,sans-serif}main{max-width:640px;margin:8vh auto;padding:32px;background:white;border:1px solid #d9dee5;border-radius:12px}h1{line-height:1.2;font-size:30px}a{color:#174ea6}button{font:inherit;font-weight:600;background:#174ea6;color:white;border:0;border-radius:6px;padding:12px 20px;cursor:pointer}a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #b34c00;outline-offset:4px}input:not([type=checkbox]):not([type=hidden]),select,textarea{display:block;max-width:100%;width:100%;box-sizing:border-box;font:inherit;border:1px solid #8895a6;border-radius:4px;padding:8px;min-height:44px}textarea{min-height:100px}form{margin:20px 0}label{display:block;margin:12px 0}pre{white-space:pre-wrap;overflow-wrap:anywhere}button{min-height:44px}p,li{overflow-wrap:anywhere}.muted{color:#526070}dl{display:grid;grid-template-columns:1fr 2fr;gap:8px}dd{margin:0;overflow-wrap:anywhere}.brand{font-weight:700;letter-spacing:.04em}@media(max-width:700px){main{margin:20px;padding:24px}dl{display:block}dd{margin-bottom:14px}}</style><script src="/assets/actions.js" defer></script></head><body><main><a class="brand" href="/">GitPay</a> · <a href="/dashboard/">Overview</a><h1>${escapeHtml(title)}</h1>${content}<noscript><p>JavaScript is required to submit confirmation and sign-out forms securely. Read-only pages remain available.</p></noscript></main></body></html>`;
+ return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · GitPay</title><style>
+:root{--bg:#f8f9fa;--surface:#ffffff;--text:#1a1a1a;--muted:#57606a;--line:#eaedf0;--border:#d4d8de;--accent:#0070ba;--escrow:#003087;--pass:#116329;--pass-bg:#dafbe1;--danger:#cf222e;--danger-bg:#ffebe9;--warn:#9a6700;--warn-bg:#fff8c5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.6 'Geist',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:720px;margin:32px auto;padding:28px 32px;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.02)}
+header.page-nav{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:20px;font-size:13px}
+h1{font-size:22px;line-height:1.3;font-weight:600;letter-spacing:-0.02em;margin:12px 0 16px}
+h2{font-size:15px;line-height:1.4;font-weight:600;letter-spacing:-0.01em;margin:24px 0 10px}
+h3{font-size:14px;font-weight:600;margin:16px 0 8px}
+a{color:var(--accent);text-decoration:none;text-underline-offset:2px}
+a:hover{text-decoration:underline}
+button{font:inherit;font-size:13px;font-weight:600;background:#111418;color:white;border:1px solid #111418;border-radius:6px;padding:8px 16px;cursor:pointer;min-height:38px;transition:background 0.12s}
+button:hover{background:#24292f}
+.btn-outline{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.btn-outline:hover{background:var(--bg)}
+.btn-danger{background:var(--surface);color:var(--danger);border:1px solid var(--danger)}
+.btn-danger:hover{background:var(--danger-bg)}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input:not([type=checkbox]):not([type=hidden]),select,textarea{display:block;width:100%;box-sizing:border-box;font:inherit;font-size:13px;border:1px solid var(--border);border-radius:6px;padding:8px 10px;min-height:38px;background:var(--surface);color:var(--text);margin-top:4px}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+textarea{min-height:90px;font-family:inherit}
+form{margin:16px 0}
+label{display:block;margin:12px 0;font-size:13px;font-weight:500;color:var(--text)}
+p,li{overflow-wrap:anywhere}
+.muted{color:var(--muted);font-size:13px}
+.brand{font-weight:600;letter-spacing:-0.01em;color:var(--text)}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:100px;border:1px solid var(--border);background:#f3f4f6;color:var(--muted);font-family:'Geist Mono',ui-monospace,SFMono-Regular,monospace}
+.chip-pass{background:var(--pass-bg);color:var(--pass);border-color:#aceebb}
+.chip-fail,.chip-danger{background:var(--danger-bg);color:var(--danger);border-color:#ffc1ba}
+.chip-pending,.chip-warn{background:var(--warn-bg);color:var(--warn);border-color:#fae17d}
+.chip-info{background:#ddf4ff;color:var(--accent);border-color:#b6e3ff}
+.kv-grid{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px;padding:12px 14px;background:var(--bg);border:1px solid var(--line);border-radius:6px;margin:12px 0}
+.kv-grid dt{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:0.04em;font-weight:600;display:flex;align-items:center}
+.kv-grid dd{margin:0;font-family:'Geist Mono',ui-monospace,SFMono-Regular,monospace;font-size:13px;word-break:break-word}
+.split-bar{display:flex;height:6px;border-radius:3px;overflow:hidden;margin:8px 0;background:var(--line)}
+.split-bar-a{background:var(--escrow)}
+.split-bar-b{background:var(--accent)}
+.notice-banner{padding:12px 14px;border-radius:6px;font-size:13px;margin:12px 0;border:1px solid var(--line)}
+.notice-banner.info{background:#ddf4ff;border-left:3px solid #0969da;color:#0550ae}
+.notice-banner.warn{background:var(--warn-bg);border-left:3px solid var(--warn);color:#6c5400}
+.notice-banner.danger{background:var(--danger-bg);border-left:3px solid var(--danger);color:var(--danger)}
+.criteria-box{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:12px 14px;font-family:'Geist Mono',ui-monospace,monospace;font-size:12.5px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;margin:10px 0}
+@media(max-width:700px){main{margin:12px;padding:20px}.kv-grid{display:block}.kv-grid dd{margin-bottom:10px}}
+</style><script src="/assets/actions.js" defer></script></head><body><main><header class="page-nav"><a class="brand" href="/">GitPay <span class="chip" style="font-size:10px;padding:1px 6px">SANDBOX</span></a><nav><a href="/dashboard/">Overview</a> · <a href="/connect">Payouts</a></nav></header><h1>${escapeHtml(title)}</h1>${content}<noscript><p>JavaScript is required to submit confirmation and sign-out forms securely. Read-only pages remain available.</p></noscript></main></body></html>`;
 }
 export function sensitiveHeaders(response:Response) {
  response.set({'Cache-Control':'no-store','Referrer-Policy':'no-referrer','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'"});
@@ -47,8 +91,8 @@ export function mountAuth(app:Express,deps:AuthenticationDependencies) {
  app.get('/',async(request,response)=>{
   try{
    const session=await auth.requireLocalSession(cookie(request,'gitpay_session'));
-   response.type('html').send(htmlPage('Signed in',`<p>Signed in as <strong>${escapeHtml(session.ghLogin)}</strong>.</p><p><a href="/dashboard/">View bounties and payment progress</a></p><p><a href="/connect">Connect payout details</a>, or return to your GitHub issue to fund or review work.</p><form method="post" action="/logout"><input type="hidden" name="csrf" value="${csrfFor(session,'/logout')}"><button type="submit">Sign out</button></form>`));
-  }catch(error){if(error instanceof AuthError&&error.status===401)response.type('html').send(htmlPage('Issue bounties on GitHub','<p>Sign in to review an action requested on your GitHub issue.</p><p><a href="/login">Sign in with GitHub</a></p>'));else safeError(response,error);}
+   response.type('html').send(htmlPage('Account Session',`<div class="kv-grid"><dt>GitHub Account</dt><dd><strong>@${escapeHtml(session.ghLogin)}</strong> <span class="chip chip-pass">Signed in</span></dd></div><p><a href="/dashboard/">View bounties and payment progress →</a></p><p><a href="/connect">Connect payout details →</a></p><p class="muted">Manage and fund bounties directly on your GitHub issues.</p><form method="post" action="/logout"><input type="hidden" name="csrf" value="${csrfFor(session,'/logout')}"><button class="btn-outline" type="submit">Sign out</button></form>`));
+  }catch(error){if(error instanceof AuthError&&error.status===401)response.type('html').send(htmlPage('Issue Bounties on GitHub','<p>GitPay connects GitHub issues with PayPal escrow and automated verification.</p><p><a href="/login"><button type="button">Sign in with GitHub</button></a></p><p class="muted"><a href="/dashboard/">Browse public overview →</a></p>'));else safeError(response,error);}
  });
  app.post('/logout',async(request,response)=>{
   try{const session=await auth.requireLocalSession(cookie(request,'gitpay_session'));checkCsrf(request,env,session);await auth.logout(session.id);setCookie(response,env,'gitpay_session','',0);response.redirect(303,'/');}catch(error){safeError(response,error);}

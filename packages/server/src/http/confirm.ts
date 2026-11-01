@@ -12,7 +12,7 @@ function recovery(response:Response,error:unknown,bounty:Bounty) {
  if(!(error instanceof AuthError)||error.status!==409)throw error;
  response.status(409).type('html').send(htmlPage('Check bounty status',`<p role="alert">${escapeHtml(error.message)}</p>`+summary(bounty)+`<p><a href="/bounties/${bounty.id}">View current bounty status</a></p>`+(bounty.status==='OPEN'&&!bounty.captureRequestKey&&!bounty.captureId&&!bounty.fundedAt?`<p><a href="/bounties/${bounty.id}/cancel">Prepare a fresh confirmation</a></p>`:'')));
 }
-function summary(b:Bounty) {return `<dl><dt>Repository</dt><dd>${escapeHtml(b.repoFullName)}</dd><dt>Issue</dt><dd>#${String(b.issueNumber)}</dd><dt>Amount</dt><dd>${dollars(b.amountCents)} USD</dd><dt>State</dt><dd id="bounty-status">${escapeHtml(b.status)}</dd></dl>`;}
+function summary(b:Bounty) {return `<dl class="kv-grid"><dt>Repository</dt><dd>${escapeHtml(b.repoFullName)}</dd><dt>Issue</dt><dd>#${String(b.issueNumber)}</dd><dt>Amount</dt><dd><strong>${dollars(b.amountCents)} USD</strong></dd><dt>State</dt><dd><span class="chip" id="bounty-status">${escapeHtml(b.status)}</span></dd></dl>`;}
 function form(session:Session,path:string,label:string) {return `<form method="post" action="${escapeHtml(path)}"><input type="hidden" name="csrf" value="${csrfFor(session,path)}"><button type="submit">${escapeHtml(label)}</button></form>`;}
 export function mountConfirm(app:Express,deps:AuthenticationDependencies) {
  const {database,env,auth,github}=deps;

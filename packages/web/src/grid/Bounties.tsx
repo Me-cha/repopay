@@ -3,7 +3,7 @@ import { AgGridReact } from 'ag-grid-react';
 import { ClientSideRowModelModule,QuickFilterModule,themeQuartz,type ColDef,type ICellRendererParams } from 'ag-grid-community';
 import { label,money,type BountyDto } from '../api.js';
 const modules=[ClientSideRowModelModule,QuickFilterModule];
-const theme=themeQuartz.withParams({fontFamily:'system-ui, sans-serif',fontSize:14,headerFontWeight:600,accentColor:'#174ea6',backgroundColor:'#ffffff',foregroundColor:'#18202b',headerBackgroundColor:'#f4f6fa',borderColor:'#d9dee5',rowHoverColor:'#eef4ff',spacing:8});
+const theme=themeQuartz.withParams({fontFamily:'"Geist", system-ui, sans-serif',fontSize:13,headerFontWeight:600,accentColor:'#0070ba',backgroundColor:'#ffffff',foregroundColor:'#1a1a1a',headerBackgroundColor:'#f8f9fa',borderColor:'#eaedf0',rowHoverColor:'#f8f9fa',spacing:8});
 export function Bounties({rows,onSelect,filter}:{rows:BountyDto[];onSelect:(id:string)=>void;filter:string}){
  const columns=useMemo<ColDef<BountyDto>[]>(()=>[
   {headerName:'Issue',field:'title',flex:2,minWidth:260,cellRenderer:({data}:ICellRendererParams<BountyDto>)=>data?<button className="row-link" onClick={()=> { onSelect(data.id); }}>{data.repoFullName} #{data.issueNumber}<span className="row-title">{data.title}</span></button>:null},

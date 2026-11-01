@@ -9,7 +9,7 @@ export function mountConnect(app:Express,deps:AuthenticationDependencies) {
   try{
    const session=await pageSession(deps,request,response);if(!session)return;
    const connected=await getContributorConnection(deps.database,session.ghId,deps.env.PAYMENT_DATA_ENC_KEY);
-   const state=connected?`<p>PayPal email connected for <strong>${escapeHtml(connected.ghLogin)}</strong>: <strong>${escapeHtml(connected.maskedEmail)}</strong>.</p>`:'<p>No PayPal email is connected.</p>';
+   const state=connected?`<div class="kv-grid"><dt>Connected Account</dt><dd><strong>@${escapeHtml(connected.ghLogin)}</strong></dd><dt>Payout Destination</dt><dd><code>${escapeHtml(connected.maskedEmail)}</code> <span class="chip chip-pass">AES-256 Encrypted</span></dd></div>`:'<p class="muted">No PayPal email is connected.</p>';
    response.type('html').send(htmlPage('Connect PayPal',`${state}<p>This saves a self-declared sandbox payout address. It does not verify PayPal account ownership, reserve a bounty, promise an award, or send money. Changing it applies only to future payout intents; existing intents keep their saved destination.</p><form method="post" action="/connect"><input type="hidden" name="csrf" value="${csrfFor(session,'/connect')}"><label for="paypalEmail">PayPal email</label><br><input id="paypalEmail" name="paypalEmail" type="email" maxlength="254" autocomplete="email" required><p><button type="submit">Save PayPal email</button></p></form><p><a href="/">Back to GitPay</a></p>`));
   }catch(error){safeError(response,error,request.path);}
  });

@@ -6,6 +6,20 @@ async function get<T extends z.ZodType>(path:string,schema:T,signal?:AbortSignal
 export const api={me:(signal?:AbortSignal)=>get('/api/me',meSchema,signal),bounties:(cursor='0',signal?:AbortSignal)=>get('/api/bounties?cursor='+encodeURIComponent(cursor),bountyPageSchema,signal),payouts:(cursor='0',signal?:AbortSignal)=>get('/api/payouts?cursor='+encodeURIComponent(cursor),payoutPageSchema,signal),detail:(id:string,signal?:AbortSignal,before?:string)=>get('/api/bounties/'+encodeURIComponent(id)+(before?'?before='+encodeURIComponent(before):''),detailSchema,signal)};
 export const money=(cents:number)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(cents/100);
 export const label=(value:string)=>value.replaceAll('_',' ').toLowerCase().replace(/^./,c=>c.toUpperCase());
+export const formatTimeIST=(date:Date|string|number=new Date())=>{
+ const d=typeof date==='string'||typeof date==='number'?new Date(date):date;
+ return new Intl.DateTimeFormat('en-IN',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true}).format(d)+' IST';
+};
+export const formatDateIST=(date:Date|string|number)=>{
+ const d=typeof date==='string'||typeof date==='number'?new Date(date):date;
+ return new Intl.DateTimeFormat('en-IN',{timeZone:'Asia/Kolkata',day:'numeric',month:'short',year:'numeric'}).format(d);
+};
+export const formatDateTimeIST=(date:Date|string|number|null|undefined)=>{
+ if(!date)return '—';
+ const d=typeof date==='string'||typeof date==='number'?new Date(date):date;
+ if(isNaN(d.getTime()))return String(date);
+ return new Intl.DateTimeFormat('en-IN',{timeZone:'Asia/Kolkata',day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',hour12:true}).format(d)+' IST';
+};
 export function subscribe(refresh:()=>void,invalidate:()=>void,heartbeatMs:number){
  const source=new EventSource('/api/stream');
  source.addEventListener('open',refresh);source.addEventListener('invalidate',refresh);source.addEventListener('refresh',refresh);
