@@ -11,7 +11,7 @@ The user's current request defines scope. The plan is a reference, not permissio
 ## Current repository map
 
 ```text
-Repopay/
+repopay/
 ├── README.md, IMPLEMENTATION_PLAN.md, PLAN.md
 ├── AGENTS.md, Agent.md             # Canonical instructions and pointer
 ├── ngrok.sh                        # Stable local HTTPS tunnel launcher

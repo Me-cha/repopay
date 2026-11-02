@@ -99,8 +99,8 @@ Codex is the coding assistant; Copilot SDK is the selected runtime verifier prov
 ## Start here
 
 ```sh
-git clone https://github.com/Me-cha/Repopay.git
-cd Repopay
+git clone https://github.com/Me-cha/repopay.git
+cd repopay
 ```
 
 For a credential-free local verification rehearsal, install Node **22.23.4**, pnpm **10.29.3** and Docker Compose, then run:

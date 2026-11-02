@@ -4,7 +4,7 @@ import type { Database } from '../db/client.js';
 import { awards,bounties,payoutBatches,submissionEvidence } from '../db/schema.js';
 import type { FundingEnv } from '../env.js';
 import type { GitHub } from '../github/app.js';
-import { createAuth } from '../github/oauth.js';
+import { createAuth,type AuthService } from '../github/oauth.js';
 import { isSponsoredTerms } from '../domain/funded-terms.js';
 import { enqueue } from '../jobs/queue.js';
 import { createPayouts,type Payouts } from '../paypal/payouts.js';
@@ -13,8 +13,8 @@ import { createSettlement } from './settle.js';
 import { candidateScanner } from './candidates.js';
 import { acceptsDemoProfile } from './profile.js';
 
-export function createPhase6(db:Database,github:GitHub,env:FundingEnv,provider:Payouts=createPayouts(env)) {
- const payouts=createPayoutService(db,env,provider),auth=createAuth(db,env);
+export function createPhase6(db:Database,github:GitHub,env:FundingEnv,provider:Payouts=createPayouts(env),auth:AuthService=createAuth(db,env)) {
+ const payouts=createPayoutService(db,env,provider);
  const collect=candidateScanner(db,github,env);
  const settlement=createSettlement(db,{
   acceptedServingModels:['gpt-6-luna'],

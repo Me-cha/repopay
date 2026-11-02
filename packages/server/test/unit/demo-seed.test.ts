@@ -8,7 +8,7 @@ it('dry run needs no credentials or provider calls', async () => {
   expect(lines.join('\n')).not.toContain('/bounty create');
 });
 it('rejects wrong repository, missing confirmation and unknown arguments before access', async () => {
-  for (const args of [['--execute'], ['--execute', '--repo', 'paypal/paypalhttp'], ['--unknown'], ['--execute', '--repo', DEMO_REPO, '--confirm-repo', 'Me-cha/Repopay']]) {
+  for (const args of [['--execute'], ['--execute', '--repo', 'paypal/paypalhttp'], ['--unknown'], ['--execute', '--repo', DEMO_REPO, '--confirm-repo', 'Me-cha/repopay']]) {
     await expect(seedDemo(args, () => Promise.reject(new Error('unexpected provider call')), () => undefined)).rejects.toThrow(/arguments|confirm|repository/);
   }
 });

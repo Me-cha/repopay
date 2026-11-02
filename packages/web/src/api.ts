@@ -18,8 +18,10 @@ async function get<T extends z.ZodType>(path:string,schema:T,signal?:AbortSignal
 async function postForm<T extends z.ZodType>(path:string,params:Record<string,string>,schema:T):Promise<z.output<T>>{
  const response=await fetch(path,{
   method:'POST',
+  mode:'cors',
   credentials:'same-origin',
   cache:'no-store',
+  referrerPolicy:'no-referrer',
   headers:{'Content-Type':'application/x-www-form-urlencoded'},
   body:new URLSearchParams(params).toString(),
  });
