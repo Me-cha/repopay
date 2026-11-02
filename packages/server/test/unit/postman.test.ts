@@ -6,7 +6,7 @@ import { z } from 'zod';
 const collection = z.object({ item: z.array(z.object({
   event: z.array(z.object({ script: z.object({ exec: z.array(z.string()) }) })).optional(),
   request: z.object({ method: z.string(), body: z.object({ raw: z.string() }).optional() }),
-})) }).parse(JSON.parse(readFileSync(new URL('../../../../postman/gitpay.postman_collection.json', import.meta.url), 'utf8')));
+})) }).parse(JSON.parse(readFileSync(new URL('../../../../postman/repopay.postman_collection.json', import.meta.url), 'utf8')));
 const ping = collection.item.find((item) => item.request.method === 'POST');
 
 it('synthetic Postman intake skips without opt-in and refuses non-loopback destinations', () => {
@@ -28,6 +28,6 @@ it('synthetic Postman intake skips without opt-in and refuses non-loopback desti
       expect(values.has('localSignature')).toBe(allowed);
     }
   }
-  expect(ping?.request.body?.raw).toBe('{"zen":"GitPay synthetic local ping"}');
+  expect(ping?.request.body?.raw).toBe('{"zen":"Repopay synthetic local ping"}');
   expect(collection.item.filter((item) => item.request.method !== 'GET')).toHaveLength(1);
 });

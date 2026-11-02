@@ -8,7 +8,7 @@ October 30, 2026. User authorized moving to Phase 7 with Phase 6's delayed-claim
 - `actions/reject.ts`: current-permission comment rejection adapter. Atomic job receipts prevent replay advancing to the next candidate; PR-targeted rejection cannot reject another PR.
 - `settlement/award.ts`: shared automatic/manual final guard and rejection-aware stable candidate ordering. One immutable award, exact cents and verified recipients remain mandatory.
 - `http/review.ts`: review and exact confirmation pages, CSRF/Origin validation, strict final body, escaped output and same-origin navigation. Financial confirmation cannot substitute recipients or amounts.
-- Migration 0013: append-only review decisions, revision-specific rejection uniqueness and approval action tokens. Applied to development after ignored local backup `.local/backups/gitpay-before-phase7.dump`; worker stopped for migration and restarted afterward.
+- Migration 0013: append-only review decisions, revision-specific rejection uniqueness and approval action tokens. Applied to development after ignored local backup `.local/backups/repopay-before-phase7.dump`; worker stopped for migration and restarted afterward.
 - GitHub approve/reject commands, linked-PR issue disambiguation, NEEDS_REVIEW projection link and authorized review history in the bounty API.
 
 See [ADR 0009](../decisions/0009-maintainer-review-records.md) for schema and authority boundaries. No new model evaluation or payment was made by this implementation.
@@ -32,7 +32,7 @@ The user accepted local-only verification for now. Remaining Phase 5 onward live
 
 ## October 31 — live case authorized and prepared
 
-User authorized one new $1 sandbox bounty and two contributor PRs for rejection followed by reasoned partial approval, with up to 6 Copilot Auto requests. Zero requests used at preparation. Created [issue #7](https://github.com/deepakA18/gitpay-demo-http/issues/7) with explicit scalar/array nullish omission, valid empty/zero/false preservation, immutability and regression-test criteria. Posted `/bounty create 1` through the normal command path. Checkout, contributor PRs, merge and authenticated decisions remain pending. Earlier awards are not reused.
+User authorized one new $1 sandbox bounty and two contributor PRs for rejection followed by reasoned partial approval, with up to 6 Copilot Auto requests. Zero requests used at preparation. Created [issue #7](https://github.com/deepakA18/repopay-demo-http/issues/7) with explicit scalar/array nullish omission, valid empty/zero/false preservation, immutability and regression-test criteria. Posted `/bounty create 1` through the normal command path. Checkout, contributor PRs, merge and authenticated decisions remain pending. Earlier awards are not reused.
 
 ### Contributor PRs received — October 31
 
@@ -60,7 +60,7 @@ Migration 0017 retains immutable historical records, allows null merge SHA for u
 
 Validation: typecheck and lint passed; full suite **356 server tests / 67 files and 4 web tests / 2 files** passed. Added pre-merge cases cover permission loss, stale evidence, duplicate leased commands, preserved reviews, no award, approval refusal before merge, and later merge exclusion. Retired browser POST is tested. Tests use isolated PostgreSQL and mocked providers; this is not live pre-merge acceptance.
 
-Local backup created at ignored `.local/backups/gitpay-before-0017.dump`; migration applied and `pnpm db:check` reports matching artifact history. Restarted local server. Readback preserves bounty 1 and 3 PAID, bounty 4 FUNDED, historical rejection 1, and zero awards for bounty 4. Reopened demo issue #7; PR #9 remains OPEN/unmerged. No new review request, payout, PR merge or source revert was performed. Current live allowance usage remains 3/6.
+Local backup created at ignored `.local/backups/repopay-before-0017.dump`; migration applied and `pnpm db:check` reports matching artifact history. Restarted local server. Readback preserves bounty 1 and 3 PAID, bounty 4 FUNDED, historical rejection 1, and zero awards for bounty 4. Reopened demo issue #7; PR #9 remains OPEN/unmerged. No new review request, payout, PR merge or source revert was performed. Current live allowance usage remains 3/6.
 
 ### Live pre-merge rejection stored; PR reply blocked — October 31
 
@@ -68,7 +68,7 @@ User posted rejection on unmerged PR #9. Decision 2 persisted for submission 5 w
 
 ### Pre-merge rejection and visible feedback confirmed — October 31
 
-Installation 175753017 now reports Pull requests write. Recovered the already-authorized acknowledgement under `withProjectionLock(reply:212)` using the original `gitpay:reply:212` marker after verifying the stored command receipt; no decision was replayed. Bot comment [6543538264](https://github.com/deepakA18/gitpay-demo-http/pull/9#issuecomment-6543538264) is verified on PR #9. Restarted the application to discard old cached installation tokens; its queued job can reconcile the same marker normally. Decision 2 retains null merge SHA; PR #9 remains OPEN/unmerged; bounty 4 FUNDED with zero awards. No model calls or payments were made; allowance remains 3/6. This completes the narrow live pre-merge rejection/visible-feedback case, not pending approval, permission-loss and stale-confirmation live cases.
+Installation 175753017 now reports Pull requests write. Recovered the already-authorized acknowledgement under `withProjectionLock(reply:212)` using the original `repopay:reply:212` marker after verifying the stored command receipt; no decision was replayed. Bot comment [6543538264](https://github.com/deepakA18/repopay-demo-http/pull/9#issuecomment-6543538264) is verified on PR #9. Restarted the application to discard old cached installation tokens; its queued job can reconcile the same marker normally. Decision 2 retains null merge SHA; PR #9 remains OPEN/unmerged; bounty 4 FUNDED with zero awards. No model calls or payments were made; allowance remains 3/6. This completes the narrow live pre-merge rejection/visible-feedback case, not pending approval, permission-loss and stale-confirmation live cases.
 
 ### Revised PR #9 inspected — October 31
 

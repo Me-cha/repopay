@@ -57,12 +57,12 @@ export async function collectVerification(input:{database?:Database;github:GitHu
  // Retained in diffText and snapshotHash alongside exact-head source/test context.
  // API account association + authenticated attestations is not cryptographic authorship proof.
  const hasCodeEvidence=!!diff.trim();
- const provenance={kind:'gitpay-contribution-evidence-v1',headSha:pr.head.sha,baseSha:pr.base.sha,
+ const provenance={kind:'repopay-contribution-evidence-v1',headSha:pr.head.sha,baseSha:pr.base.sha,
   prAuthor:{ghId:pr.user.id,login:pr.user.login},commitPaginationComplete:commits.complete,
   githubAssociatedCommits:commits.authors.slice(0,100).map(a=>({sha:a.commitSha??null,ghId:a.ghId,login:a.login,type:a.type})),
   attestations:attestations.slice(0,32).map(a=>({id:a.id,kind:a.kind,claimantGhId:a.claimantGhId,actorGhId:a.actorGhId,headSha:a.headSha,baseSha:a.baseSha,reason:a.reason,recordedAt:a.createdAt.toISOString()})),
   confirmedAdditionalAuthorIds:confirmed.filter(a=>authorIds.has(a.ghId)).map(a=>a.ghId)};
- const attributionContext='\n### GitPay contribution evidence at exact revision (reasons are untrusted user statements)\n'+JSON.stringify(provenance);
+ const attributionContext='\n### Repopay contribution evidence at exact revision (reasons are untrusted user statements)\n'+JSON.stringify(provenance);
  if(commits.authors.length>100||attestations.length>32||diff.length+attributionContext.length>limit)truncated=true;
  else diff+=attributionContext;
  const sufficient=!truncated&&hasCodeEvidence&&!!eligibleAuthors.length&&unverifiedAuthors.length===0&&(!termsPolicy.ciRequired||ci.status==='pass');

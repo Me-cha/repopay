@@ -11,7 +11,7 @@ export async function runPreflight(env: PreflightEnv, options: PreflightOptions)
   const payload = Buffer.from(JSON.stringify({ iat: now - 60, exp: now + 540, iss: env.GH_CLIENT_ID })).toString('base64url');
   const unsigned = header + '.' + payload;
   const jwt = unsigned + '.' + sign('RSA-SHA256', Buffer.from(unsigned), env.GH_PRIVATE_KEY.replaceAll('\\n', '\n')).toString('base64url');
-  const github = await requestJson(env, 'https://api.github.com/app', { headers: { Authorization: 'Bearer ' + jwt, Accept: 'application/vnd.github+json', 'User-Agent': 'GitPay-Phase00', 'X-GitHub-Api-Version': '2026-03-10' } });
+  const github = await requestJson(env, 'https://api.github.com/app', { headers: { Authorization: 'Bearer ' + jwt, Accept: 'application/vnd.github+json', 'User-Agent': 'Repopay-Phase00', 'X-GitHub-Api-Version': '2026-03-10' } });
   if (github.status !== 200 || z.object({ slug: z.string() }).parse(github.body).slug !== env.GH_APP_SLUG) throw new ProbeError('GitHub App authentication or slug check failed');
   const copilot = { structuredOutput: options.copilot ? await probeCopilotModels(options.copilot) : 'not_probed' };
   let paypal;

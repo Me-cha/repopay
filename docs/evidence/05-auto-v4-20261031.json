@@ -1,6 +1,6 @@
 {
   "model": "auto",
-  "promptVersion": "gitpay-verifier-v4",
+  "promptVersion": "repopay-verifier-v4",
   "sdkVersion": "1.0.28",
   "observations": [
     {
@@ -628,7 +628,7 @@
             "verdict": "PARTIAL",
             "coverage": 0.75,
             "confidence": 0.99,
-            "reasoning": "The parser change enforces 1–4 ASCII decimal digits and returns Number(value); the tests cover valid examples and invalid inputs. However, the required current-revision contribution declaration and separate maintainer confirmation are not present. The GitPay evidence lists contributor 9's associated commit but no attestations or confirmed additional authors; the copied confirmations reference a different head.",
+            "reasoning": "The parser change enforces 1–4 ASCII decimal digits and returns Number(value); the tests cover valid examples and invalid inputs. However, the required current-revision contribution declaration and separate maintainer confirmation are not present. The Repopay evidence lists contributor 9's associated commit but no attestations or confirmed additional authors; the copied confirmations reference a different head.",
             "unmet_requirements": [
               "Authenticated declaration and separate maintainer confirmation for the additional contributor at head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa and base bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb are missing."
             ],

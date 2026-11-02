@@ -22,7 +22,7 @@ Using the repository's local Node 22 toolchain and pnpm 10.29.3:
 | Focused provider/config/logging/terms/funding checks | 52 tests passed |
 | `pnpm typecheck` | Exit 0 |
 | `pnpm lint` | Exit 0 |
-| `TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test pnpm test` | 167 tests across 27 files passed; real local Postgres, mocked external providers |
+| `TEST_DATABASE_URL=postgresql://repopay:repopay@127.0.0.1:5433/repopay_test pnpm test` | 167 tests across 27 files passed; real local Postgres, mocked external providers |
 | `pnpm build` | Exit 0 |
 | Documentation consistency | `git diff --check` passed; all 39 Markdown files checked with no missing local link targets |
 | Restored local server | `pnpm dev` on port 3000; `/healthz` returned HTTP 200 with `status: ready` |

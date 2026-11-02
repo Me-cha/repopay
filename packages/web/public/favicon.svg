@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" fill="none">
+  <rect width="1024" height="1024" rx="200" fill="#14171A" />
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M 340 716 L 340 307 L 586 307 L 654 375 L 654 482 L 595 541 L 542 488 L 490 541 L 414 541 L 414 716 Z M 414 382 L 550 382 L 580 412 L 580 448 L 550 478 L 414 478 Z" fill="#FFFFFF" />
+  <polygon points="542,490 681,716 590,716 490,551" fill="#4DFD9F" />
+</svg>

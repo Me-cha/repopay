@@ -10,7 +10,7 @@ import { parseFundingEnv } from '../../src/env.js';
 import { makeTerms } from '../../src/domain/funded-terms.js';
 import { authorizeAction } from '../../src/actions/guards.js';
 import { prepareFunding,confirmFunding } from '../../src/actions/fund.js';
-export const fundingEnv=()=>parseFundingEnv({...syntheticEnv(),PUBLIC_URL:'https://gitpay.test',PP_MERCHANT_ID:'MERCHANT12345',POLICY_CI_CONTEXTS:JSON.stringify({'2':[{name:'test',appId:'15368'}]})});
+export const fundingEnv=()=>parseFundingEnv({...syntheticEnv(),PUBLIC_URL:'https://repopay.test',PP_MERCHANT_ID:'MERCHANT12345',POLICY_CI_CONTEXTS:JSON.stringify({'2':[{name:'test',appId:'15368'}]})});
 export async function intentFixture() {
  const env=fundingEnv();const f=await authFixture(undefined,env);const session=await f.auth.requireSession(f.login.cookie);
  const ctx=await authorizeAction(f.auth,f.api,session,f.bounty,'fund');
@@ -21,7 +21,7 @@ export async function intentFixture() {
 export async function captureFixture() {
  const f=await intentFixture();const attempt=await f.start();
  let now=new Date();const clock={now:()=>now};
- const order:OrderSnapshot={id:'ORDER123',status:'CREATED',reference:`gitpay:${attempt.id}`,customId:attempt.termsHash,merchantId:f.env.PP_MERCHANT_ID,amountCents:5000,currency:'USD',approvalUrl:'https://www.sandbox.paypal.com/checkoutnow?token=ORDER123',captures:[]};
+ const order:OrderSnapshot={id:'ORDER123',status:'CREATED',reference:`repopay:${attempt.id}`,customId:attempt.termsHash,merchantId:f.env.PP_MERCHANT_ID,amountCents:5000,currency:'USD',approvalUrl:'https://www.sandbox.paypal.com/checkoutnow?token=ORDER123',captures:[]};
  const api:Orders={createOrder:vi.fn(()=>Promise.resolve(structuredClone(order))),getOrder:vi.fn(()=>Promise.resolve(structuredClone(order))),captureOrder:vi.fn(()=>{order.status='COMPLETED';order.captures=[{id:'CAPTURE123',status:'COMPLETED',amountCents:5000,currency:'USD',finalCapture:true}];return Promise.resolve(structuredClone(order));}),getCapture:vi.fn(()=>Promise.resolve(required(order.captures[0])))};
  const service=createFunding(f.database,f.env,api,clock);
  return {...f,githubApi:f.api,attempt,order,api,service,clock,advance:(ms:number)=>{now=new Date(now.getTime()+ms);},get:async()=>required((await f.database.orm.select().from(fundingAttempts).where(eq(fundingAttempts.id,attempt.id)))[0]),getBounty:async()=>required((await f.database.orm.select().from(bounties).where(eq(bounties.id,f.bounty.id)))[0])};

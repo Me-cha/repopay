@@ -45,7 +45,7 @@ async function withRuntime<T>(env: CopilotEnv, factory: RuntimeFactory, operatio
  client: CopilotRuntime; step: <V>(promise: Promise<V>) => Promise<V>;
  setSession: (session: RuntimeSession) => void; fail: (message: string) => void; directory: string;
 }) => Promise<T>): Promise<T> {
- const directory = await mkdtemp(join(tmpdir(), 'gitpay-copilot-'));
+ const directory = await mkdtemp(join(tmpdir(), 'repopay-copilot-'));
  let client: CopilotRuntime | undefined, session: RuntimeSession | undefined, ended = false;
  let rejectDeadline: (error: Error) => void = () => {};
  const deadline = new Promise<never>((_, reject) => { rejectDeadline = reject; });

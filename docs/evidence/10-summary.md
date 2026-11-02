@@ -19,9 +19,9 @@ Repository-local Node 22.23.4:
 ```sh
 pnpm typecheck
 pnpm lint
-TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test pnpm test
+TEST_DATABASE_URL=postgresql://repopay:repopay@127.0.0.1:5433/repopay_test pnpm test
 pnpm build
-TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test pnpm test:e2e
+TEST_DATABASE_URL=postgresql://repopay:repopay@127.0.0.1:5433/repopay_test pnpm test:e2e
 git diff --check
 ```
 
@@ -31,7 +31,7 @@ No `pnpm eval:verifier` request was issued: fresh paid-provider evaluations are 
 
 ## Local runtime
 
-Backed up to ignored `.local/backups/gitpay-before-phase10.dump`, applied migration 0016 and confirmed `/healthz` ready. Discovery activation defaults false, so migration does not start live scans/reviews. No new checkout, payout, refund or model request was initiated by this phase. Existing scoped demo guards remain unchanged. Read-only runtime checks confirmed discovery and funded cancellation disabled; bounty 1 remains PAID with one award and one payout item.
+Backed up to ignored `.local/backups/repopay-before-phase10.dump`, applied migration 0016 and confirmed `/healthz` ready. Discovery activation defaults false, so migration does not start live scans/reviews. No new checkout, payout, refund or model request was initiated by this phase. Existing scoped demo guards remain unchanged. Read-only runtime checks confirmed discovery and funded cancellation disabled; bounty 1 remains PAID with one award and one payout item.
 
 ## Remaining limits
 

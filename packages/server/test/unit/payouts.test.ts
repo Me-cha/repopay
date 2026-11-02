@@ -6,7 +6,7 @@ const base='https://api-m.sandbox.paypal.com';
 const auth=()=>nock(base).post('/v1/oauth2/token').reply(200,{access_token:'synthetic',token_type:'Bearer'});
 it('submits exact decimal cents and recovers only a trusted duplicate-batch link',async()=>{
  const api=createPayouts(fundingEnv());const request={senderBatchId:'batch-1',items:[{senderItemId:'item-1',email:'synthetic@example.com',amountCents:101}]};
- auth();nock(base).post('/v1/payments/payouts',{sender_batch_header:{sender_batch_id:'batch-1',email_subject:'GitPay sandbox bounty award'},items:[{recipient_type:'EMAIL',receiver:'synthetic@example.com',sender_item_id:'item-1',amount:{currency:'USD',value:'1.01'}}]}).reply(201,{batch_header:{payout_batch_id:'BATCH1'}});
+ auth();nock(base).post('/v1/payments/payouts',{sender_batch_header:{sender_batch_id:'batch-1',email_subject:'Repopay sandbox bounty award'},items:[{recipient_type:'EMAIL',receiver:'synthetic@example.com',sender_item_id:'item-1',amount:{currency:'USD',value:'1.01'}}]}).reply(201,{batch_header:{payout_batch_id:'BATCH1'}});
  expect(await api.submit(request,new Date(Date.now()+10000))).toBe('BATCH1');
  auth();nock(base).post('/v1/payments/payouts').reply(400,{name:'DUPLICATE_BATCH_ID',links:[{rel:'duplicate_batch',href:base+'/v1/payments/payouts/BATCH1'}]});
  expect(await api.submit(request,new Date(Date.now()+10000))).toBe('BATCH1');

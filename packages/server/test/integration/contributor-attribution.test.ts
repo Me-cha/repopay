@@ -107,7 +107,7 @@ it('PR retry fails closed for read-only actors, mismatched scope/revision, expir
  expect((await f.database.orm.select().from(jobs)).filter(j=>j.kind==='verify_submission')).toHaveLength(0);
  }finally{await f.close();}});
 it('PR status replies on the PR and ambiguous linked bounties cannot trigger reviews',async()=>{const f=await setup();try{
- await handleJob(f.database,f.api,f.env,await commentJob(f,'9',false,{command:{kind:'status'}}));expect(f.api.createComment).toHaveBeenCalledWith('1',expect.anything(),f.sub.prNumber,expect.stringContaining('GitPay status'));
+ await handleJob(f.database,f.api,f.env,await commentJob(f,'9',false,{command:{kind:'status'}}));expect(f.api.createComment).toHaveBeenCalledWith('1',expect.anything(),f.sub.prNumber,expect.stringContaining('Repopay status'));
  await handleJob(f.database,f.api,f.env,await commentJob(f,'4',false,{command:{kind:'retry',issueNumber:999}}));expect(f.api.createComment).toHaveBeenCalledWith('1',expect.anything(),f.sub.prNumber,expect.stringContaining('linked issue number'));
  expect((await f.database.orm.select().from(jobs)).filter(j=>j.kind==='verify_submission')).toHaveLength(0);
  }finally{await f.close();}});

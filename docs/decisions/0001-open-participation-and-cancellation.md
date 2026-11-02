@@ -2,7 +2,7 @@
 
 Date: 2026-10-26
 
-Status: Accepted for the GitPay implementation plan; not implemented. The 72-hour notice is the MVP choice, disclosed and fixed before funding. The final plan review clarified publication timing without changing participation, award ownership or refund authority.
+Status: Accepted for the Repopay implementation plan; not implemented. The 72-hour notice is the MVP choice, disclosed and fixed before funding. The final plan review clarified publication timing without changing participation, award ownership or refund authority.
 
 ## Context
 
@@ -76,9 +76,9 @@ Research checked on October 26, 2026:
 - Bountysource's historical FAQ describes competing claims and a verification/dispute period. It includes an abandonment warning; it is historical precedent, not current operational guidance. [Historical FAQ](https://github.com/bountysource/core/wiki/Frequently-Asked-Questions).
 - GitHub does not automatically redeliver failed webhooks. A missing local event cannot establish that no submission or merge exists. [Failed webhook deliveries](https://docs.github.com/en/webhooks/using-webhooks/handling-failed-webhook-deliveries).
 - GitHub App owners can suspend/uninstall an app or change repository access. Losing visibility cannot justify a refund. [App access controls](https://docs.github.com/en/apps/using-github-apps/reviewing-and-modifying-installed-github-apps).
-- PayPal distinguishes transfer outcomes such as unclaimed and returned funds. GitPay's proposed policy preserves the award independently of those delivery outcomes. [Payouts FAQ](https://developer.paypal.com/payouts/faqs/).
+- PayPal distinguishes transfer outcomes such as unclaimed and returned funds. Repopay's proposed policy preserves the award independently of those delivery outcomes. [Payouts FAQ](https://developer.paypal.com/payouts/faqs/).
 
-These sources inform the design. The exceptional-cancellation rules and notice duration are GitPay's decisions, not policies attributed to those providers. Verify current provider documentation when implementing.
+These sources inform the design. The exceptional-cancellation rules and notice duration are Repopay's decisions, not policies attributed to those providers. Verify current provider documentation when implementing.
 
 ## Required acceptance cases
 

@@ -1,4 +1,4 @@
-# GitPay agent instructions
+# Repopay agent instructions
 
 Read [AGENTS.md](AGENTS.md), the canonical instruction file for Codex and other coding agents.
 

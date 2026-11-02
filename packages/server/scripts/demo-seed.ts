@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { z } from 'zod';
 
-export const DEMO_REPO = 'deepakA18/gitpay-demo-http';
+export const DEMO_REPO = 'deepakA18/repopay-demo-http';
 type Run = (args: string[], body?: string) => Promise<string>;
 const repository = z.object({ nameWithOwner: z.literal(DEMO_REPO), isFork: z.literal(false) });
 
@@ -28,8 +28,8 @@ export async function seedDemo(args: string[], run: Run, print: (line: string) =
   if (!repository.safeParse(repo).success) throw new Error('Expected the designated detached demo repository; no issues created.');
   for (const issue of issues) {
     try {
-      const url = (await run(['issue', 'create', '--repo', DEMO_REPO, '--title', `[GitPay sandbox ${runId}] ${issue.title}`, '--body-file', '-'], `${issue.body}\n\nSandbox walkthrough preparation only. No bounty or payment has been created. Replace these preparation notes with precise agreed criteria before creating a bounty.`)).trim();
-      if (!/^https:\/\/github\.com\/deepakA18\/gitpay-demo-http\/issues\/[1-9]\d*$/.test(url)) throw new Error('Unrecognized issue response');
+      const url = (await run(['issue', 'create', '--repo', DEMO_REPO, '--title', `[Repopay sandbox ${runId}] ${issue.title}`, '--body-file', '-'], `${issue.body}\n\nSandbox walkthrough preparation only. No bounty or payment has been created. Replace these preparation notes with precise agreed criteria before creating a bounty.`)).trim();
+      if (!/^https:\/\/github\.com\/deepakA18\/repopay-demo-http\/issues\/[1-9]\d*$/.test(url)) throw new Error('Unrecognized issue response');
       print(url);
     } catch {
       throw new Error('Issue creation outcome may be unknown. Inspect the demo repository before rerunning; no automatic retry was made.');

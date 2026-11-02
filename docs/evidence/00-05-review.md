@@ -40,7 +40,7 @@ Each behavioral finding below was reproduced by a failing regression before the 
 
 ## Checks
 
-Use repository-pinned Node 22.23.4 and pnpm 10.29.3. Database tests use isolated temporary schemas in local `gitpay_test`; provider calls are mocked and unmatched calls denied. Initial failures were due to a missing locked SDK dependency and stopped Docker; `pnpm install --frozen-lockfile` restored dependencies and the existing Docker/Postgres service was started. No application database migration was applied by this review.
+Use repository-pinned Node 22.23.4 and pnpm 10.29.3. Database tests use isolated temporary schemas in local `repopay_test`; provider calls are mocked and unmatched calls denied. Initial failures were due to a missing locked SDK dependency and stopped Docker; `pnpm install --frozen-lockfile` restored dependencies and the existing Docker/Postgres service was started. No application database migration was applied by this review.
 
 Final command results are recorded in [Phase 6 evidence](06-summary.md). All newly reproduced failures are resolved; the unresolved findings above are not declared fixed.
 

@@ -28,9 +28,9 @@ Earlier adapter completion ID: `chatcmpl-b38a094d-0fdf-4015-bda6-61e46c5ad9ee`. 
 
 ## Observed GitHub authentication — October 27, 2026
 
-The owner created `gitpay-dev` and supplied its local RSA private-key file. The key and `.env` are ignored by Git and restricted to owner read/write permissions. App ID, slug, client ID and private key are configured locally; no secret values are recorded here.
+The owner created `repopay-dev` and supplied its local RSA private-key file. The key and `.env` are ignored by Git and restricted to owner read/write permissions. App ID, slug, client ID and private key are configured locally; no secret values are recorded here.
 
-An isolated read-only `GET https://api.github.com/app` returned HTTP 200 and matched App ID `5484420` and slug `gitpay-dev`. A second check loaded the saved `.env`, signed the JWT with `GH_CLIENT_ID` as issuer and used the same key normalization, request helper and API version (`2026-03-10`) as the preflight adapter. It again returned HTTP 200 with matching identity. Request ID: `C306:E75AA:2B52336:3F73B3D:6ADF9E08`.
+An isolated read-only `GET https://api.github.com/app` returned HTTP 200 and matched App ID `5484420` and slug `repopay-dev`. A second check loaded the saved `.env`, signed the JWT with `GH_CLIENT_ID` as issuer and used the same key normalization, request helper and API version (`2026-03-10`) as the preflight adapter. It again returned HTTP 200 with matching identity. Request ID: `C306:E75AA:2B52336:3F73B3D:6ADF9E08`.
 
 This verifies App JWT authentication only. The combined `pnpm preflight`, installation access, OAuth and webhook delivery were not exercised. Webhooks were intentionally deferred during registration until the Phase 01 receiver is ready.
 
@@ -80,7 +80,7 @@ After the user dropped DeepSeek, the active configuration became `NVIDIA_MODEL=n
 | `pnpm preflight` | Exit 0; GitHub auth OK, Nemotron listed, PayPal auth OK; no generation or payout requested |
 | `pnpm preflight --model-probe --sandbox-payment` | Exit 0; GitHub auth OK, Nemotron validated in 1,557 ms, existing payout duplicate HTTP 400, recovered item SUCCESS |
 | `pnpm typecheck`, `pnpm lint`, `pnpm build` | Passed |
-| `TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test pnpm test` | 82 tests passed across 8 files |
+| `TEST_DATABASE_URL=postgresql://repopay:repopay@127.0.0.1:5433/repopay_test pnpm test` | 82 tests passed across 8 files |
 
 Combined GitHub request ID: `C71C:350D96:2CC1608:4182324:6ADFACAC`. Nemotron completion ID: `chatcmpl-ae70a707-497b-419b-8a8e-930f21c3af52`. PayPal recovery request ID: `ca50beeee5feb`. The combined payout probe reused sender batch `4d90081e-cabd-48f4-aaca-b41d3089b07f` and provider batch `JYJ2VR5A7K2JA`; no new payment was created.
 

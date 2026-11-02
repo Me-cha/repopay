@@ -43,7 +43,7 @@ Already evidenced: Auto v2 evaluation 18/18, real exact-revision Check Runs, new
 
 ## Phase 6 — awards and payouts
 
-Already evidenced: merged PR #3 → one $50 award → one sandbox batch/item → PayPal SUCCESS → GitPay PAID → user-confirmed recipient receipt. Do not repeat or alter that completed payment. See [Phase 6 evidence](../evidence/06-summary.md).
+Already evidenced: merged PR #3 → one $50 award → one sandbox batch/item → PayPal SUCCESS → Repopay PAID → user-confirmed recipient receipt. Do not repeat or alter that completed payment. See [Phase 6 evidence](../evidence/06-summary.md).
 
 - [x] Delayed claim: complete the following steps for issue #4 / bounty 3 and PR #6. Preparation does not establish an award or payout.
   - [x] Capture the separate $1 sandbox funding; bounty 3 is FUNDED.
@@ -54,14 +54,14 @@ Already evidenced: merged PR #3 → one $50 award → one sandbox batch/item →
   - [x] Obtain additional bounded review allowance and the required one-off revision-attempt exception before post-merge review. User approved 2 additional requests (14 total, 12 used) and PR #6 only: revision-attempt limit 3 → 5 in the one-off invocation; normal configured limits remain unchanged.
   - [x] Activate the reviewed isolated scope, merge the qualifying PR and verify one committed award in AWAITING_CLAIM with no payout sent. October 31: scope applied only in the settlement invocation, award 2 for 100 cents, verification 31; zero payout batches, recipient unconnected. Normal environment unchanged.
   - [x] Connect the recipient and verify the same award resumes with one payout intent. Mecha-Test-Account connection version 1; original award 2, batch 2, item 2, 100 cents.
-  - [x] Confirm recorded provider SUCCESS and GitPay PAID; batch `XCKBDAE9R9JQJ`, item `GVHRMZVAW47BA`, same award 2, one batch/item.
+  - [x] Confirm recorded provider SUCCESS and Repopay PAID; batch `XCKBDAE9R9JQJ`, item `GVHRMZVAW47BA`, same award 2, one batch/item.
   - [x] Confirm recipient sees the incoming $1 in their sandbox Personal-account Activity. User confirmed receipt October 31.
 - [ ] Two-author allocation: verify exact cents and both recipient outcomes, including waiting for missing connections. Revision-bound contributor declaration plus independent maintainer attestation is implemented locally (ADR 0017). Remaining: a real two-contributor PR, both confirmations at the final revision, accepted verifier profile, exact-cent award and both recipient receipts. Mocked payout tests do not prove live attribution.
 - [ ] Reconcile broader [Phase 6](06.md) merge/squash/rebase, replay and provider-recovery expectations with recorded coverage; distinguish simulated faults from real provider observations.
 
 ## Phase 7 — maintainer decisions
 
-- [x] Live-check corrected pre-merge rejection (ADR 0015). PR #9 remains OPEN/unmerged; decision 2 has null merge SHA, history retained, bounty 4 FUNDED, zero awards. App PR-write permission approved; acknowledgement recovered with original job marker: [bot reply](https://github.com/deepakA18/gitpay-demo-http/pull/9#issuecomment-6543538264).
+- [x] Live-check corrected pre-merge rejection (ADR 0015). PR #9 remains OPEN/unmerged; decision 2 has null merge SHA, history retained, bounty 4 FUNDED, zero awards. App PR-write permission approved; acknowledgement recovered with original job marker: [bot reply](https://github.com/deepakA18/repopay-demo-http/pull/9#issuecomment-6543538264).
 
 
 October 31: user authorized one new $1 sandbox bounty, two contributor PRs and up to 6 Auto requests (all 6 used after PR #9 revision/metadata reviews). Issue #7 created with explicit nullish-value criteria; PR #8 merged and reached NEEDS_REVIEW; historical rejection and corrected pre-merge rejection passed; later approval remains pending.
@@ -109,7 +109,7 @@ Local results and fault boundaries: [Phase 10 evidence](../evidence/10-summary.m
 
 ## Phase 11 — hosted validation
 
-Local preparation: [Phase 11 summary](../evidence/11-summary.md). The user deployed https://gitpay.onrender.com/; public web health and database/schema readiness were verified October 31. Remaining hosted checks are below.
+Local preparation: [Phase 11 summary](../evidence/11-summary.md). The user deployed https://repopay.onrender.com/; public web health and database/schema readiness were verified October 31. Remaining hosted checks are below.
 
 - [ ] Approve actual Render pricing/region/resources, configure shared secrets and stable HTTPS origin, and validate the account-specific Blueprint.
 - [ ] Deploy one reviewed commit with the web-owned migration step and both services held; verify schema health and SDK runtime readiness.
@@ -147,7 +147,7 @@ October 31 update: the full Auto v3 evaluation completed and **failed (17/18)**.
 - [x] Diagnose v3 false PARTIAL, correct incomplete fixtures and obtain a passing 18/18 evaluation before user-authorized scoped v3 acceptance.
 - [ ] Perform the new two-confirmation flow with real accounts and verify two-recipient payout receipts.
 
-- [x] Hosted web health and homepage: https://gitpay.onrender.com/ returned GitPay; `/healthz` returned HTTP 200 / ready on October 31. Worker, hold and provider readiness remain unverified.
+- [x] Hosted web health and homepage: https://repopay.onrender.com/ returned Repopay; `/healthz` returned HTTP 200 / ready on October 31. Worker, hold and provider readiness remain unverified.
 
 - [x] Hosted GitHub callback and deepakA18 browser sign-in confirmed. User-supplied record counts were zero; user selected fresh demo issues rather than restoring local financial history.
 
@@ -165,7 +165,7 @@ October 31 update: the full Auto v3 evaluation completed and **failed (17/18)**.
 
 - [x] Hosted signed-out access boundary (October 31): `/dashboard/` and `/bounties/1` returned 303 to `/login`; `/api/bounties/1` returned 401; none exposed the demo repository name or cancelled bounty state. `/healthz` remained 200. This does not establish private-repository cross-account isolation, token expiry or permission-revocation behavior.
 
-- [x] Hosted owner sponsor consent: user screenshot confirms connected sponsor deepakA18 for deepakA18/gitpay-demo-http, Auto selected, profile checked 2026-10-31T16:32:25.266Z. Callback mismatch was resolved. This verifies consent/profile display, not a hosted model request; six-request walkthrough allowance remains unused by this step.
+- [x] Hosted owner sponsor consent: user screenshot confirms connected sponsor deepakA18 for deepakA18/repopay-demo-http, Auto selected, profile checked 2026-10-31T16:32:25.266Z. Callback mismatch was resolved. This verifies consent/profile display, not a hosted model request; six-request walkthrough allowance remains unused by this step.
 
 - [x] Hosted bounty 2 / issue #11 funding projection: read-only GitHub verification of comment 6546042262 reports USD 1.00 FUNDED / confirmed funding. This is application bot evidence, not independent PayPal capture inspection. No new PR linked to #11 was visible at this check. Bot displays an empty required-CI list; inspect frozen CI configuration before any merge/award acceptance.
 
@@ -181,7 +181,7 @@ October 31 update: the full Auto v3 evaluation completed and **failed (17/18)**.
 - [x] Locally implement and verify PR-native contribution commands plus role-specific issue/PR action discovery (ADR 0018). 379 tests, typecheck, lint and build passed; hosted confirmation/acknowledgement acceptance remains separate.
 
 - [x] Locally correct attribution payload and implement PR retry/status plus signed issue-command unfunded cancellation (ADR 0019). Preserve historical review and frozen criteria; no model requests or money effects during implementation.
-- [x] Deploy ADR 0019 and verify PR-native status/retry on PR #12: command 6547201886 received queued acknowledgement 6547203768; Check Run 124615632605 and canonical comment 6546843904 publish RESOLVES. No GitPay page was needed to request or read this review. PR remains open/unmerged. See [hosted evidence](../evidence/11-hosted.md).
+- [x] Deploy ADR 0019 and verify PR-native status/retry on PR #12: command 6547201886 received queued acknowledgement 6547203768; Check Run 124615632605 and canonical comment 6546843904 publish RESOLVES. No Repopay page was needed to request or read this review. PR remains open/unmerged. See [hosted evidence](../evidence/11-hosted.md).
 - [x] Hosted ADR 0019 status and instruction refresh: PR #12 comment 6547174879 received bot reply 6547176797 (USD 1.00 FUNDED); canonical comment 6546843904 now supplies revision-bound `/bounty retry #11` and PR-native status instructions. Both confirmations remain recorded, head/base unchanged, PR open/unmerged. This verifies deployed behavior; live retry execution and v4 model acceptance remain pending.
 - [ ] Evaluate verifier v4, including complete/missing/stale contributor-confirmation evidence, before accepting any new v4 award scope. Historical 18/18 v3 evaluation is not v4 evidence.
 

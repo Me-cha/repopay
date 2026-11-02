@@ -16,7 +16,7 @@ The user authorized proceeding and deferred Phase 2's live revoked-write test. T
 
 ## Verification observed
 
-Node 22.23.4 selected from the ignored `.local/tooling/node_modules/node/bin` path. Tests use `TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test` and isolated temporary schemas; unmatched provider calls are denied.
+Node 22.23.4 selected from the ignored `.local/tooling/node_modules/node/bin` path. Tests use `TEST_DATABASE_URL=postgresql://repopay:repopay@127.0.0.1:5433/repopay_test` and isolated temporary schemas; unmatched provider calls are denied.
 
 - Baseline before Phase 3: `pnpm test` — 148/148 tests passed.
 - `pnpm test` — 183/183 tests across 26 files passed after final review fixes.
@@ -45,7 +45,7 @@ Phase 03 is **not complete** until its external exit gate is evidenced. Phase 04
 
 ## October 29, 2026 — resumed live-test preparation
 
-Created the user-authorized sandbox test fixture [Me-cha/gitpay-test#3](https://github.com/Me-cha/gitpay-test/issues/3) in the signed-in Brave session. It states this is a PayPal sandbox test, not a real-money reward, and records the synthetic addition task and Phase 3 acceptance checks. No GitPay command or payment was submitted to the issue.
+Created the user-authorized sandbox test fixture [Me-cha/repopay-test#3](https://github.com/Me-cha/repopay-test/issues/3) in the signed-in Brave session. It states this is a PayPal sandbox test, not a real-money reward, and records the synthetic addition task and Phase 3 acceptance checks. No Repopay command or payment was submitted to the issue.
 
 The local server answers `/healthz` with HTTP 200. The configured public tunnel is unavailable. A redacted local configuration check found merchant ID, PayPal webhook ID, trusted CI contexts and Copilot fixed model unset. `pnpm preflight --model-only` exits 1 because the authenticated sponsor has no fixed models listed; the production adapter still requires a fixed model. The full five Phase 3 integration files passed locally (30 tests) against local PostgreSQL and mocked external services; these do not evidence a real PayPal capture. No Phase 3 payment has been made.
 
@@ -63,7 +63,7 @@ No browser sponsor connection or live funding was attempted at that point.
 
 After the Auto decision ([ADR 0007](../decisions/0007-copilot-auto-model.md)) the user set `PP_MERCHANT_ID`, `PP_WEBHOOK_ID` (all Checkout and Payment events subscribed), `COPILOT_MODEL=auto` and `POLICY_CI_REQUIRED=false`. The server was restarted on Node 22.23.4 behind the stable ngrok domain.
 
-- The user connected Me-cha as the repository sponsor through the fixed sponsor flow and funded bounty 5 ([Me-cha/gitpay-test#5](https://github.com/Me-cha/gitpay-test/issues/5), $40.00) with **version 4 (Auto) terms**.
+- The user connected Me-cha as the repository sponsor through the fixed sponsor flow and funded bounty 5 ([Me-cha/repopay-test#5](https://github.com/Me-cha/repopay-test/issues/5), $40.00) with **version 4 (Auto) terms**.
 - The first approval attempt did not complete: a read-only PayPal order read returned `PAYER_ACTION_REQUIRED` with the merchant and amount matching. Paying requires a Personal sandbox buyer; the Business account is the receiving merchant and cannot pay itself. The retry in a private window succeeded.
 - Local database after capture: bounty `FUNDED`; funding attempt 1 `COMPLETED` (order `…7935`, capture `…3228`); a `funded` activity recorded gross 4000, fee 249, net 3751 cents. Two PayPal webhook deliveries (`…047334`, `…839604`) passed signature verification. The GitHub projection job completed.
 - Fixed with regression: `/bounty status` replied "Funding state requires reconciliation" for FUNDED bounties; it now reports confirmed funding (or a frozen hold). Full suite 37 files / 204 tests.

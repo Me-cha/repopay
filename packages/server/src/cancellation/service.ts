@@ -34,14 +34,14 @@ export function createCancellation(db:Database,env:FundingEnv,deps:CancellationD
   // Session advisory lock prevents duplicate POSTs across workers without holding
   // a SQL transaction across GitHub. A crash releases the lock; marker recovery
   // precedes another POST. Only our authenticated App bot marker counts.
-  const connection=await db.pool.connect();const key='gitpay-cancellation-notice:'+id;
+  const connection=await db.pool.connect();const key='repopay-cancellation-notice:'+id;
   let broken=false;const onError=()=>{broken=true;};connection.on('error',onError);
   try{const lock=await connection.query<{locked:boolean}>('SELECT pg_try_advisory_lock(hashtextextended(current_schema()||$1,0)) AS locked',[key]);if(!lock.rows[0]?.locked)return;
    const r=await load(id),b=await findBounty(db,r.bountyId);enabled(b);if(r.noticePublishedAt||r.status!=='NOTICE')return;
-   const {repo}=await currentAccess(deps.github,b.installationId,b.repoId),marker=`<!-- gitpay:cancellation:${id} -->`;
+   const {repo}=await currentAccess(deps.github,b.installationId,b.repoId),marker=`<!-- repopay:cancellation:${id} -->`;
    const authentic=(c:Awaited<ReturnType<GitHub['comments']>>[number])=>c.user.type==='Bot'&&c.performed_via_github_app?.id===env.GH_APP_ID&&c.body?.includes(marker);
    const prior=(await deps.github.comments(b.installationId,repo,b.issueNumber)).find(authentic);
-   const comment=prior??await deps.github.createComment(b.installationId,repo,b.issueNumber,`${marker}\nCancellation requested: ${r.reason}\n\nEvidence: ${r.links.join('\n')}\n\nThe full ${String(r.noticeHours)}-hour notice begins when GitPay confirms publication. Funds remain committed; submissions stay open. Contributors: reply here with your PR and evidence. Closing a PR does not erase its claim.\n\n[Notice deadline and independent review](${env.PUBLIC_URL}/cancellations/${id})`);
+   const comment=prior??await deps.github.createComment(b.installationId,repo,b.issueNumber,`${marker}\nCancellation requested: ${r.reason}\n\nEvidence: ${r.links.join('\n')}\n\nThe full ${String(r.noticeHours)}-hour notice begins when Repopay confirms publication. Funds remain committed; submissions stay open. Contributors: reply here with your PR and evidence. Closing a PR does not erase its claim.\n\n[Notice deadline and independent review](${env.PUBLIC_URL}/cancellations/${id})`);
    if(!authentic(comment))throw new Error('Notice authorship could not be verified');
    await db.withTransaction(async tx=>{const current=await lockBounty(tx,b.id);if(!current)throw new AuthError(404);await assertInstallation(tx,current);const at=clock.now();await tx.update(requests).set({noticeCommentId:comment.id,noticePublishedAt:at,noticeEndsAt:new Date(at.getTime()+r.noticeHours*3600000)}).where(and(eq(requests.id,id),eq(requests.status,'NOTICE'),sql`${requests.noticePublishedAt} is null`));await enqueue(tx,{kind:'sync_bounty',payload:{bountyId:b.id},dedupeKey:'cancellation-published:'+id,maxAttempts:5});});
   }finally{await connection.query('SELECT pg_advisory_unlock(hashtextextended(current_schema()||$1,0))',[key]).catch(()=>{broken=true;});connection.off('error',onError);connection.release(broken);}
@@ -49,7 +49,7 @@ export function createCancellation(db:Database,env:FundingEnv,deps:CancellationD
  async function refresh(id:string){
   const r=await load(id),b=await findBounty(db,r.bountyId);let fresh:CancellationBundle;try{fresh=await deps.collect(b,r);}catch{fresh={complete:false,criteria:b.fundedTerms?.criteria??'',claims:[]};}
   // Evidence collection must also prove the public notice still exists.
-  try{const {repo}=await currentAccess(deps.github,b.installationId,b.repoId);const comments=await deps.github.comments(b.installationId,repo,b.issueNumber);if(!r.noticeCommentId||!comments.some(c=>c.id===r.noticeCommentId&&c.user.type==='Bot'&&c.performed_via_github_app?.id===env.GH_APP_ID&&c.body?.includes(`<!-- gitpay:cancellation:${id} -->`)))fresh.complete=false;}catch{fresh.complete=false;}
+  try{const {repo}=await currentAccess(deps.github,b.installationId,b.repoId);const comments=await deps.github.comments(b.installationId,repo,b.issueNumber);if(!r.noticeCommentId||!comments.some(c=>c.id===r.noticeCommentId&&c.user.type==='Bot'&&c.performed_via_github_app?.id===env.GH_APP_ID&&c.body?.includes(`<!-- repopay:cancellation:${id} -->`)))fresh.complete=false;}catch{fresh.complete=false;}
   return db.withTransaction(async tx=>{const current=await lockBounty(tx,b.id);if(!current)throw new AuthError(404);const [latest]=await tx.select().from(requests).where(eq(requests.id,id)).for('update');if(!latest)throw new AuthError(404);
    const [saved]=await tx.select().from(evidence).where(eq(evidence.requestId,id)).orderBy(desc(evidence.version)).limit(1);
    const claims=new Map((saved?.bundle.claims??[]).map(c=>[c.key,c]));for(const c of fresh.claims)claims.set(c.key,c);

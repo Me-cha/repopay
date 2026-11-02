@@ -9,15 +9,15 @@ jobs:
       postgres:
         image: postgres:16.13-alpine
         env:
-          POSTGRES_USER: gitpay
-          POSTGRES_PASSWORD: gitpay
-          POSTGRES_DB: gitpay_test
+          POSTGRES_USER: repopay
+          POSTGRES_PASSWORD: repopay
+          POSTGRES_DB: repopay_test
         ports: ['5432:5432']
         options: >-
-          --health-cmd 'pg_isready -U gitpay -d gitpay_test'
+          --health-cmd 'pg_isready -U repopay -d repopay_test'
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      TEST_DATABASE_URL: postgresql://gitpay:gitpay@127.0.0.1:5432/gitpay_test
+      TEST_DATABASE_URL: postgresql://repopay:repopay@127.0.0.1:5432/repopay_test
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

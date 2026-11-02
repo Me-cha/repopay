@@ -31,7 +31,7 @@ export async function probePayout(input: Omit<PayPalEnv, 'PP_BASE'> & { PP_BASE:
   return withProbeState(options.stateFile, recipient, env.PP_CLIENT_ID, options.now ?? new Date(), async state => {
     const token = await paypalToken(env);
     const headers = { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
-    const body = JSON.stringify({ sender_batch_header: { sender_batch_id: state.senderBatchId, email_subject: 'GitPay sandbox feasibility probe' }, items: [{ recipient_type: 'EMAIL', amount: { value: '1.00', currency: 'USD' }, receiver: recipient, sender_item_id: state.senderItemId }] });
+    const body = JSON.stringify({ sender_batch_header: { sender_batch_id: state.senderBatchId, email_subject: 'Repopay sandbox feasibility probe' }, items: [{ recipient_type: 'EMAIL', amount: { value: '1.00', currency: 'USD' }, receiver: recipient, sender_item_id: state.senderItemId }] });
     async function submit() {
       const result = await requestJson(env, env.PP_BASE + '/v1/payments/payouts', { method: 'POST', headers, body });
       let id: string;

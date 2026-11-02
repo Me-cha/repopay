@@ -29,7 +29,7 @@ export function createRefundSettlement(db:Database,env:FundingEnv,cancel:Cancell
    else await tx.update(bounties).set({needsAttention:true,attentionReason:'Refund reserved pending provider reconciliation'}).where(eq(bounties.id,b.id));});
  }
  async function submitRefund(id:string){
-  const connection=await db.pool.connect(),key='gitpay-refund:'+id;
+  const connection=await db.pool.connect(),key='repopay-refund:'+id;
   let broken=false;const onError=()=>{broken=true;};connection.on('error',onError);
   try{const lock=await connection.query<{locked:boolean}>('SELECT pg_try_advisory_lock(hashtextextended(current_schema()||$1,0)) AS locked',[key]);if(!lock.rows[0]?.locked)return;
    let [i]=await db.orm.select().from(refundIntents).where(eq(refundIntents.id,id));if(!i||['ABORTED_UNSENT','SETTLED_OK'].includes(i.status))return;

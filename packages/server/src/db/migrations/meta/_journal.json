@@ -134,6 +134,13 @@
       "when": 1793450000000,
       "tag": "0018_contributor_attestations",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793618000000,
+      "tag": "0019_repopay_activity_notifications",
+      "breakpoints": true
     }
   ]
 }

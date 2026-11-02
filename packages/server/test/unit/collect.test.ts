@@ -110,5 +110,5 @@ it('contribution metadata alone cannot make an empty PR sufficient',async()=>{
  f=await intentFixture();const linked=await linkPr(f.database,f.bounty,pr());vi.mocked(f.api.pullRequest).mockResolvedValue(pr());
  const repo=await f.api.repository('1','2');const terms=structuredClone(f.terms);terms.policy.ciRequired=false;
  const evidence=await collectVerification({github:f.api,env:f.env,installationId:'1',repo,bounty:f.bounty,submission:linked.submission,terms,expectedHeadSha:linked.submission.headSha});
- expect(evidence.diff).toContain('gitpay-contribution-evidence-v1');expect(evidence.truncated).toBe(false);expect(evidence.sufficient).toBe(false);
+ expect(evidence.diff).toContain('repopay-contribution-evidence-v1');expect(evidence.truncated).toBe(false);expect(evidence.sufficient).toBe(false);
 });

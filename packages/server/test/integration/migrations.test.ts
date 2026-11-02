@@ -39,6 +39,6 @@ it('fixtures cannot erase each other', async () => {
     expect(await second.database.orm.select().from(jobs)).toHaveLength(1);
   } finally { await first.close(); await second.close(); }
 });
-it.each([undefined, 'postgresql://user:pass@127.0.0.1/gitpay', 'postgresql://user:pass@example.com/gitpay_test', 'postgresql://user:pass@localhost/gitpay_test?options=-csearch_path%3Dpublic'])('unsafe_test_database_refused_before_reset %s', url => {
+it.each([undefined, 'postgresql://user:pass@127.0.0.1/repopay', 'postgresql://user:pass@example.com/repopay_test', 'postgresql://user:pass@localhost/repopay_test?options=-csearch_path%3Dpublic'])('unsafe_test_database_refused_before_reset %s', url => {
   expect(() => validateTestDatabaseUrl(url)).toThrow();
 });

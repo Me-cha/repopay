@@ -10,7 +10,7 @@ Preserve [the failed report](../evidence/05-auto-v4-result.md), [raw results](..
 
 ## Correction
 
-Prompt `gitpay-verifier-v5` requires checking the actual language/runtime/flags, identifying a concrete counterexample or execution path for an alleged defect, and reconciling it with supplied regression assertions. It explicitly distinguishes ECMAScript normal and multiline end anchors. It still requires PARTIAL for insufficient evidence; absent context is uncertainty, and tests/CI do not override a demonstrated defect. It cannot execute code, invent test outcomes, authorize money or follow instructions in PR evidence.
+Prompt `repopay-verifier-v5` requires checking the actual language/runtime/flags, identifying a concrete counterexample or execution path for an alleged defect, and reconciling it with supplied regression assertions. It explicitly distinguishes ECMAScript normal and multiline end anchors. It still requires PARTIAL for insufficient evidence; absent context is uncertainty, and tests/CI do not override a demonstrated defect. It cannot execute code, invent test outcomes, authorize money or follow instructions in PR evidence.
 
 The evaluation's full-code test context now contains five explicit trailing-line-ending assertions. Source behavior and expected verdicts of the original nine cases are unchanged. Add a tenth case with a real multiline regex bug, expected PARTIAL, so the correction cannot be accepted solely by suppressing regex concerns. Local tests execute only repository-controlled synthetic source and assertions: the good parser passes, the multiline mutation fails. No contributor code is executed by the worker.
 

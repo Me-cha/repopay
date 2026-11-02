@@ -1,4 +1,4 @@
-# GitPay
+# Repopay
 
 **Current MVP scope:** finish the basic GitHub → sandbox funding → PR review → qualifying merge → automatic payout journey. The broader model-evaluation, organization, refund and recovery walkthroughs are deferred by user direction. The local v5 sandbox profile requires an exact bounty scope and retains all payment guards; hosted merge-to-payout completion remains pending. See the [short foundation checklist](docs/phases/live-walkthroughs.md#active-foundation-mvp-checklist) and [scope decision](docs/decisions/0021-foundation-mvp-scope.md).
 
@@ -6,7 +6,7 @@
 
 **Fund an issue. Merge a qualifying solution. Pay the contributor.**
 
-GitPay is a GitHub App under sandbox validation that connects issue bounties to PayPal. Maintainers fund an issue, contributors submit pull requests, AI assesses the proposed solution, and a qualifying merge triggers payment through a deterministic policy.
+Repopay is a GitHub App under sandbox validation that connects issue bounties to PayPal. Maintainers fund an issue, contributors submit pull requests, AI assesses the proposed solution, and a qualifying merge triggers payment through a deterministic policy.
 
 The principle is **glue, not a platform**: development stays in GitHub, checkout and payouts use PayPal, and small authenticated pages handle confirmations. A dashboard (optional for users, required in the MVP) displays progress without becoming another place to manage the work.
 
@@ -14,7 +14,7 @@ The principle is **glue, not a platform**: development stays in GitHub, checkout
 
 Phases 7–10 now have local implementations and automated verification. Their live walkthroughs, along with outstanding Phase 5–6 cases, remain on the [final live checklist](docs/phases/live-walkthroughs.md). See [Phase 10 evidence](docs/evidence/10-summary.md). Build with `pnpm build`, then open `/dashboard/` on the running server and sign in.
 
-Phase 11 deployment preparation and local restore safeguards are implemented. The user deployed https://gitpay.onrender.com/ with a fresh database. Hosted health, GitHub sign-in/intake, unfunded cancellation and user-observed dashboard checks passed; hosted provider/payment/recovery acceptance remains pending. See [deployment instructions](docs/deployment.md) and [Phase 11 evidence](docs/evidence/11-summary.md).
+Phase 11 deployment preparation and local restore safeguards are implemented. The user deployed https://repopay.onrender.com/ with a fresh database. Hosted health, GitHub sign-in/intake, unfunded cancellation and user-observed dashboard checks passed; hosted provider/payment/recovery acceptance remains pending. See [deployment instructions](docs/deployment.md) and [Phase 11 evidence](docs/evidence/11-summary.md).
 
 Phase 12 handoff tooling and the [final acceptance matrix](docs/evidence/12-acceptance.md) are prepared locally. **Full MVP acceptance remains pending**; see the [demo outline](docs/demo.md) and [verification record](docs/evidence/12-summary.md).
 
@@ -99,8 +99,8 @@ Codex is the coding assistant; Copilot SDK is the selected runtime verifier prov
 ## Start here
 
 ```sh
-git clone https://github.com/Me-cha/GitPay.git
-cd GitPay
+git clone https://github.com/Me-cha/Repopay.git
+cd Repopay
 ```
 
 For a credential-free local verification rehearsal, install Node **22.23.4**, pnpm **10.29.3** and Docker Compose, then run:
@@ -109,8 +109,8 @@ For a credential-free local verification rehearsal, install Node **22.23.4**, pn
 pnpm install --frozen-lockfile
 docker compose up -d postgres
 # Wait for postgres to be healthy. Once per new volume:
-docker compose exec -T postgres createdb -U gitpay gitpay_test
-export TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test
+docker compose exec -T postgres createdb -U repopay repopay_test
+export TEST_DATABASE_URL=postgresql://repopay:repopay@127.0.0.1:5433/repopay_test
 pnpm typecheck
 pnpm lint
 pnpm test
@@ -120,7 +120,7 @@ pnpm test:e2e
 pnpm demo:seed
 ```
 
-An existing `gitpay_test` database can be retained. Tests create isolated schemas and use fake providers; the browser harness starts its own local server. These checks do not load `.env`, spend Copilot allowance or send payments. They do require PostgreSQL and Docker for restore tests. Live application startup additionally needs credentials and migrations from [setup](docs/setup.md); do not overwrite an existing `.env`. The seeder is a dry run unless explicitly executed as described in [the demo guide](docs/demo.md).
+An existing `repopay_test` database can be retained. Tests create isolated schemas and use fake providers; the browser harness starts its own local server. These checks do not load `.env`, spend Copilot allowance or send payments. They do require PostgreSQL and Docker for restore tests. Live application startup additionally needs credentials and migrations from [setup](docs/setup.md); do not overwrite an existing `.env`. The seeder is a dry run unless explicitly executed as described in [the demo guide](docs/demo.md).
 
 Start with [the phased MVP review plan](docs/phases/README.md) and [Phase 00](docs/phases/00.md). Read [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for the architecture and [AGENTS.md](AGENTS.md) for repository instructions. Phase 0 provides the executable server workspace. Follow [local setup and provider probes](docs/setup.md); see [Phase 0 evidence](docs/evidence/00-summary.md) for actual checks and remaining gates.
 
@@ -164,7 +164,7 @@ Phase 7 maintainer review is implemented locally with a shared award guard, exac
 
 Remaining live walkthroughs are deferred to the final validation session after local implementation, per user direction. See the [live checklist](docs/phases/live-walkthroughs.md) for outstanding cases and prerequisites.
 
-Maintainers review contributor PRs directly on GitHub: comment, request changes or close unmerged work. Copilot supplies advisory feedback, not final acceptance. `/bounty reject <reason>` on the PR records a revision-bound bounty decision without requiring merge; ordinary comments never move money. GitPay’s payment-review page contains approval only. See [ADR 0015](docs/decisions/0015-premerge-pr-feedback.md).
+Maintainers review contributor PRs directly on GitHub: comment, request changes or close unmerged work. Copilot supplies advisory feedback, not final acceptance. `/bounty reject <reason>` on the PR records a revision-bound bounty decision without requiring merge; ordinary comments never move money. Repopay’s payment-review page contains approval only. See [ADR 0015](docs/decisions/0015-premerge-pr-feedback.md).
 
 October 31 update: the full Auto v3 evaluation completed and **failed (17/18)**. That historical run did not authorize v3 awards; the later corrected 18/18 run and explicit scoped acceptance are recorded below. See [evaluation result](docs/evidence/05-auto-v3-result.md). Two-party revision-bound attribution is implemented locally; its two-recipient live payout is still pending. The real 72-hour refund test remains deferred.
 

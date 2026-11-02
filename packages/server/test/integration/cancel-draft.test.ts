@@ -46,6 +46,6 @@ it('cancel command directly cancels an unfunded draft; projection explains no re
  const cancel=await f.job(createWork({commentId:'20',command:{kind:'cancel'}}));await handleJob(f.database,f.api,testEnv,cancel);await finishJob(f.database,cancel);
  const [bounty]=await f.database.orm.select().from(bounties);if(!bounty)throw new Error('missing bounty');expect(bounty.status).toBe('CANCELLED');expect(f.comments.some(c=>c.body?.includes('Unfunded draft cancelled'))).toBe(true);
  const projection=await f.job({kind:'sync_bounty',bountyId:bounty.id});await handleJob(f.database,f.api,testEnv,projection);
- const body=f.comments.find(c=>c.body?.includes('gitpay:bounty:'))?.body;expect(body).toContain('CANCELLED');expect(body).toContain('No payment or refund');expect(body).not.toContain('Review cancellation');
+ const body=f.comments.find(c=>c.body?.includes('repopay:bounty:'))?.body;expect(body).toContain('CANCELLED');expect(body).toContain('No payment or refund');expect(body).not.toContain('Review cancellation');
  }finally{await f.close();}
 });

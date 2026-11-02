@@ -17,7 +17,7 @@ async function main() {
     // Set auth cookie
     await page.send('Network.enable');
     await page.send('Network.setCookie', {
-      name: 'gitpay_session',
+      name: 'repopay_session',
       value: devCookie,
       domain: '127.0.0.1',
       path: '/'

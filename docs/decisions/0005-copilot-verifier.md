@@ -2,7 +2,7 @@
 
 Status: accepted by the user October 28, 2026. Supersedes ADR 0003's Nemotron runtime selection; historical probe evidence and unrelated scoped preflight rules remain valid.
 
-GitPay uses the official Copilot SDK for semantic verification. Native Copilot PR reviews remain a separate optional integration; their approval is not our financial verdict. The user chose repository-owner or organization sponsorship. Opening a PR does not charge the contributor or require their Copilot subscription.
+Repopay uses the official Copilot SDK for semantic verification. Native Copilot PR reviews remain a separate optional integration; their approval is not our financial verdict. The user chose repository-owner or organization sponsorship. Opening a PR does not charge the contributor or require their Copilot subscription.
 
 ## Authorized migration
 
@@ -24,7 +24,7 @@ The proposed first low-cost fixed model and customer sponsor flow are documented
 
 ## Billing distinction
 
-Native automatic Copilot reviews may attribute usage to the PR author; manual reviews attribute it to the requester, with organization-policy exceptions. Bot-requested native reviews are organization-billed. Copilot SDK requests use the credential supplied by GitPay. Our selected sponsorship therefore continues to use the owner/organization when an outside contributor opens a PR. Sourcery is a separate product with its own subscriptions; its billing must not be inferred from Copilot's rules.
+Native automatic Copilot reviews may attribute usage to the PR author; manual reviews attribute it to the requester, with organization-policy exceptions. Bot-requested native reviews are organization-billed. Copilot SDK requests use the credential supplied by Repopay. Our selected sponsorship therefore continues to use the owner/organization when an outside contributor opens a PR. Sourcery is a separate product with its own subscriptions; its billing must not be inferred from Copilot's rules.
 
 ## References
 

@@ -26,8 +26,8 @@ it('login callback rotates opaque cookies; successful logout invalidates them',a
  const login=await f.request('/login?returnTo=%2F');expect(login.status).toBe(303);const location=new URL(required(login.headers.get('location')));const binding=required(required(login.headers.get('set-cookie')).split(';')[0]);
  expect(login.headers.get('set-cookie')).toContain('HttpOnly');expect(login.headers.get('set-cookie')).toContain('Secure');expect(login.headers.get('set-cookie')).toContain('SameSite=Lax');
  const callback='/oauth/github/callback?code=code&state='+encodeURIComponent(required(location.searchParams.get('state')));
- expect((await f.request(callback,{headers:{Cookie:'gitpay_oauth=wrong'}})).status).toBe(400);
- const response=await f.request(callback,{headers:{Cookie:binding}});expect(response.status).toBe(303);const sessionCookie=required(required(response.headers.getSetCookie().find(v=>v.startsWith('gitpay_session='))).split(';')[0]);
+ expect((await f.request(callback,{headers:{Cookie:'repopay_oauth=wrong'}})).status).toBe(400);
+ const response=await f.request(callback,{headers:{Cookie:binding}});expect(response.status).toBe(303);const sessionCookie=required(required(response.headers.getSetCookie().find(v=>v.startsWith('repopay_session='))).split(';')[0]);
  const home=await f.request('/',{headers:{Cookie:sessionCookie}});const csrf=csrfFrom(await home.text());
  const logout=await f.request('/logout',{...form(csrf),headers:{...form(csrf).headers,Cookie:sessionCookie}});expect(logout.status).toBe(303);
  expect((await f.request('/api/bounties/'+f.bounty.id,{headers:{Cookie:sessionCookie}})).status).toBe(401);
@@ -47,7 +47,7 @@ it('successful login replaces the old local session even if its provider token c
  const f=await authFixture();try {
   await f.database.orm.update(sessions).set({accessExpiresAt:new Date('2000-01-01')});
   const login=await f.request('/login');const location=new URL(required(login.headers.get('location')));const binding=required(required(login.headers.get('set-cookie')).split(';')[0]);
-  const response=await f.request('/oauth/github/callback?code=code&state='+encodeURIComponent(required(location.searchParams.get('state'))),{headers:{Cookie:binding+'; gitpay_session='+f.login.cookie}});
+  const response=await f.request('/oauth/github/callback?code=code&state='+encodeURIComponent(required(location.searchParams.get('state'))),{headers:{Cookie:binding+'; repopay_session='+f.login.cookie}});
   expect(response.status).toBe(303);const rows=await f.database.orm.select().from(sessions);expect(rows).toHaveLength(1);expect(rows[0]?.id).not.toBe(f.login.session.id);
  }finally{await f.close();}
 });

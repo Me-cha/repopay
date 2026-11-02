@@ -5,7 +5,7 @@ ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="$ROOT/.env"
 
 if [[ ! -f "$ENV_FILE" ]]; then
-  printf 'Missing %s. Copy .env.example to .env and configure GitPay first.\n' "$ENV_FILE" >&2
+  printf 'Missing %s. Copy .env.example to .env and configure Repopay first.\n' "$ENV_FILE" >&2
   exit 1
 fi
 
@@ -41,7 +41,7 @@ fi
 
 EXPECTED_ORIGIN="https://$DOMAIN"
 if [[ "$PUBLIC_ORIGIN" != "$EXPECTED_ORIGIN" ]]; then
-  printf 'Set PUBLIC_URL=%s in .env, then restart GitPay before starting the tunnel.\n' "$EXPECTED_ORIGIN" >&2
+  printf 'Set PUBLIC_URL=%s in .env, then restart Repopay before starting the tunnel.\n' "$EXPECTED_ORIGIN" >&2
   exit 1
 fi
 
@@ -52,12 +52,12 @@ fi
 
 if ! ngrok config check >/dev/null 2>&1; then
   printf 'ngrok is not authenticated. Run: ngrok config add-authtoken <your-token>\n' >&2
-  printf 'Keep the token in ngrok config; do not put it in GitPay .env.\n' >&2
+  printf 'Keep the token in ngrok config; do not put it in Repopay .env.\n' >&2
   exit 1
 fi
 
 if ! command -v curl >/dev/null 2>&1 || ! curl --silent --show-error --fail --max-time 3 "http://127.0.0.1:$PORT_VALUE/healthz" >/dev/null; then
-  printf 'GitPay is not healthy on port %s. Start it with pnpm dev first.\n' "$PORT_VALUE" >&2
+  printf 'Repopay is not healthy on port %s. Start it with pnpm dev first.\n' "$PORT_VALUE" >&2
   exit 1
 fi
 

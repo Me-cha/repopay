@@ -18,5 +18,5 @@ Observed SDK behaviour (prototype, `@github/copilot-sdk` 1.0.28): a session crea
 ## Consequences
 
 - The serving model can change between reviews of the same bounty, so quality is not pinned to one model. Each verification records its model, so drift is visible.
-- GitPay cannot restrict which model Auto chooses before the call. A provenance failure may still consume sponsor usage.
+- Repopay cannot restrict which model Auto chooses before the call. A provenance failure may still consume sponsor usage.
 - The Phase 5 evaluation gate must be redefined for Auto: three runs per fixture, recording the actual serving model per run. The 18-run Auto prototype (14/18) is the current baseline and does not pass that gate.

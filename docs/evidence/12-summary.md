@@ -7,20 +7,20 @@
 - [Acceptance matrix](12-acceptance.md): W01–W16 local tests, historical real observations, required gaps and R01–R11 review traceability. Required gates remain unchecked.
 - [Demo guide](../demo.md): fresh ordinary issue preparation, <=3-minute recording outline and separate genuine-refund recording requirements.
 - `pnpm demo:seed`: no-provider dry run; explicit execution restricted to the designated detached repository. Fresh issues each run, no bounty/merge/payment actions, no automatic retry after uncertain create. Four mocked CLI tests cover boundaries; real execution is deferred.
-- [Postman collection](../../postman/gitpay.postman_collection.json): read-only endpoints and default-skipped local synthetic signed ping. No exported secrets. Signature generated locally; no webhook secret imported into Postman. Guard test rejects opt-out and non-loopback/host-confusion destinations. Postman GUI import/send remains unobserved.
+- [Postman collection](../../postman/repopay.postman_collection.json): read-only endpoints and default-skipped local synthetic signed ping. No exported secrets. Signature generated locally; no webhook secret imported into Postman. Guard test rejects opt-out and non-loopback/host-confusion destinations. Postman GUI import/send remains unobserved.
 - README/setup/contribution/map updates and an ordered [final-session checklist](../phases/live-walkthroughs.md#final-session-order). No new application environment variables or database migrations.
 
 ## Fresh-clone rehearsal
 
-Created `/private/tmp/gitpay-phase12-clean-rm1iy895` using `git clone --local --no-hardlinks` from base commit, then copied only nonignored Phase 12 changes over it. This is a fresh local clone **plus the uncommitted patch**, not a claim that the remote repository already contains this work. No `.env`, `.local`, `node_modules`, generated build or credential artifacts were copied.
+Created `/private/tmp/repopay-phase12-clean-rm1iy895` using `git clone --local --no-hardlinks` from base commit, then copied only nonignored Phase 12 changes over it. This is a fresh local clone **plus the uncommitted patch**, not a claim that the remote repository already contains this work. No `.env`, `.local`, `node_modules`, generated build or credential artifacts were copied.
 
-Used Node 22.23.4/pnpm 10.29.3 from the existing version-tooling installation through PATH. `CI=true pnpm install --frozen-lockfile` installed dependencies from the pnpm cache (327 packages), exercising install lifecycle scripts. This was not an empty-cache internet download. Docker PostgreSQL 16 and `gitpay_test` already existed; `COMPOSE_PROJECT_NAME=gitpay` selected that stack for restore tests from the temporary clone. Tests created/dropped their isolated schemas, not the application database. No new Docker volume or test database was necessary.
+Used Node 22.23.4/pnpm 10.29.3 from the existing version-tooling installation through PATH. `CI=true pnpm install --frozen-lockfile` installed dependencies from the pnpm cache (327 packages), exercising install lifecycle scripts. This was not an empty-cache internet download. Docker PostgreSQL 16 and `repopay_test` already existed; `COMPOSE_PROJECT_NAME=repopay` selected that stack for restore tests from the temporary clone. Tests created/dropped their isolated schemas, not the application database. No new Docker volume or test database was necessary.
 
 Commands executed from the clean clone:
 
 ```sh
-export COMPOSE_PROJECT_NAME=gitpay
-export TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test
+export COMPOSE_PROJECT_NAME=repopay
+export TEST_DATABASE_URL=postgresql://repopay:repopay@127.0.0.1:5433/repopay_test
 CI=true pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm lint

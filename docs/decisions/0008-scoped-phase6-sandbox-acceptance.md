@@ -6,7 +6,7 @@ Status: Accepted for the existing isolated demo by the user's instruction to pro
 
 ## Decision
 
-Enable the existing default-off settlement scope only for bounty 1, repository `deepakA18/gitpay-demo-http` (1435468752), 5,000 USD cents and its exact frozen terms hash. Keep PayPal sandbox and the configured merchant binding. This accepts the evaluated Auto/prompt-v2/SDK-1.0.28 profile with the observed serving model `gpt-6-luna` for this demo only. No global profile acceptance or production rollout is authorized.
+Enable the existing default-off settlement scope only for bounty 1, repository `deepakA18/repopay-demo-http` (1435468752), 5,000 USD cents and its exact frozen terms hash. Keep PayPal sandbox and the configured merchant binding. This accepts the evaluated Auto/prompt-v2/SDK-1.0.28 profile with the observed serving model `gpt-6-luna` for this demo only. No global profile acceptance or production rollout is authorized.
 
 The application-adapter evaluation passed 18/18. The live PR has current RESOLVES evidence and successful external CI; real sponsor revocation blocked a review, and reconnection enabled successful review on a later revision. The second eligible contributor is unavailable; same-revision ERROR-to-success retry and other unchecked Phase 5 acceptance remain deferred, not passed. Organization support remains blocked.
 

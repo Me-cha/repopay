@@ -8,7 +8,7 @@ it('lost comment response reconciles by trusted marker, ignoring forged user mar
  const f=await githubFixture();try{
   const a=await f.job(createWork());await handleJob(f.database,f.api,testEnv,a);await finishJob(f.database,a);
   const [bounty]=await f.database.orm.select().from(bounties);if(!bounty)throw new Error('missing bounty');
-  f.comments.push({id:'8',body:`<!-- gitpay:bounty:${bounty.id} -->`,user:{id:'4',type:'User'}});
+  f.comments.push({id:'8',body:`<!-- repopay:bounty:${bounty.id} -->`,user:{id:'4',type:'User'}});
   const job=await claimJob(f.database,'sync',120);if(!job)throw new Error('missing sync');
   f.state.lostResponse=true;await expect(syncBounty(f.database,f.api,testEnv,job,bounty.id)).rejects.toThrow('lost');
   await syncBounty(f.database,f.api,testEnv,job,bounty.id);
@@ -24,7 +24,7 @@ it('delayed cancelled projection keeps the open badge of a replacement draft on 
   await f.database.orm.update(bounties).set({status:'CANCELLED'});
   await f.database.orm.insert(bounties).values({installationId:old.installationId,repoId:old.repoId,repoFullName:old.repoFullName,issueNumber:old.issueNumber,amountCents:3000,createdByGhId:'4',createdVia:'command'});
   const late=await f.job({kind:'sync_bounty',bountyId:old.id});await handleJob(f.database,f.api,testEnv,late);
-  expect(f.comments.find(c=>c.body?.includes(`gitpay:bounty:${old.id}`))?.body).toContain('CANCELLED');
+  expect(f.comments.find(c=>c.body?.includes(`repopay:bounty:${old.id}`))?.body).toContain('CANCELLED');
   expect(f.api.badge).not.toHaveBeenCalledWith(expect.anything(),expect.anything(),old.issueNumber,'CANCELLED');
  }finally{await f.close();}
 });
@@ -35,7 +35,7 @@ it('status reply for a funded bounty reports confirmed funding, not reconciliati
   await f.database.orm.update(bounties).set({status:'FUNDED',fundedAt:new Date(),captureId:'CAPTURE1'});
   f.state.permission='read';
   const status=await f.job(createWork({commentId:'30',command:{kind:'status'}}));await handleJob(f.database,f.api,testEnv,status);
-  const body=f.comments.find(c=>c.body?.includes(`gitpay:reply:${status.id}`))?.body;
+  const body=f.comments.find(c=>c.body?.includes(`repopay:reply:${status.id}`))?.body;
   expect(body).toContain('FUNDED');expect(body).toContain('Funding confirmed');expect(body).not.toContain('requires reconciliation');
  }finally{await f.close();}
 });
@@ -61,10 +61,10 @@ it('each read-only status command gets a reply, while retries reconcile the same
    if(sync){await handleJob(f.database,f.api,testEnv,sync);await finishJob(f.database,sync);}
   }
   expect((await f.database.orm.select().from(jobs)).filter(j=>j.dedupeKey?.startsWith('status:'))).toHaveLength(1);
-  const replies=f.comments.filter(c=>c.body?.includes('gitpay:reply:'));
+  const replies=f.comments.filter(c=>c.body?.includes('repopay:reply:'));
   expect(replies).toHaveLength(2);
   for(const reply of replies){expect(reply.body).toContain('$50.00 USD');expect(reply.body).toContain('OPEN');expect(reply.body).toContain('No money has been collected');}
-  expect(f.comments.filter(c=>c.body?.includes('gitpay:bounty:'))).toHaveLength(1);
+  expect(f.comments.filter(c=>c.body?.includes('repopay:bounty:'))).toHaveLength(1);
  }finally{clock.mockRestore();await f.close();}
 });
 it('issue draft surfaces owner setup and state/history links without needing a hand-shared URL',async()=>{
@@ -80,10 +80,10 @@ it('PR projection gives revision-bound commands, recovers a lost response and ne
  const f=await awardFixture();try{const sub=await f.add('501','2026-10-30T00:00:00Z');await f.database.orm.update(submissions).set({status:'OPEN',mergedAt:null,mergeSha:null}).where(eq(submissions.id,sub.id));
  await f.database.withTransaction(tx=>enqueue(tx,{kind:'sync_submission',payload:{submissionId:sub.id},dedupeKey:'projection',maxAttempts:3}));const job=await claimJob(f.database,'projection',120);if(!job)throw new Error('missing projection');
  f.state.lostResponse=true;await expect(syncSubmission(f.database,f.api,f.env,job,sub.id)).rejects.toThrow('lost');await syncSubmission(f.database,f.api,f.env,job,sub.id);
- const body=f.comments.find(c=>c.body?.includes('gitpay:submission:'))?.body;expect(body).toContain('RESOLVES');expect(body).toContain(`/bounty contribute #12 ${sub.headSha} ${sub.baseSha}`);expect(body).toContain('Manage Copilot sponsor');expect(body).toContain('/bounty retry #12');expect(body).not.toContain('/submissions/');
+ const body=f.comments.find(c=>c.body?.includes('repopay:submission:'))?.body;expect(body).toContain('RESOLVES');expect(body).toContain(`/bounty contribute #12 ${sub.headSha} ${sub.baseSha}`);expect(body).toContain('Manage Copilot sponsor');expect(body).toContain('/bounty retry #12');expect(body).not.toContain('/submissions/');
  expect(f.api.createComment).toHaveBeenCalledTimes(1);
  await f.database.orm.update(submissions).set({baseSha:'d'.repeat(40),evidenceVersion:2}).where(eq(submissions.id,sub.id));await syncSubmission(f.database,f.api,f.env,job,sub.id);
- const refreshed=f.comments.find(c=>c.body?.includes('gitpay:submission:'))?.body;expect(refreshed).toContain('Current revision awaits review');expect(refreshed).not.toContain('**RESOLVES**');
+ const refreshed=f.comments.find(c=>c.body?.includes('repopay:submission:'))?.body;expect(refreshed).toContain('Current revision awaits review');expect(refreshed).not.toContain('**RESOLVES**');
  }finally{await f.close();}
 });
 it('committed award projects recipient allocations and connection link to the winning PR only',async()=>{
@@ -91,8 +91,8 @@ it('committed award projects recipient allocations and connection link to the wi
  const winner=await f.add('501','2026-10-30T00:00:00Z');await f.service.settleBounty(f.bounty.id);
  await f.database.withTransaction(tx=>enqueue(tx,{kind:'sync_bounty',payload:{bountyId:f.bounty.id},dedupeKey:'award-projection',maxAttempts:3}));const job=await claimJob(f.database,'projection',120);if(!job)throw new Error('missing projection');
  await syncBounty(f.database,f.api,f.env,job,f.bounty.id);
- expect(f.api.createComment).toHaveBeenCalledWith('1',expect.anything(),winner.prNumber,expect.stringContaining('gitpay:award:'));
- const body=f.comments.find(c=>c.body?.includes('gitpay:award:'))?.body;expect(body).toContain('@fixture-author: $25.00');expect(body).toContain('@second: $25.00');expect(body).toContain('/connect');expect(body).toContain('payment progress');expect(body).not.toContain('destinationEnc');
+ expect(f.api.createComment).toHaveBeenCalledWith('1',expect.anything(),winner.prNumber,expect.stringContaining('repopay:award:'));
+ const body=f.comments.find(c=>c.body?.includes('repopay:award:'))?.body;expect(body).toContain('@fixture-author: $25.00');expect(body).toContain('@second: $25.00');expect(body).toContain('/connect');expect(body).toContain('payment progress');expect(body).not.toContain('destinationEnc');
  }finally{await f.close();}
 });
 

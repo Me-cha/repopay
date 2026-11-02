@@ -15,7 +15,7 @@ The observation file shape is:
 ```json
 {
   "model": "auto",
-  "promptVersion": "gitpay-verifier-v1",
+  "promptVersion": "repopay-verifier-v1",
   "sdkVersion": "1.0.28",
   "observations": [
     {
@@ -34,7 +34,7 @@ The app adapter stores SDK-reported token counts, nano-AIU and premium-request t
 
 ## Free-plan Auto prototype — October 29, 2026
 
-At the user's direction, the isolated non-payment prototype used the personal Copilot Free sponsor for 18 synthetic requests (three per fixture). It requested `auto`; it did not use GitPay's application verifier, repository data, database, Check Runs, funding terms or payment paths. All requests completed, and SDK usage events reported `gpt-6-luna` as the routed model. The session's selected model remained `auto`, so these observations do not prove that the funded fixed model was selected.
+At the user's direction, the isolated non-payment prototype used the personal Copilot Free sponsor for 18 synthetic requests (three per fixture). It requested `auto`; it did not use Repopay's application verifier, repository data, database, Check Runs, funding terms or payment paths. All requests completed, and SDK usage events reported `gpt-6-luna` as the routed model. The session's selected model remained `auto`, so these observations do not prove that the funded fixed model was selected.
 
 | Fixture | Observed results | Expected matches |
 | --- | --- | ---: |
@@ -52,7 +52,7 @@ This pilot is a limited feasibility signal only. It fails the agreed quality gat
 
 ## Application-adapter Auto evaluation — October 30, 2026
 
-The connected `deepakA18` sponsor completed all 18 approved requests against prompt `gitpay-verifier-v1`, SDK `1.0.28`. Auto routed every request to `gpt-6-luna`. This run used the real application adapter and synthetic fixtures, without GitHub publishing or payments. [Redacted observations](05-auto-v1-20261030.json) retain every result and the SDK-reported latency/usage.
+The connected `deepakA18` sponsor completed all 18 approved requests against prompt `repopay-verifier-v1`, SDK `1.0.28`. Auto routed every request to `gpt-6-luna`. This run used the real application adapter and synthetic fixtures, without GitHub publishing or payments. [Redacted observations](05-auto-v1-20261030.json) retain every result and the SDK-reported latency/usage.
 
 | Fixture | Matches | Result |
 | --- | ---: | --- |
@@ -68,6 +68,6 @@ The connected `deepakA18` sponsor completed all 18 approved requests against pro
 
 ## Prompt v2 accepted evaluation
 
-The separately approved repeat completed **18/18 expected verdicts**, with `passed=true` and `liveEvidenceComplete=true`. [Redacted v2 observations](05-auto-v2-20261030.json) retain all six fixtures, three runs each, `gitpay-verifier-v2`, SDK `1.0.28`, and concrete serving model `gpt-6-luna` selected by Auto. All incomplete-evidence runs returned PARTIAL and were non-payable. No expected labels or acceptance thresholds were changed.
+The separately approved repeat completed **18/18 expected verdicts**, with `passed=true` and `liveEvidenceComplete=true`. [Redacted v2 observations](05-auto-v2-20261030.json) retain all six fixtures, three runs each, `repopay-verifier-v2`, SDK `1.0.28`, and concrete serving model `gpt-6-luna` selected by Auto. All incomplete-evidence runs returned PARTIAL and were non-payable. No expected labels or acceptance thresholds were changed.
 
 Both approved budgets were exhausted: 18 requests for v1 plus 18 for v2. No further evaluation requests are authorized by those budgets. A passing synthetic evaluation does not establish real PR linking, Check Run/retry behavior, financial safety or a hard usage budget. Phase 5 live workflow acceptance remains open and automatic awards remain disabled.

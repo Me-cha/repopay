@@ -14,7 +14,7 @@ it('sponsor connect hands the browser a GitHub authorize URL it can navigate to,
   const target=new URL(redirect);
   expect(target.origin+target.pathname).toBe('https://github.com/login/oauth/authorize');
   expect(target.searchParams.get('code_challenge_method')).toBe('S256');
-  expect(response.headers.get('set-cookie')).toContain('gitpay_sponsor_oauth=');
+  expect(response.headers.get('set-cookie')).toContain('repopay_sponsor_oauth=');
   expect(await f.database.orm.select().from(copilotSponsorStates)).toHaveLength(1);
   const script=await(await f.request('/assets/actions.js')).text();
   expect(script).toContain('https://github.com/login/oauth/authorize');

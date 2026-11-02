@@ -1,9 +1,43 @@
 import { z } from 'zod';
-import { bountyPageSchema,detailSchema,meSchema,payoutPageSchema } from '../../server/src/read-models/contracts.js';
-export type { BountyDto,DetailDto,PayoutDto } from '../../server/src/read-models/contracts.js';
-export class ReadError extends Error {constructor(readonly status:number){super(status===401?'Your session expired. Sign in again.':status===403?'Repository access was removed. Sign in with an account that has access.':'Unable to verify current access or load data. Retry when the connection is available.');}}
-async function get<T extends z.ZodType>(path:string,schema:T,signal?:AbortSignal):Promise<z.output<T>>{const response=await fetch(path,{credentials:'same-origin',cache:'no-store',...(signal?{signal}:{})});if(!response.ok)throw new ReadError(response.status);return schema.parse(await response.json());}
-export const api={me:(signal?:AbortSignal)=>get('/api/me',meSchema,signal),bounties:(cursor='0',signal?:AbortSignal)=>get('/api/bounties?cursor='+encodeURIComponent(cursor),bountyPageSchema,signal),payouts:(cursor='0',signal?:AbortSignal)=>get('/api/payouts?cursor='+encodeURIComponent(cursor),payoutPageSchema,signal),detail:(id:string,signal?:AbortSignal,before?:string)=>get('/api/bounties/'+encodeURIComponent(id)+(before?'?before='+encodeURIComponent(before):''),detailSchema,signal)};
+import { bountyPageSchema,connectStatusSchema,detailSchema,meSchema,payoutPageSchema } from '../../server/src/read-models/contracts.js';
+export type { BountyDto,ConnectStatusDto,DetailDto,PayoutDto,ReviewDto } from '../../server/src/read-models/contracts.js';
+export class ReadError extends Error {
+ constructor(readonly status:number,customMessage?:string){
+  super(customMessage??(status===401?'Your session expired. Sign in again.':status===403?'Repository access was removed. Sign in with an account that has access.':'Unable to verify current access or load data. Retry when the connection is available.'));
+ }
+}
+async function get<T extends z.ZodType>(path:string,schema:T,signal?:AbortSignal):Promise<z.output<T>>{
+ const response=await fetch(path,{credentials:'same-origin',cache:'no-store',...(signal?{signal}:{})});
+ if(!response.ok){
+  let msg:string|undefined;
+  try{const body:unknown=await response.json();if(body&&typeof body==='object'&&'error' in body&&typeof body.error==='string')msg=body.error;}catch{/* ignore */}
+  throw new ReadError(response.status,msg);
+ }
+ return schema.parse(await response.json());
+}
+async function postForm<T extends z.ZodType>(path:string,params:Record<string,string>,schema:T):Promise<z.output<T>>{
+ const response=await fetch(path,{
+  method:'POST',
+  credentials:'same-origin',
+  cache:'no-store',
+  headers:{'Content-Type':'application/x-www-form-urlencoded'},
+  body:new URLSearchParams(params).toString(),
+ });
+ if(!response.ok){
+  let msg:string|undefined;
+  try{const body:unknown=await response.json();if(body&&typeof body==='object'&&'error' in body&&typeof body.error==='string')msg=body.error;}catch{/* ignore */}
+  throw new ReadError(response.status,msg);
+ }
+ return schema.parse(await response.json());
+}
+export const api={
+ me:(signal?:AbortSignal)=>get('/api/me',meSchema,signal),
+ bounties:(cursor='0',signal?:AbortSignal)=>get('/api/bounties?cursor='+encodeURIComponent(cursor),bountyPageSchema,signal),
+ payouts:(cursor='0',signal?:AbortSignal)=>get('/api/payouts?cursor='+encodeURIComponent(cursor),payoutPageSchema,signal),
+ detail:(id:string,signal?:AbortSignal,before?:string)=>get('/api/bounties/'+encodeURIComponent(id)+(before?'?before='+encodeURIComponent(before):''),detailSchema,signal),
+ connectStatus:(signal?:AbortSignal)=>get('/api/connect',connectStatusSchema,signal),
+ updateConnect:(paypalEmail:string,csrf:string)=>postForm('/api/connect',{paypalEmail,csrf},connectStatusSchema),
+};
 export const money=(cents:number)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(cents/100);
 export const label=(value:string)=>value.replaceAll('_',' ').toLowerCase().replace(/^./,c=>c.toUpperCase());
 export const formatTimeIST=(date:Date|string|number=new Date())=>{

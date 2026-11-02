@@ -15,7 +15,7 @@ describe('contributor payout connection',()=>{
  it('rejects invalid emails and requests without CSRF',async()=>{
   f=await authFixture();const page=await f.request('/connect'),csrf=csrfFrom(await page.text());
   const invalid=await f.request('/connect',form(csrf,{paypalEmail:'not an email'}));expect(invalid.status).toBe(400);
-  const missing=await f.request('/connect',{method:'POST',headers:{Origin:'https://gitpay.test','Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({paypalEmail:'payee@example.com'}).toString()});expect(missing.status).toBe(403);
+  const missing=await f.request('/connect',{method:'POST',headers:{Origin:'https://repopay.test','Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({paypalEmail:'payee@example.com'}).toString()});expect(missing.status).toBe(403);
   expect(await f.database.orm.select().from(contributors)).toHaveLength(0);
  });
  it('uses stable GitHub ID when login changes and persists each claim resume revision',async()=>{

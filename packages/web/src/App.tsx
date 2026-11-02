@@ -1,34 +1,65 @@
-import { useCallback,useEffect,useRef,useState } from 'react';
-import { api,formatTimeIST,label,money,ReadError,subscribe,type BountyDto,type DetailDto,type PayoutDto } from './api.js';
-import { Bounties } from './grid/Bounties.js';
-import { Detail } from './Detail.js';
-type Tab='bounties'|'payouts'|'attention';
-export function App(){
- const params=new URLSearchParams(location.search),initialTab=params.get('tab');
- const [tab,setTab]=useState<Tab>(initialTab==='payouts'||initialTab==='attention'?initialTab:'bounties'),[query,setQuery]=useState(params.get('q')??''),[selected,setSelected]=useState<string|null>(params.get('bounty'));
- const [rows,setRows]=useState<BountyDto[]>([]),[payouts,setPayouts]=useState<PayoutDto[]>([]),[detail,setDetail]=useState<DetailDto|null>(null),[me,setMe]=useState<{login:string;heartbeatSeconds:number}|null>(null);
- const [heartbeat,setHeartbeat]=useState(30);
- const [error,setError]=useState(''),[loading,setLoading]=useState(true),[updated,setUpdated]=useState(''),[page,setPage]=useState('0'),[next,setNext]=useState<string|null>(null),[previous,setPrevious]=useState<string[]>([]);
- const generation=useRef(0),controller=useRef<AbortController|null>(null),trigger=useRef<HTMLElement|null>(null);
- const clear=useCallback(()=>{generation.current++;controller.current?.abort();setRows([]);setPayouts([]);setDetail(null);setMe(null);setError('Connection or access changed. Current data is hidden until access is verified again.');setLoading(false);},[]);
- const refresh=useCallback(()=>{const g=++generation.current;controller.current?.abort();const abort=new AbortController();controller.current=abort;setLoading(true);
-  void (async()=>{try{const [user,b,p,d]=await Promise.all([api.me(abort.signal),api.bounties(page,abort.signal),api.payouts(page,abort.signal),selected?api.detail(selected,abort.signal):Promise.resolve(null)]);if(g!==generation.current)return;setMe(user);setHeartbeat(user.heartbeatSeconds);setRows(b.items);setPayouts(p.items);setDetail(d);setNext(tab==='payouts'?p.nextCursor:b.nextCursor);setError('');setUpdated(formatTimeIST());}catch(e){if(g!==generation.current||abort.signal.aborted)return;setRows([]);setPayouts([]);setDetail(null);setMe(null);setError(e instanceof ReadError?e.message:'Unable to load current data. Retry to verify access again.');}finally{if(g===generation.current)setLoading(false);}})();
- },[page,selected,tab]);
- useEffect(()=>{refresh();return ()=>{generation.current++;controller.current?.abort();};},[refresh]);
- // The same independent timer works while EventSource is disconnected.
- useEffect(()=>subscribe(refresh,clear,heartbeat*1000),[refresh,clear,heartbeat]);
- useEffect(()=>{const p=new URLSearchParams();p.set('tab',tab);if(query)p.set('q',query);if(selected)p.set('bounty',selected);history.replaceState(null,'','?'+p.toString());},[tab,query,selected]);
- const select=useCallback((id:string)=>{trigger.current=document.activeElement instanceof HTMLElement?document.activeElement:null;setDetail(null);setSelected(id);},[]);
- const close=()=>{setSelected(null);setDetail(null);trigger.current?.focus();};
- const loadHistory=()=>{if(!detail?.historyNextCursor)return;const id=detail.id,g=generation.current;void api.detail(id,undefined,detail.historyNextCursor).then(nextDetail=>{if(g!==generation.current)return;setDetail(current=>current?.id===id?{...nextDetail,activity:[...current.activity,...nextDetail.activity.filter(a=>!current.activity.some(old=>old.id===a.id))]}:current);}).catch(clear);};
- const displayed=rows.filter(b=>tab!=='attention'||b.needsAttention||b.status==='NEEDS_REVIEW'||b.status==='REFUNDING');
- const filteredPayouts=payouts.filter(p=>(p.repoFullName+' '+p.login+' '+p.status).toLowerCase().includes(query.toLowerCase()));
- const tabs:[Tab,string][]=[['bounties','Bounties'],['payouts','Payouts'],['attention','Needs attention']];
- return <><a className="skip" href="#content">Skip to content</a><header className="topbar"><a href="/" className="brand">GitPay<span className="environment">Sandbox</span></a><nav aria-label="Account"><a href="/connect">Payout details</a><a href="/">{me?'@'+me.login:'Sign in'}</a></nav></header>
- <main id="content"><div className="page-heading"><div><p className="eyebrow">GitHub work. Clear payment progress.</p><h1>Bounty overview</h1><p className="muted">Track funding, reviews and delivery. Manage work in GitHub.</p></div><span className="read-only">Read-only view</span></div>
- <div className="tabs" role="tablist" aria-label="Views">{tabs.map(([key,name],i)=><button key={key} id={'tab-'+key} role="tab" aria-controls="view" aria-selected={tab===key} tabIndex={tab===key?0:-1} onClick={()=>{setTab(key);setPage('0');setPrevious([]);}} onKeyDown={e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){const nextTab=tabs[(i+(e.key==='ArrowRight'?1:2))%3];if(nextTab){setTab(nextTab[0]);setPage('0');setPrevious([]);document.getElementById('tab-'+nextTab[0])?.focus();}}}}>{name}</button>)}</div>
- <section id="view" role="tabpanel" aria-labelledby={'tab-'+tab}><div className="toolbar"><label htmlFor="filter">Filter this page<input id="filter" type="search" autoComplete="off" value={query} onChange={e=> { setQuery(e.target.value); }} placeholder="Repository, issue or status"/></label><button onClick={refresh} disabled={loading}>{loading?'Checking…':'Refresh'}</button><p role="status" className="muted">{loading?'Verifying current access…':updated&&!error?'Updated '+updated:''}</p></div>
- {error?<div className="notice" role="alert"><h2>Current data unavailable</h2><p>{error}</p><button onClick={refresh}>Try again</button><a href="/login?returnTo=%2Fdashboard%2F">Sign in again</a></div>:loading&&!me?<div className="skeleton" role="status">Loading accessible repositories…</div>:tab==='payouts'?(filteredPayouts.length?<div className="table-scroll"><table><caption>Committed awards and actual delivery</caption><thead><tr><th>Contributor</th><th>Issue</th><th>Committed</th><th>Delivered</th><th>Status / next step</th></tr></thead><tbody>{filteredPayouts.map(p=><tr key={p.id}><td>@{p.login}</td><td><button className="row-link" onClick={()=> { select(p.bountyId); }}>{p.repoFullName} #{p.issueNumber}</button></td><td>{money(p.amountCents)}</td><td>{money(p.paidCents)}</td><td><span className={'chip chip--'+p.status.toLowerCase()}>{label(p.status)}</span><br/><a href={p.nextAction.href}>{p.nextAction.label}</a></td></tr>)}</tbody></table></div>:<div className="empty"><h2>No payouts on this page</h2><p>An award is committed after a qualifying merged solution. Missing payout details keep that award reserved.</p><a href="/connect">Review your payout connection</a></div>):displayed.length?<Bounties rows={displayed} onSelect={select} filter={query}/>:<div className="empty"><h2>{tab==='attention'?'No cases need attention on this page':'No accessible bounties on this page'}</h2><p>{tab==='attention'?'Review another page or return to all bounties.':'Create a draft from an issue in a repository where the GitPay App is installed, or check another page.'}</p><a href="https://github.com">Open GitHub</a></div>}
- {!error&&<div className="pagination"><button disabled={!previous.length||loading} onClick={()=>{setPage(previous.at(-1)??'0');setPrevious(p=>p.slice(0,-1));}}>Previous page</button><span>Page {previous.length+1}</span><button disabled={!next||loading} onClick={()=>{if(next){setPrevious(p=>[...p,page]);setPage(next);}}}>Next page</button></div>}
- </section>{selected&&!detail&&!error&&<p role="status">Loading bounty detail…</p>}{detail&&!error&&<Detail data={detail} onClose={close} onHistory={loadHistory}/>}<footer>Sandbox amounts only. A notice or pending transfer does not mean money has moved.</footer></main></>;
+import { AppShell } from './components/layout/AppShell.js';
+import { AuthProvider } from './context/AuthContext.js';
+import { WorkspaceDataProvider } from './context/WorkspaceDataContext.js';
+import { AnalyticsDashboardPage } from './pages/AnalyticsDashboardPage.js';
+import { ContributionsPage } from './pages/ContributionsPage.js';
+import { NotFoundPage } from './pages/NotFoundPage.js';
+import { PayoutsPage } from './pages/PayoutsPage.js';
+import { SignInPage } from './pages/SignInPage.js';
+import { ProtectedRoute } from './router/ProtectedRoute.js';
+import { RouterProvider, useRouter } from './router/Router.js';
+
+function normalizePath(p: string): string {
+  if (p.length > 1 && p.endsWith('/')) return p.slice(0, -1);
+  return p;
+}
+
+function DashboardOutlet() {
+  const { path } = useRouter();
+  const clean = normalizePath(path);
+
+  if (clean === '/dashboard') {
+    return <AnalyticsDashboardPage />;
+  }
+  if (clean === '/dashboard/contributions') {
+    return <ContributionsPage />;
+  }
+  if (clean === '/dashboard/payouts' || clean === '/dashboard/payouts/settings') {
+    return <PayoutsPage />;
+  }
+
+  return <NotFoundPage />;
+}
+
+function AppRoutes() {
+  const { path } = useRouter();
+  const clean = normalizePath(path);
+
+  if (clean === '/' || clean === '/login') {
+    return <SignInPage />;
+  }
+
+  if (clean === '/dashboard' || clean.startsWith('/dashboard/')) {
+    return (
+      <ProtectedRoute>
+        <WorkspaceDataProvider>
+          <AppShell>
+            <DashboardOutlet />
+          </AppShell>
+        </WorkspaceDataProvider>
+      </ProtectedRoute>
+    );
+  }
+
+  return <NotFoundPage />;
+}
+
+export function App() {
+  return (
+    <RouterProvider>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </RouterProvider>
+  );
 }

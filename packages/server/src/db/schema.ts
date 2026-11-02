@@ -74,7 +74,7 @@ export const verifications = pgTable('verifications', {
 },t=>[uniqueIndex('verification_attempt_unique').on(t.submissionId,t.headSha,t.attempt),check('verification_status_check',sql`${t.status} in ('PENDING','DONE','ERROR')`)]);
 
 // A Copilot sponsor is separate from a browser session. Its credentials remain
-// usable for background reviews after the owner signs out of GitPay.
+// usable for background reviews after the owner signs out of Repopay.
 export const copilotSponsorStates = pgTable('copilot_sponsor_states', {
  nonceHash:text('nonce_hash').primaryKey(),browserBindingHash:text('browser_binding_hash').notNull(),
  sessionId:text('session_id').notNull(),actorGhId:stringBigint('actor_gh_id').notNull(),repoId:stringBigint('repo_id').notNull(),installationId:stringBigint('installation_id').notNull(),returnTo:text('return_to').notNull(),

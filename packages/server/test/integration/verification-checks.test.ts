@@ -47,13 +47,13 @@ describe('verification job recovery',()=>{
    vi.mocked(funding.api.pullRequestFiles).mockResolvedValue({files:[{filename:'src/parser.ts',sha:'c'.repeat(40),status:'modified',additions:1,deletions:0,patch:'@@ -1 +1 @@\n+throw new Error(\'invalid\')'}],complete:true});
    vi.mocked(funding.api.pullRequestCommits).mockResolvedValue({authors:[{ghId:'8',login:'contributor',type:'User'}],complete:true});
    vi.mocked(funding.api.checkRuns).mockResolvedValue({runs:[{id:'11',name:'test',head_sha:pr.head.sha,status:'completed',conclusion:'success',app:{id:'15368'}}],complete:true});
-   const verifier=vi.fn(()=>Promise.resolve({value:{verdict:'RESOLVES' as const,coverage:1,confidence:0.95,reasoning:'Adds the required input guard.',unmet_requirements:[],splits:[{gh_id:'8',share:1,why:'PR author'}]},usage:{totalNanoAiu:500,totalPremiumRequestCost:0.1,totalApiDurationMs:42,totalUserRequests:1,inputTokens:10,outputTokens:12,cacheReadTokens:0,cacheWriteTokens:0},provider:'copilot' as const,requestedModel:'auto',model:'test-model',sdkVersion:'1.0.28',billingOwnerId:'4',elapsedMs:42,promptHash:'f'.repeat(64),promptVersion:'gitpay-verifier-v1'}));
+   const verifier=vi.fn(()=>Promise.resolve({value:{verdict:'RESOLVES' as const,coverage:1,confidence:0.95,reasoning:'Adds the required input guard.',unmet_requirements:[],splits:[{gh_id:'8',share:1,why:'PR author'}]},usage:{totalNanoAiu:500,totalPremiumRequestCost:0.1,totalApiDurationMs:42,totalUserRequests:1,inputTokens:10,outputTokens:12,cacheReadTokens:0,cacheWriteTokens:0},provider:'copilot' as const,requestedModel:'auto',model:'test-model',sdkVersion:'1.0.28',billingOwnerId:'4',elapsedMs:42,promptHash:'f'.repeat(64),promptVersion:'repopay-verifier-v1'}));
    const service=createPhase5(funding.database,funding.api,{...funding.env,VERIFIER_MAX_ATTEMPTS_PER_SHA:2},funding.auth,verifier);
 
    await service.verifySubmission(linked.submission.id,pr.head.sha);
    await service.verifySubmission(linked.submission.id,pr.head.sha);
    expect(verifier).toHaveBeenCalledTimes(1);
-   const snapshots=await funding.database.orm.select().from(submissionEvidence);expect(snapshots[0]?.diffText).toContain('gitpay-contribution-evidence-v1');
+   const snapshots=await funding.database.orm.select().from(submissionEvidence);expect(snapshots[0]?.diffText).toContain('repopay-contribution-evidence-v1');
    expect(vi.mocked(funding.api.updateCheckRun).mock.calls[0]?.[3].summary).toContain('/bounty retry #12');
    await service.verifySubmission(linked.submission.id,pr.head.sha,true,undefined,'d'.repeat(40));expect(verifier).toHaveBeenCalledTimes(1);
    expect(funding.api.createCheckRun).toHaveBeenCalledTimes(1);
@@ -85,7 +85,7 @@ describe('verification job recovery',()=>{
   const verifier=vi.fn();
   if(changeDuring==='lost'){
    vi.mocked(funding.api.createCheckRun).mockImplementationOnce((_inst,_repo,input)=>{
-    vi.mocked(funding.api.checkRuns).mockResolvedValue({complete:true,runs:[{id:'900',name:'GitPay solution review',head_sha:pr.head.sha,external_id:input.externalId,app:{id:funding.env.GH_APP_ID},status:'in_progress',conclusion:null}]});
+    vi.mocked(funding.api.checkRuns).mockResolvedValue({complete:true,runs:[{id:'900',name:'Repopay solution review',head_sha:pr.head.sha,external_id:input.externalId,app:{id:funding.env.GH_APP_ID},status:'in_progress',conclusion:null}]});
     return Promise.reject(new Error('create response lost'));
    });
    await expect(createPhase5(funding.database,funding.api,funding.env,funding.auth,verifier).verifySubmission(linked.submission.id,pr.head.sha)).rejects.toThrow('create response lost');
@@ -215,7 +215,7 @@ it('rejects an in-flight verdict if the sponsor reconnects before the result is 
   const verify=vi.fn(async()=>{
    await f.auth.revokeCopilotSponsor('2');
    await f.database.orm.update(copilotSponsors).set({revokedAt:null,tokenGeneration:99}).where(eq(copilotSponsors.repoId,'2'));
-   return {value:{verdict:'RESOLVES' as const,coverage:1,confidence:1,reasoning:'Fixed',unmet_requirements:[],splits:[{gh_id:'8',share:1,why:'author'}]},usage:{totalNanoAiu:1,totalPremiumRequestCost:1,totalApiDurationMs:1,totalUserRequests:1,inputTokens:1,outputTokens:1,cacheReadTokens:0,cacheWriteTokens:0},provider:'copilot' as const,requestedModel:'auto',model:'test-model',sdkVersion:'1.0.28',billingOwnerId:'4',elapsedMs:1,promptHash:'f'.repeat(64),promptVersion:'gitpay-verifier-v2'};
+   return {value:{verdict:'RESOLVES' as const,coverage:1,confidence:1,reasoning:'Fixed',unmet_requirements:[],splits:[{gh_id:'8',share:1,why:'author'}]},usage:{totalNanoAiu:1,totalPremiumRequestCost:1,totalApiDurationMs:1,totalUserRequests:1,inputTokens:1,outputTokens:1,cacheReadTokens:0,cacheWriteTokens:0},provider:'copilot' as const,requestedModel:'auto',model:'test-model',sdkVersion:'1.0.28',billingOwnerId:'4',elapsedMs:1,promptHash:'f'.repeat(64),promptVersion:'repopay-verifier-v2'};
   });
   await createPhase5(f.database,f.api,f.env,f.auth,verify).verifySubmission(linked.submission.id,pr.head.sha);
   expect(verify).toHaveBeenCalledTimes(1);

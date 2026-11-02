@@ -4,7 +4,7 @@
 
 **Latest v4 validation:** hosted PR #12 passed the corrected attribution review and PR-native retry. The nine-case evaluation failed (24/27 matched); full v4 acceptance and two-recipient payout remain pending. See [live checklist](live-walkthroughs.md).
 
-# GitPay MVP — phase plan
+# Repopay MVP — phase plan
 
 **Latest local work (October 31):** [ADR 0019](../decisions/0019-review-evidence-and-pr-retry.md) adds immutable contribution context, PR-native retry/status and issue-native unfunded cancellation. The v4 evaluation failed; the v5 correction above now needs separate live evaluation and acceptance. Historical v3 acceptance does not authorize new prompt versions.
 
@@ -26,7 +26,7 @@ This is the execution plan for the MVP described in [IMPLEMENTATION_PLAN.md](../
 
 ## What the MVP delivers
 
-GitPay connects GitHub issues/PRs to PayPal sandbox. Maintainers fund a published issue, anyone may submit a solution, the first qualifying merged PR earns a single award, and eligible contributors receive payouts. Uncertain work receives maintainer review. Exceptional cancellation requires notice, evidence and an independent operator; missing payout details never make an award refundable.
+Repopay connects GitHub issues/PRs to PayPal sandbox. Maintainers fund a published issue, anyone may submit a solution, the first qualifying merged PR earns a single award, and eligible contributors receive payouts. Uncertain work receives maintainer review. Exceptional cancellation requires notice, evidence and an independent operator; missing payout details never make an award refundable.
 
 Every main user workflow is in scope, including inability to proceed safely. The product must explain failed/pending payments, lost repository access, unconnected recipients, stale confirmations and unresolved disputes rather than pretending these states do not exist.
 

@@ -9,9 +9,9 @@ The maintainer uses `/bounty cancel` → authenticated request page. The worker 
 Inspect state without exposing secrets:
 
 ```sh
-docker compose exec -T postgres psql -U gitpay -d gitpay -c \
+docker compose exec -T postgres psql -U repopay -d repopay -c \
 "SELECT id, bounty_id, status, evidence_version, notice_published_at, notice_ends_at, next_update_at FROM cancellation_requests ORDER BY id;"
-docker compose exec -T postgres psql -U gitpay -d gitpay -c \
+docker compose exec -T postgres psql -U repopay -d repopay -c \
 "SELECT id, bounty_id, status, boundary_at, safe_retry_until, attention FROM refund_intents ORDER BY id;"
 ```
 
@@ -31,9 +31,9 @@ Keep `RECONCILIATION_DISCOVERY_ENABLED=false` until the deferred live discovery/
 Read diagnostic IDs and classes without payloads or destinations:
 
 ```sh
-docker compose exec -T postgres psql -U gitpay -d gitpay -c \
+docker compose exec -T postgres psql -U repopay -d repopay -c \
 "SELECT id,kind,status,attempts,max_attempts,last_error FROM jobs WHERE status='failed' ORDER BY id;"
-docker compose exec -T postgres psql -U gitpay -d gitpay -c \
+docker compose exec -T postgres psql -U repopay -d repopay -c \
 "SELECT name,cursor,generation,next_run_at FROM reconciliation_checkpoints ORDER BY name;"
 ```
 

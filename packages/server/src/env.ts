@@ -118,7 +118,7 @@ const fundingSettings = z.object({
  PP_BASE:preflightSchema.shape.PP_BASE,PP_CLIENT_ID:text,PP_SECRET:text,
  PP_WEBHOOK_ID:z.string().trim().default(''),PP_MERCHANT_ID:z.string().regex(/^[A-Z0-9]{1,32}$|^$/).default(''),
  COPILOT_MODEL:copilotModel.default('auto'),
- POLICY_VERSION:text.default('gitpay-v2-copilot'),POLICY_MIN_CONFIDENCE:fraction,POLICY_MIN_SHARE:fraction,
+ POLICY_VERSION:text.default('repopay-v2-copilot'),POLICY_MIN_CONFIDENCE:fraction,POLICY_MIN_SHARE:fraction,
  POLICY_CI_REQUIRED:flag,MAX_DIFF_CHARS:schema.shape.MAX_DIFF_CHARS,CANCELLATION_NOTICE_HOURS:schema.shape.CANCELLATION_NOTICE_HOURS,
  POLICY_CI_CONTEXTS:z.string().default('{}').transform((value,ctx)=>{try{return JSON.parse(value) as unknown;}catch{ctx.addIssue({code:'custom',message:'Invalid JSON'});return z.NEVER;}}).pipe(z.record(z.string().regex(/^[1-9]\d*$/),z.array(z.object({name:text.max(200),appId:z.string().regex(/^[1-9]\d*$/)}).strict()).min(1).max(50))),
  PP_SAFE_RETRY_SEC:integer(60,18000).default(18000),

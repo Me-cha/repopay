@@ -27,7 +27,7 @@ Commands using repository-local Node 22.23.4:
 ```sh
 pnpm typecheck
 pnpm lint
-TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test pnpm test
+TEST_DATABASE_URL=postgresql://repopay:repopay@127.0.0.1:5433/repopay_test pnpm test
 pnpm build
 git diff --check
 ```
@@ -50,7 +50,7 @@ Test map:
 
 ## Local runtime observation
 
-Worktree was clean at Phase 8 start; changes remain uncommitted. Stopped local watchers, backed up Postgres to ignored `.local/backups/gitpay-before-phase8.dump`, applied migration 0014 with `pnpm db:migrate`, and restarted server and separate worker. `/healthz` reports ready. Configuration check: cancellation disabled, no operator or cancellation repository scope configured. Database check: **0 cancellation requests, 0 refund intents; bounty 1 remains PAID, 1 original award, 1 payout item**. No live refund/model/payment exercise was initiated.
+Worktree was clean at Phase 8 start; changes remain uncommitted. Stopped local watchers, backed up Postgres to ignored `.local/backups/repopay-before-phase8.dump`, applied migration 0014 with `pnpm db:migrate`, and restarted server and separate worker. `/healthz` reports ready. Configuration check: cancellation disabled, no operator or cancellation repository scope configured. Database check: **0 cancellation requests, 0 refund intents; bounty 1 remains PAID, 1 original award, 1 payout item**. No live refund/model/payment exercise was initiated.
 
 ## Remaining acceptance
 

@@ -4,7 +4,7 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import type { Database } from './client.js';
 export async function migrateDatabase(database: Database): Promise<void> {
   const client = await database.pool.connect();
-  const lock = `gitpay:migrate:${database.schemaName}`;
+  const lock = `repopay:migrate:${database.schemaName}`;
   try {
     await client.query('select pg_advisory_lock(hashtext($1))', [lock]);
     await migrate(drizzle(client), { migrationsFolder: fileURLToPath(new URL('./migrations/', import.meta.url)), migrationsSchema: database.schemaName });

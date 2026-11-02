@@ -13,7 +13,7 @@ Date: October 29, 2026. Base commit: `c07e62d39dfe95b601d328672839f693daceb15c`.
 - A strict structured Copilot verdict schema, injection-aware prompt, fixed funded-model/sponsor binding and isolated tool-free SDK call. The verdict and Check Run are advisory; no Phase 5 code awards or pays.
 - Neutral GitHub Check Runs, completion-event re-evaluation, a writer-authorized CSRF retry page, duplicate completed-evidence suppression, explicit retry attempts, and a generic attention state after verifier jobs fail.
 - Six evaluation fixtures and a report validator that preserves duplicate/misclassified rows, rejects Auto as fixed-model evidence and rejects payable insufficient evidence.
-- Per-repository UTC-day and per-PR-SHA attempt caps. The check serializes per-repository/day admissions and blocks over-limit attempts before calling the model; configured limits are GitPay request controls, not guaranteed dollar caps.
+- Per-repository UTC-day and per-PR-SHA attempt caps. The check serializes per-repository/day admissions and blocks over-limit attempts before calling the model; configured limits are Repopay request controls, not guaranteed dollar caps.
 - The Copilot SDK usage fields (token/cache counts, total nano-AIU, premium-request cost units, API duration and request count) are validated, returned by the adapter, and persisted on successful verification records through migration `0008`. These fields describe Copilot billing units, not USD. Failed provider attempts may still need usage reconciliation if the SDK returns usage with an error.
 
 ## Local verification
@@ -44,7 +44,7 @@ The user later authorized a non-payment Auto prototype using the Free sponsor's 
 
 ## October 29–30, 2026 — first live review run and fixes
 
-The user switched new funding to Copilot Auto ([ADR 0007](../decisions/0007-copilot-auto-model.md)) and funded bounty 5 ([Me-cha/gitpay-test#5](https://github.com/Me-cha/gitpay-test/issues/5)); see [Phase 3 evidence](03-summary.md). PR #4 was then linked to that bounty.
+The user switched new funding to Copilot Auto ([ADR 0007](../decisions/0007-copilot-auto-model.md)) and funded bounty 5 ([Me-cha/repopay-test#5](https://github.com/Me-cha/repopay-test/issues/5)); see [Phase 3 evidence](03-summary.md). PR #4 was then linked to that bounty.
 
 - The first review job failed all five attempts. A read-only replay of the verifier's GitHub calls showed every read succeeding except `GET …/check-runs`, which returned 403. The App's **Checks** permission had been saved but not accepted on the installation. After the user accepted it and the server restarted (clearing the cached installation token), the same reads succeeded.
 - The retry page produced a real neutral Check Run on PR #4 and an evidence snapshot. The verdict was `INSUFFICIENT_EVIDENCE` with **no Copilot request**: PR #4's author is the bounty creator, who is excluded from payment by policy. No live Copilot verdict has been produced yet; that needs a PR from a different GitHub account.
@@ -54,7 +54,7 @@ Still observed but not yet fixed: worker job failures are not logged with a caus
 
 ## October 30, 2026 — Phase 5 continuation
 
-The user authorized completing Phase 5 and subsequent phases, approved up to 18 Auto evaluation requests, and explicitly kept organization sponsorship blocked for now. No live evaluation requests have been made in this continuation: the `.env`-selected local database had only Phase 1 tables and no sponsor grant. It was backed up to ignored private `.local/backups/gitpay-before-phase5-20261030.dump`, then the existing migrations through 0009 were applied successfully. Existing data was retained. The current demo bounty is `deepakA18/gitpay-demo-http`, local bounty 1. No funded record from the mate's historical environment was invented or imported.
+The user authorized completing Phase 5 and subsequent phases, approved up to 18 Auto evaluation requests, and explicitly kept organization sponsorship blocked for now. No live evaluation requests have been made in this continuation: the `.env`-selected local database had only Phase 1 tables and no sponsor grant. It was backed up to ignored private `.local/backups/repopay-before-phase5-20261030.dump`, then the existing migrations through 0009 were applied successfully. Existing data was retained. The current demo bounty is `deepakA18/repopay-demo-http`, local bounty 1. No funded record from the mate's historical environment was invented or imported.
 
 Implemented and tested:
 
@@ -75,7 +75,7 @@ Provider contracts checked: [GitHub authorization-revocation webhook](https://do
 
 ## October 30, 2026 — connected demo sponsor and evidence correction
 
-The owner connected the separate sponsor grant for `deepakA18/gitpay-demo-http` (repository 1435468752, installation 175753017). Fresh authenticated reads confirm the demo App and repository binding; the saved sponsor is `deepakA18`, profile `auto`, not revoked. Setup required replacing the old App credentials, registering the callback, correcting the OAuth client secret and restarting the server. Secrets were not printed or retained in evidence. Workers remain disabled during setup.
+The owner connected the separate sponsor grant for `deepakA18/repopay-demo-http` (repository 1435468752, installation 175753017). Fresh authenticated reads confirm the demo App and repository binding; the saved sponsor is `deepakA18`, profile `auto`, not revoked. Setup required replacing the old App credentials, registering the callback, correcting the OAuth client secret and restarting the server. Secrets were not printed or retained in evidence. Workers remain disabled during setup.
 
 Read-only GitHub inspection showed the App and installation still had only Issues write/Metadata read permissions and Issues/Issue comment events at the time of inspection. Pull requests read and Checks write plus PR/check events are still needed for the live walkthrough; the user was given the setup steps. The current demo bounty 1 is OPEN and has no captured funding. No funding was fabricated or copied from another environment.
 
@@ -92,7 +92,7 @@ The separately authorized v2 repeat **passed 18/18** with complete model/usage e
 
 The user authorized proceeding with the $50 sandbox demo and named `Me-cha` (127575583). That account differs from bounty creator `deepakA18` (96007304), but currently has only read access; same-repository PR creation needs collaborator access or another approved setup. There are no existing PRs. Issue #1 was updated before funding to concrete form-field-name encoding criteria and regressions, replacing its historical Phase 1 test description. The user was sent the funding review URL; no checkout approval is assumed.
 
-For the authorized walkthrough, a private development backup was saved to `.local/backups/gitpay-before-phase6-live-20261030.dump`, migrations through 0012 applied successfully, and a separate worker started. This supersedes the earlier Phase 6 note that migrations had only run in tests. Automatic award selection remains closed; no award or payout was created by this setup.
+For the authorized walkthrough, a private development backup was saved to `.local/backups/repopay-before-phase6-live-20261030.dump`, migrations through 0012 applied successfully, and a separate worker started. This supersedes the earlier Phase 6 note that migrations had only run in tests. Automatic award selection remains closed; no award or payout was created by this setup.
 
 Prepared [owner/contributor walkthrough instructions](05-demo-walkthrough.md); these are pending actions, not completion evidence.
 
@@ -104,7 +104,7 @@ After the owner completed the existing checkout, a fresh read of that PayPal san
 
 ### Webhook delivery repaired — October 30, 2026
 
-Me-cha's `/bounty status` comment was not received because the demo App's webhook URL still targeted an obsolete Cloudflare tunnel, returning HTTP 502. The App webhook was updated to the configured stable ngrok `/webhooks/github` endpoint with JSON, TLS verification and the current local signing secret. Only the specific failed status-comment delivery was redelivered through GitHub's API. GitPay processed run_command job 22, funding reconciliation job 23 and projection job 24 successfully, each in one attempt. The [new bot reply](https://github.com/deepakA18/gitpay-demo-http/issues/1#issuecomment-6520723048) reports $50.00 USD · FUNDED. Credentials and raw webhook payloads were not retained.
+Me-cha's `/bounty status` comment was not received because the demo App's webhook URL still targeted an obsolete Cloudflare tunnel, returning HTTP 502. The App webhook was updated to the configured stable ngrok `/webhooks/github` endpoint with JSON, TLS verification and the current local signing secret. Only the specific failed status-comment delivery was redelivered through GitHub's API. Repopay processed run_command job 22, funding reconciliation job 23 and projection job 24 successfully, each in one attempt. The [new bot reply](https://github.com/deepakA18/repopay-demo-http/issues/1#issuecomment-6520723048) reports $50.00 USD · FUNDED. Credentials and raw webhook payloads were not retained.
 
 The existing `bounty-open` badge represents an unfunded draft and is intentionally removed after capture. Missing that label does not mean the funded bounty disappeared; the authoritative status comment remains FUNDED. No label policy was changed in this repair.
 
@@ -116,7 +116,7 @@ At the user's request, `bounty-open` now describes open participation rather tha
 
 ### First live funded PR review — October 30, 2026
 
-Me-cha linked [PR #3](https://github.com/deepakA18/gitpay-demo-http/pull/3) through the issue command. Submission 1 records head `8209ca6e447504d3579f1fb4574e0174fa50ff07`. Job 32 completed on its first attempt. Verification 1 is DONE, Auto serving model `gpt-6-luna`, verdict PARTIAL, confidence 0.94. A real completed neutral GitPay solution review Check Run (124021720746) is present at that exact SHA alongside successful external test checks.
+Me-cha linked [PR #3](https://github.com/deepakA18/repopay-demo-http/pull/3) through the issue command. Submission 1 records head `8209ca6e447504d3579f1fb4574e0174fa50ff07`. Job 32 completed on its first attempt. Verification 1 is DONE, Auto serving model `gpt-6-luna`, verdict PARTIAL, confidence 0.94. A real completed neutral Repopay solution review Check Run (124021720746) is present at that exact SHA alongside successful external test checks.
 
 The review recognizes the serializer fix and regression tests, but its sole unmet requirement is the literal `Fixes #1` text required by the frozen issue description: manual linking did not add that text to PR metadata. This is a workflow-criteria ambiguity, not an absent submission or failed model call. The saved review was not overwritten or relabeled. The contributor should add the reference to the PR description; the funded terms remain immutable. New-revision/retry, second-contributor and live revocation acceptance are still open. No award or payout was created.
 
@@ -157,7 +157,7 @@ After the owner completed reconnection, a database read confirms sponsor `deepak
 
 ### Post-reconnection review succeeded — October 30, 2026
 
-PR #3 now has head `91717536b49518fb94f7e7fafe88161326fbfdf7`, including the empty-field-name regression. Both external GitHub Actions test checks passed on that head. Verification 7 completed PARTIAL with the sole unmet requirement to confirm the serializer test command passes; verification 8 completed RESOLVES with no unmet requirements. Both used Auto serving model `gpt-6-luna`. GitPay Check Runs 124043951459 and 124044055304 are completed/neutral. The sponsor remains active at token generation 2. The PR remains open/unmerged and there are zero awards.
+PR #3 now has head `91717536b49518fb94f7e7fafe88161326fbfdf7`, including the empty-field-name regression. Both external GitHub Actions test checks passed on that head. Verification 7 completed PARTIAL with the sole unmet requirement to confirm the serializer test command passes; verification 8 completed RESOLVES with no unmet requirements. Both used Auto serving model `gpt-6-luna`. Repopay Check Runs 124043951459 and 124044055304 are completed/neutral. The sponsor remains active at token generation 2. The PR remains open/unmerged and there are zero awards.
 
 This establishes successful Copilot use after real revocation and reconnection, on a new revision. It does not establish successful manual retry of an ERROR on the same revision: the old revision remains capped and its failed attempts are preserved. The unavailable second eligible contributor, remaining explicit retry acceptance and other unchecked phase requirements keep Phase 5 incomplete; Phase 6 activation remains disabled. Verification here used live read-only GitHub/database checks; no additional evaluation run or code changes were needed.
 

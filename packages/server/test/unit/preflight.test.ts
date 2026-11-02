@@ -13,7 +13,7 @@ const privateKey = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKe
 const env = parseEnv({ ...syntheticEnv(), GH_PRIVATE_KEY: privateKey });
 const directories: string[] = [];
 afterEach(async () => { for (const dir of directories.splice(0)) await rm(dir, { recursive: true, force: true }); });
-async function stateFile() { const dir = await mkdtemp(join(tmpdir(), 'gitpay-probe-')); directories.push(dir); return join(dir, 'probe.json'); }
+async function stateFile() { const dir = await mkdtemp(join(tmpdir(), 'repopay-probe-')); directories.push(dir); return join(dir, 'probe.json'); }
 function token() { nock(env.PP_BASE).post('/v1/oauth2/token').reply(200, { access_token: 'test-token', token_type: 'Bearer' }); }
 const batch = { batch_header: { payout_batch_id: 'BATCH123', batch_status: 'PENDING' } };
 const snapshot = { batch_header: { payout_batch_id: 'BATCH123', batch_status: 'SUCCESS' }, items: [{ payout_item_id: 'ITEM123', transaction_status: 'SUCCESS' }] };

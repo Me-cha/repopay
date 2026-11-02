@@ -15,11 +15,11 @@ October 30, 2026. Current implementation is an uncommitted worktree change over 
 
 ## Verification
 
-All provider calls in these tests are mocked. Database tests use unique schemas in `gitpay_test`.
+All provider calls in these tests are mocked. Database tests use unique schemas in `repopay_test`.
 
 - `pnpm typecheck` — passed.
 - `pnpm lint` — passed.
-- `TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test pnpm test` — **44 files, 253 tests passed**.
+- `TEST_DATABASE_URL=postgresql://repopay:repopay@127.0.0.1:5433/repopay_test pnpm test` — **44 files, 253 tests passed**.
 - `pnpm build` — passed.
 - Key suites: `award-selection.test.ts`, `payout.test.ts`, `payouts.test.ts`, `github-app.test.ts`, `capture.test.ts`, plus existing policy/allocation checks. Coverage includes concurrent awards/reservations, reverse merge arrival, incomplete/stale evidence, immutable records, lost POST responses and bounded identical retries, expired windows, changed addresses/accounts, stale provider observations, delayed two-author claims, mixed outcomes, returns after PAID, cancellation refusal and private read models.
 - Migrations were exercised in isolated test schemas. They have **not** been applied to the development database by this change.
@@ -36,7 +36,7 @@ Development setup must back up the database, stop workers, apply migrations and 
 
 ## Provider contracts consulted
 
-- [PayPal sender batch identity](https://developer.paypal.com/api/payments.payouts-batch/v1/definitions/sender_batch_header/) documents the 30-day duplicate window; GitPay retains its shorter conservative retry deadline.
+- [PayPal sender batch identity](https://developer.paypal.com/api/payments.payouts-batch/v1/definitions/sender_batch_header/) documents the 30-day duplicate window; Repopay retains its shorter conservative retry deadline.
 - [PayPal payout reads](https://developer.paypal.com/api/payments.payouts-batch/v1/payouts-get/) and [item statuses](https://developer.paypal.com/api/payments.payouts-batch/v1/definitions/transaction_enum/) underpin pagination and item-level reconciliation.
 - [GitHub pull request REST API](https://docs.github.com/en/rest/pulls/pulls) and [GraphQL objects](https://docs.github.com/en/graphql/reference/objects#pullrequest) underpin the bounded candidate inventory and closing references.
 
@@ -102,7 +102,7 @@ Recipient-side confirmation from Me-cha was requested and remains pending. This 
 
 ### Recipient receipt confirmed — October 30, 2026
 
-The user relayed Me-cha's confirmation that the $50 sandbox payout was received and supplied a PayPal Activity screenshot showing “Test Store”, “30 Oct · Payment Received”, and +$50.00. This corroborates the previously observed provider SUCCESS and GitPay PAID state. The screenshot does not expose a transaction ID, so transaction binding relies on the recorded provider batch/item evidence plus the user's confirmation. Unrelated account activity and balance are not retained here.
+The user relayed Me-cha's confirmation that the $50 sandbox payout was received and supplied a PayPal Activity screenshot showing “Test Store”, “30 Oct · Payment Received”, and +$50.00. This corroborates the previously observed provider SUCCESS and Repopay PAID state. The screenshot does not expose a transaction ID, so transaction binding relies on the recorded provider batch/item evidence plus the user's confirmation. Unrelated account activity and balance are not retained here.
 
 The primary funded issue → merged PR → award → payout → recipient receipt walkthrough is evidenced. Phase 6 remains incomplete against its full exit gate: the live delayed-claim loop and two-author walkthrough are still outstanding, with local mocked coverage only. No additional payment or model call was made to record this confirmation.
 

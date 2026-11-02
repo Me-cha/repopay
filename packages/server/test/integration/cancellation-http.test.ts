@@ -9,7 +9,7 @@ it('independent operator browser preview binds a single-use decision and rejects
  f.providerIdentityForOperator();
  const loginUrl=new URL(await f.auth.beginLogin('/cancellations/'+r.id,'operator-binding'));
  const login=await f.auth.completeLogin('operator-code',loginUrl.searchParams.get('state')??'','operator-binding');
- const request=(path:string,options:RequestInit={})=>{const headers=new Headers(options.headers);headers.set('Cookie','gitpay_session='+login.cookie);return f.requestPage(path,{...options,headers});};
+ const request=(path:string,options:RequestInit={})=>{const headers=new Headers(options.headers);headers.set('Cookie','repopay_session='+login.cookie);return f.requestPage(path,{...options,headers});};
  const path='/cancellations/'+r.id,page=await request(path),csrf=csrfFrom(await page.text());
  const v=await f.cancellation.refresh(r.id),fields:Record<string,string>={decision:'approve',reason:'The independently observed earlier fix resolves the original criteria.',checklist:'confirmed',nextUpdateAt:''};
  for(const c of v.bundle.claims){fields['basis:'+c.key]='unrelated';fields['reason:'+c.key]='This reference is the earlier independent fix, not an external contribution claim.';}

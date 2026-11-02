@@ -20,7 +20,7 @@ export async function retryCommentReview(db:Database,github:GitHub,job:LeasedJob
  const {repo}=await currentAccess(github,work.installationId,work.repoId);
  if(await github.permission(work.installationId,repo,work.actorId)!=='write')throw new AuthError(403,'Requesting a review uses the sponsor allowance and requires current repository write permission.');
  const pr=await github.pullRequest(work.installationId,repo,sub.prNumber);
- if(pr.id!==sub.prId||pr.base.repo?.id!==sub.repoId||pr.head.sha!==sub.headSha||pr.base.sha!==sub.baseSha||(command.headSha&&command.headSha!==pr.head.sha)||(command.baseSha&&command.baseSha!==pr.base.sha))throw new AuthError(409,'The PR revision changed. Wait for the updated GitPay comment and post a new retry command.');
+ if(pr.id!==sub.prId||pr.base.repo?.id!==sub.repoId||pr.head.sha!==sub.headSha||pr.base.sha!==sub.baseSha||(command.headSha&&command.headSha!==pr.head.sha)||(command.baseSha&&command.baseSha!==pr.base.sha))throw new AuthError(409,'The PR revision changed. Wait for the updated Repopay comment and post a new retry command.');
  if(pr.state!=='open'||pr.merged_at)throw new AuthError(409,'PR comment retries require an open, unmerged PR. Merged evidence is reconciled separately.');
  return db.withTransaction(async tx=>{
   await assertLease(tx,job);

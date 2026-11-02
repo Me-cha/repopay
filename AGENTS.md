@@ -1,4 +1,4 @@
-# GitPay — instructions for Codex and other coding agents
+# Repopay — instructions for Codex and other coding agents
 
 ## Start with the requested work
 
@@ -11,7 +11,7 @@ The user's current request defines scope. The plan is a reference, not permissio
 ## Current repository map
 
 ```text
-GitPay/
+Repopay/
 ├── README.md, IMPLEMENTATION_PLAN.md, PLAN.md
 ├── AGENTS.md, Agent.md             # Canonical instructions and pointer
 ├── ngrok.sh                        # Stable local HTTPS tunnel launcher
@@ -48,10 +48,10 @@ GitPay/
 │   ├── scripts/{migrate.ts,preflight.ts,eval-verifier.ts,retry-job.ts,check-migrations.ts,demo-seed.ts}
 │   └── test/{fixtures/verifier/,helpers/,unit/,integration/,e2e/}
 ├── packages/web/{README.md,package.json,index.html,tsconfig.json,vite.config.ts,vitest.config.ts}
-│   ├── src/{main.tsx,App.tsx,Detail.tsx,api.ts,styles.css,grid/Bounties.tsx}
+│   ├── src/{main.tsx,App.tsx,Detail.tsx,api.ts,styles.css,grid/Bounties.tsx,router/,context/,components/,pages/}
 │   └── test/                       # DOM and browser journeys
 ├── playwright.config.ts
-└── postman/{README.md,gitpay.postman_collection.json} # Read-only inspection / guarded local ping
+└── postman/{README.md,repopay.postman_collection.json} # Read-only inspection / guarded local ping
 ```
 
 The current map describes tracked source and configuration; ignored local data/builds are omitted. The server owns configuration, health and database boundaries; `preflight/` owns isolated provider probes and durable local probe identity. `github/` owns signed intake, bounded provider access, browser OAuth, PR linking and CI normalization; `jobs/` owns leases and execution; `actions/` owns drafts, atomic cancellation, funding intents, contributor connections, submission links and revision-bound maintainer review; `settlement/funding.ts` owns capture reservations and durable polling while `settlement/claims.ts` validates connection-resume events; `candidates.ts` collects bounded candidate scans, `award.ts` shares final award/ordering guards between automatic and manual decisions, `settle.ts` selects automatic awards, `payout.ts` owns account-bound immutable delivery intents and item reconciliation, `profile.ts` checks a default-off, exact-bounty sandbox scope against the evaluated Auto profile, and `service.ts` wires candidate/claim/payout polling into workers; `paypal/` owns bounded sandbox adapters and verified intake; `github/oauth.ts` owns browser-bound identity, encrypted sessions and the separate encrypted personal-repository owner sponsor grant with rotating tokens; `http/` owns confirmation, sponsor, payout-connection verification-retry and maintainer-review pages. `models/copilot.ts` owns isolated tool-free SDK requests and local schema validation; `verifier/` owns bounded evidence, exact-SHA CI, persisted review attempts, advisory Check Runs, per-repository attempt caps, persisted SDK usage metrics and evaluation-report validation. `verifier/evaluate.ts` runs the bounded synthetic live evaluation through the application adapter; the CLI requires explicit request-budget approval and a stored repository sponsor. `policy/` owns pure deterministic decision and allocation functions; local award/transfer orchestration is implemented with automatic selection disabled until the Phase 5 live profile is accepted. The first Phase 6 scoped sandbox payout and recipient receipt are confirmed; delayed-claim and two-author live acceptance remain open. Organization sponsorship is explicitly blocked by user direction pending an eligible organization. Signed user-authorization revocation, grant refresh fencing and in-flight sponsor rechecks are implemented locally. Auto prompt v2 passed 18/18 live evaluation cases; the funded competing-PR/same-revision-retry walkthroughs remain Phase 5 blockers; real owner revocation/reconnection is recorded. SDK telemetry and attempt caps do not provide a hard monetary budget. `read-models/` owns current-scope whitelisted DTOs; `http/sse.ts` owns shared LISTEN wakeups and reauthorized invalidation hints, migration 0015 supplies transactional notifications; `http/dashboard.ts` serves the built read-only React/Community dashboard. `packages/web` owns rendering and private-cache invalidation; test-only browser fixture routes live under server/test/e2e, never production. Phase 9 live acceptance remains deferred. `jobs/scheduler.ts` owns migration-0016 durable scheduling; `github/reconciliation.ts` owns lease-fenced rotating PR discovery; `operations/attention.ts` and `scripts/retry-job.ts` provide explicit safe read/projection retries. Discovery defaults off during deferred live testing; independent financial polling retains existing intent identities. `db/compatibility.ts` gates runtime readiness on migration hashes; `scripts/check-migrations.ts` exposes the release check. `render.yaml` prepares separate held web/worker services without provisioning. `RECOVERY_MODE=hold` blocks worker processing and HTTP mutations during restore; provider effects missing from backup still require independent reconciliation. Hosted Phase 11 acceptance is deferred; see `docs/deployment.md`. See [server ownership](packages/server/README.md) and [setup](docs/setup.md).

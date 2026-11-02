@@ -1,4 +1,4 @@
-# GitPay — October 31 discussion and teammate handoff
+# Repopay — October 31 discussion and teammate handoff
 
 Prepared November 1, 2026 (India time). This is a summary of the discussion and recorded work, not a verbatim chat transcript. The release pushed after midnight is included as a handoff update.
 
@@ -11,7 +11,7 @@ The foundation release is committed and pushed. The remaining live task is to de
 ## Product decisions
 
 - GitHub is the primary work surface. Contributors and maintainers should find instructions, feedback and bot commands on their issues and PRs.
-- Funding, payout setup and PayPal/Copilot authorization use authenticated GitPay pages. The dashboard is an optional, read-only view.
+- Funding, payout setup and PayPal/Copilot authorization use authenticated Repopay pages. The dashboard is an optional, read-only view.
 - Copilot stays in **Auto** mode and reviews submitted work. Its output is validated; it cannot directly authorize a payment.
 - Maintainers can comment, request changes or reject a submission **before merge**. Rejection must not require merging an unsuitable PR or visiting PayPal checkout.
 - Only a qualifying merged PR can earn the bounty. Opening a PR, being assigned an issue or declaring a contribution does not reserve it.
@@ -41,7 +41,7 @@ The bot acknowledges requests on the PR and publishes review results in its comm
 
 ### Missing contribution evidence fixed
 
-PR #12 initially received PARTIAL even after both contributor confirmations were saved. GitPay used those confirmations to identify eligible contributors, but did not include their details in the model's evidence payload.
+PR #12 initially received PARTIAL even after both contributor confirmations were saved. Repopay used those confirmations to identify eligible contributors, but did not include their details in the model's evidence payload.
 
 The correction includes bounded, exact-revision commit associations and declaration/confirmation records in the immutable evidence snapshot. It preserves historical reviews and frozen bounty criteria.
 
@@ -88,13 +88,13 @@ The following safeguards remain required: authentication, confirmed captured fun
 
 ## Current demo and release
 
-- Application repository: [Me-cha/GitPay](https://github.com/Me-cha/GitPay)
-- Isolated demo repository: [deepakA18/gitpay-demo-http](https://github.com/deepakA18/gitpay-demo-http)
-- Hosted application: [gitpay.onrender.com](https://gitpay.onrender.com/)
-- Current funded case: [issue #11](https://github.com/deepakA18/gitpay-demo-http/issues/11), $1 sandbox, hosted bounty 2.
-- Selected walkthrough PR: [PR #12](https://github.com/deepakA18/gitpay-demo-http/pull/12), authored by Me-cha with Mecha-Test-Account's confirmed contribution.
+- Application repository: [Me-cha/Repopay](https://github.com/Me-cha/Repopay)
+- Isolated demo repository: [deepakA18/repopay-demo-http](https://github.com/deepakA18/repopay-demo-http)
+- Hosted application: [repopay.onrender.com](https://repopay.onrender.com/)
+- Current funded case: [issue #11](https://github.com/deepakA18/repopay-demo-http/issues/11), $1 sandbox, hosted bounty 2.
+- Selected walkthrough PR: [PR #12](https://github.com/deepakA18/repopay-demo-http/pull/12), authored by Me-cha with Mecha-Test-Account's confirmed contribution.
 - Last verified PR state: **open and unmerged**, with a live v4 RESOLVES review.
-- Latest pushed release: [`46de277`](https://github.com/Me-cha/GitPay/commit/46de277e54ab4cdc30023bfa67916ce7758b1125), `fix: prepare scoped foundation MVP and verifier semantic checks`.
+- Latest pushed release: [`46de277`](https://github.com/Me-cha/Repopay/commit/46de277e54ab4cdc30023bfa67916ce7758b1125), `fix: prepare scoped foundation MVP and verifier semantic checks`.
 
 The new local sandbox profile pins prompt v5 / SDK 1.0.28 on the explicitly narrowed foundation acceptance basis. This is not a claim of passing full model evaluation. Automatic awards remain disabled unless an exact approved bounty/repository/amount/frozen-terms scope is configured. The commit did not activate that scope, expose credentials or trigger a payout.
 
@@ -104,7 +104,7 @@ The new local sandbox profile pins prompt v5 / SDK 1.0.28 on the explicitly narr
 2. Check hosted bounty 2, sponsor, recipient connections and the exact settlement scope for the already-funded $1 case.
 3. Obtain a bounded allowance for any necessary v5/post-merge reviews; earlier allowances are exhausted. Do not run the deferred 30-request campaign by default.
 4. Once ready, merge the qualifying PR and verify that current evidence leads to one automatic award and the expected sandbox payout allocation.
-5. Confirm recipient receipt, GitPay's paid status and the final issue label. Tick the remaining foundation checklist item only after those observations.
+5. Confirm recipient receipt, Repopay's paid status and the final issue label. Tick the remaining foundation checklist item only after those observations.
 
 Do not create another checkout for the already-funded issue or merge solely because an older review exists. The final flow must use current evidence and the deployed policy.
 

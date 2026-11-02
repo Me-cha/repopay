@@ -18,6 +18,12 @@ export function mountConfirm(app:Express,deps:AuthenticationDependencies) {
  const {database,env,auth,github}=deps;
  app.get('/assets/actions.js',(_request,response)=>{
   response.type('application/javascript').send(`
+document.addEventListener('click',function(e){
+ var m=e.target.closest('[data-modal]');
+ if(m){var d=document.getElementById(m.getAttribute('data-modal'));if(d&&typeof d.showModal==='function')d.showModal();}
+ var c=e.target.closest('[data-close-modal]');
+ if(c){var cd=c.closest('dialog');if(cd&&typeof cd.close==='function')cd.close();}
+});
 for (const form of document.querySelectorAll('form[method="post"]')) {
  form.addEventListener('submit', async event => {
   event.preventDefault();const button=form.querySelector('button[type="submit"]');if(button?.disabled)return;

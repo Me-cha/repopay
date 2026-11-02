@@ -20,9 +20,9 @@ Commands using repository-local Node 22.23.4:
 ```sh
 pnpm typecheck
 pnpm lint
-TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test pnpm test
+TEST_DATABASE_URL=postgresql://repopay:repopay@127.0.0.1:5433/repopay_test pnpm test
 pnpm build
-TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test pnpm test:e2e
+TEST_DATABASE_URL=postgresql://repopay:repopay@127.0.0.1:5433/repopay_test pnpm test:e2e
 pnpm db:check
 git diff --check
 ```
@@ -41,7 +41,7 @@ Paid account/plan approval, actual hosted URL/IDs, hosted Copilot runtime, read-
 
 ## October 31 quote preparation
 
-User authorized preparing a Render quote, not provisioning. Signed into the existing workspace and observed no services. The public GitPay repository preview stayed on Loading; the database creation page rendered blank after navigation/reload. No resource was created, credential uploaded or price accepted. Account-specific quote and deployment remain pending; user asked to verify whether the database form loads in their browser.
+User authorized preparing a Render quote, not provisioning. Signed into the existing workspace and observed no services. The public Repopay repository preview stayed on Loading; the database creation page rendered blank after navigation/reload. No resource was created, credential uploaded or price accepted. Account-specific quote and deployment remain pending; user asked to verify whether the database form loads in their browser.
 
 Prepared resource specification remains Singapore: one `1c-2g` web service, one `1c-2g` worker, one `0.5c-1g` PostgreSQL 16 database with 5 GB disk. An actual account quote (including workspace fees, storage, tax and usage) is required before provisioning; no guessed price is recorded as approval-ready.
 

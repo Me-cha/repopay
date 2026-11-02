@@ -25,7 +25,7 @@ it('incomplete comment pagination refuses to treat missing marker as absent',asy
 });
 it('scoped runtime does not depend on future payment settings; full validation remains strict',async()=>{
  const {parseGitHubRuntimeEnv,parseEnv}=await import('../../src/env.js');const {syntheticEnv}=await import('../helpers/env.js');const input={...syntheticEnv(),PP_WEBHOOK_ID:''};
- expect(parseGitHubRuntimeEnv(input).GH_APP_SLUG).toBe('gitpay-test');expect(()=>parseEnv(input)).toThrow('PP_WEBHOOK_ID');
+ expect(parseGitHubRuntimeEnv(input).GH_APP_SLUG).toBe('repopay-test');expect(()=>parseEnv(input)).toThrow('PP_WEBHOOK_ID');
 });
 
 it('a public repo outside this installation is not authorized by a readable metadata endpoint',async()=>{
@@ -77,7 +77,7 @@ it('projects PAID as bounty-paid and removes bounty-open without replacing other
  const api=nock('https://api.github.com')
  .delete('/repos/owner/repo/issues/4/labels/bounty-open').reply(200,[])
  .get('/repos/owner/repo/labels/bounty-paid').reply(404,{})
- .post('/repos/owner/repo/labels',{name:'bounty-paid',color:'0e8a16',description:'GitPay payout completed; see the bot comment for delivery status'}).reply(201,{})
+ .post('/repos/owner/repo/labels',{name:'bounty-paid',color:'0e8a16',description:'Repopay payout completed; see the bot comment for delivery status'}).reply(201,{})
  .post('/repos/owner/repo/issues/4/labels',{labels:['bounty-paid']}).reply(200,[]);
  await app.badge('1',repo,4,'PAID');expect(api.isDone()).toBe(true);
 });

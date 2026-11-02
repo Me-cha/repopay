@@ -51,7 +51,7 @@ it('unsafe numeric IDs are rejected and payloads retain only normalized command 
   const [job]=await f.database.orm.select().from(jobs);expect(JSON.stringify(job?.payload)).not.toContain('private context');expect(job?.payload).not.toHaveProperty('sensitive');
  }finally{await f.close();}
 });
-it('queues same-repository pull request updates and ignores GitPay check-run recursion',async()=>{
+it('queues same-repository pull request updates and ignores Repopay check-run recursion',async()=>{
  const f=await createTestDatabase();try{
   await migrateDatabase(f.database);
   const pull={action:'synchronize',installation:{id:1},repository:{id:2},pull_request:{number:42,base:{repo:{id:2}}}};

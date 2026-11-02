@@ -125,7 +125,7 @@ export function createPhase5(db:Database,github:GitHub,env:FundingEnv,auth:AuthS
    const record=pending??(await db.withTransaction(async tx=>{if(lease)await assertLease(tx,lease);return tx.insert(verifications).values({submissionId:sub.id,evidenceId:evidenceRow.id,headSha:evidence.headSha,attempt,status:'PENDING',provider:'copilot',model:terms.policy.model,sdkVersion:'1.0.28',sponsorGhId:terms.sponsor.id,promptHash}).returning();}))[0];
    if(!record)throw new Error('Verification attempt was not recorded');
    const detailsUrl=`https://github.com/${repo.full_name}/issues/${String(bounty.issueNumber)}`;
-   const externalId=`gitpay:${sub.id}:${evidence.headSha}:${String(attempt)}`;
+   const externalId=`repopay:${sub.id}:${evidence.headSha}:${String(attempt)}`;
    let recoveredId:string|undefined;
    if(pending){
     const checks=await github.checkRuns(installation.id,repo,evidence.headSha);
@@ -135,7 +135,7 @@ export function createPhase5(db:Database,github:GitHub,env:FundingEnv,auth:AuthS
     recoveredId=matching[0]?.id;
    }
    await checkLease();
-   const checkRunId=recoveredId??await github.createCheckRun(installation.id,repo,{name:'GitPay solution review',headSha:evidence.headSha,externalId,detailsUrl,status:'in_progress',title:'GitPay is reviewing this revision',summary:'Collecting bounded issue, pull request, CI, and author evidence. This check is advisory and cannot authorize payment.'});
+   const checkRunId=recoveredId??await github.createCheckRun(installation.id,repo,{name:'Repopay solution review',headSha:evidence.headSha,externalId,detailsUrl,status:'in_progress',title:'Repopay is reviewing this revision',summary:'Collecting bounded issue, pull request, CI, and author evidence. This check is advisory and cannot authorize payment.'});
    await setAttempt(record.id,{checkRunId},lease);
    const finish=async(values:Partial<typeof verifications.$inferInsert>,title:string,summary:string)=>{
     await checkLease();
@@ -150,8 +150,8 @@ export function createPhase5(db:Database,github:GitHub,env:FundingEnv,auth:AuthS
      await tx.update(bounties).set({needsAttention:false,attentionReason:null,updatedAt:new Date()}).where(and(eq(bounties.id,bounty.id),eq(bounties.attentionReason,REVIEW_UNAVAILABLE_REASON)));
     });
    };
-   if(!evidence.sufficient){await finish({status:'ERROR',errorCode:'INSUFFICIENT_EVIDENCE'},'GitPay did not review this revision',checkSummary({advisory:'This revision was not sent for model review.',ci:evidence.ci.status,reasoning:insufficientReasons(evidence,sub.authorGhId,bounty.createdByGhId,terms.policy.ciRequired).join('\n\n'),headSha:evidence.headSha,baseSha:evidence.baseSha,issueNumber:bounty.issueNumber}));return;}
-   if(!await withinAttemptBudget(client,bounty.repoId,sub.id,evidence.headSha)){await finish({status:'ERROR',errorCode:'VERIFIER_BUDGET_EXHAUSTED'},'GitPay review paused',checkSummary({advisory:'The repository review-attempt limit has been reached for today or this PR revision. No model request was made for this attempt.',ci:evidence.ci.status,headSha:evidence.headSha,baseSha:evidence.baseSha,issueNumber:bounty.issueNumber}));return;}
+   if(!evidence.sufficient){await finish({status:'ERROR',errorCode:'INSUFFICIENT_EVIDENCE'},'Repopay did not review this revision',checkSummary({advisory:'This revision was not sent for model review.',ci:evidence.ci.status,reasoning:insufficientReasons(evidence,sub.authorGhId,bounty.createdByGhId,terms.policy.ciRequired).join('\n\n'),headSha:evidence.headSha,baseSha:evidence.baseSha,issueNumber:bounty.issueNumber}));return;}
+   if(!await withinAttemptBudget(client,bounty.repoId,sub.id,evidence.headSha)){await finish({status:'ERROR',errorCode:'VERIFIER_BUDGET_EXHAUSTED'},'Repopay review paused',checkSummary({advisory:'The repository review-attempt limit has been reached for today or this PR revision. No model request was made for this attempt.',ci:evidence.ci.status,headSha:evidence.headSha,baseSha:evidence.baseSha,issueNumber:bounty.issueNumber}));return;}
    try {
     const sponsor=await auth.getCopilotSponsor(bounty.repoId);
     if(sponsor.sponsorGhId!==terms.sponsor.id||sponsor.modelId!==terms.policy.model||sponsor.installationId!==bounty.installationId)throw new Error('Sponsor binding is unavailable');
@@ -164,7 +164,7 @@ export function createPhase5(db:Database,github:GitHub,env:FundingEnv,auth:AuthS
     if(currentSponsor.tokenGeneration!==sponsor.tokenGeneration||currentSponsor.sponsorGhId!==terms.sponsor.id||currentSponsor.modelId!==terms.policy.model||currentSponsor.installationId!==bounty.installationId)throw new Error('Sponsor changed during review');
     // Under Auto terms this is the serving model Copilot reported, not `auto`.
     await finish({status:'DONE',model:output.model,result:output.value,usageMetrics:{...output.usage},elapsedMs:output.elapsedMs,promptHash:output.promptHash},`${output.value.verdict} · confidence ${(output.value.confidence*100).toFixed(0)}%`,checkSummary({advisory:`Model assessment: ${output.value.verdict} · coverage ${(output.value.coverage*100).toFixed(0)}% · confidence ${(output.value.confidence*100).toFixed(0)}%.`,ci:evidence.ci.status,reasoning:output.value.reasoning,unmet:output.value.unmet_requirements,headSha:evidence.headSha,baseSha:evidence.baseSha,issueNumber:bounty.issueNumber}));
-   }catch(error){const code=safeErrorCode(error);await finish({status:'ERROR',errorCode:code},'GitPay review unavailable',checkSummary({advisory:`No model verdict was recorded (${code}).`,ci:evidence.ci.status,headSha:evidence.headSha,baseSha:evidence.baseSha,issueNumber:bounty.issueNumber}));}
+   }catch(error){const code=safeErrorCode(error);await finish({status:'ERROR',errorCode:code},'Repopay review unavailable',checkSummary({advisory:`No model verdict was recorded (${code}).`,ci:evidence.ci.status,headSha:evidence.headSha,baseSha:evidence.baseSha,issueNumber:bounty.issueNumber}));}
   } catch(error){destroy=true;throw error;} finally {
    if(acquired){try{const result=await client.query<{unlocked:boolean}>('select pg_advisory_unlock(hashtext($1)) as unlocked',[lock]);if(result.rows[0]?.unlocked!==true)destroy=true;}catch{destroy=true;}}
    client.off('error',onError);

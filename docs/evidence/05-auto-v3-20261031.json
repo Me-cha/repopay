@@ -1,6 +1,6 @@
 {
   "model": "auto",
-  "promptVersion": "gitpay-verifier-v3",
+  "promptVersion": "repopay-verifier-v3",
   "sdkVersion": "1.0.28",
   "observations": [
     {

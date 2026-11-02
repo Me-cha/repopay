@@ -1,6 +1,6 @@
 > Current foundation milestone: [ADR 0021](docs/decisions/0021-foundation-mvp-scope.md) narrows acceptance to basic sandbox flows and retains automatic qualifying-merge payouts. Full phase/evaluation and advanced live scenarios below remain the longer-term plan; they are not all blockers for this milestone. No financial or identity guard is waived.
 
-# GitPay: Implementation Plan (v4, Codex-first)
+# Repopay: Implementation Plan (v4, Codex-first)
 
 > "Fund an issue. Merge a qualifying solution. Pay the contributor."
 > A GitHub App that glues GitHub issues and PRs to PayPal: maintainers fund bounties through PayPal checkout, AI verifies PRs and merged work is paid through PayPal Payouts.
@@ -11,7 +11,7 @@ Hackathon target: PayPal "Build What's Next with PayPal and AI". The inherited s
 
 Development uses **Codex** and [AGENTS.md](AGENTS.md). The runtime verifier uses repository-sponsored Copilot SDK, authorized in [ADR 0005](docs/decisions/0005-copilot-verifier.md). This supersedes the Nemotron provider selection while preserving historical evidence and funded terms; Codex remains the development assistant.
 
-Revision v4 incorporates open participation, exceptional cancellation review, persistent contributor awards and the GitPay name. The pre-build review remediation recorded in [the phase review TODO](docs/phases/review-todo.md) is now part of this canonical plan: the master architecture, schema sketch, state machines and phase contracts must agree before Phase 00 starts. See [the cancellation decision](docs/decisions/0001-open-participation-and-cancellation.md) for reasons and tradeoffs.
+Revision v4 incorporates open participation, exceptional cancellation review, persistent contributor awards and the Repopay name. The pre-build review remediation recorded in [the phase review TODO](docs/phases/review-todo.md) is now part of this canonical plan: the master architecture, schema sketch, state machines and phase contracts must agree before Phase 00 starts. See [the cancellation decision](docs/decisions/0001-open-participation-and-cancellation.md) for reasons and tradeoffs.
 
 ---
 
@@ -38,7 +38,7 @@ Revision v4 incorporates open participation, exceptional cancellation review, pe
 
 ### 1.1 Principle: glue, not a platform
 
-Two things already exist: **GitHub** (issues, PRs, CI) and **PayPal** (checkout, payouts, refunds). GitPay fills the gap between them. Users never adopt a new home:
+Two things already exist: **GitHub** (issues, PRs, CI) and **PayPal** (checkout, payouts, refunds). Repopay fills the gap between them. Users never adopt a new home:
 
 | Action                               | Where it happens                                                          |
 | ------------------------------------ | ------------------------------------------------------------------------- |
@@ -185,9 +185,9 @@ Design rules:
   - Webhook URL: smee.io channel in dev, Render URL in prod. Path `/webhooks/github`. Webhook secret: random 32 bytes.
   - Callback URL: `${PUBLIC_URL}/oauth/github/callback`. Keep "Expire user authorization tokens" enabled (handle refresh).
   - Permissions: Issues R/W, Pull requests R/W, Checks R/W, Contents R, Metadata R, Commit statuses R.
-  - Subscribe to events: **Issues, Issue comment, Pull request, Check run, Check suite, Status**. Completion/status events wake CI reconciliation; GitPay checks must not trigger a verification loop. `installation` and `installation_repositories` events are delivered to GitHub Apps automatically; there is no checkbox for them.
+  - Subscribe to events: **Issues, Issue comment, Pull request, Check run, Check suite, Status**. Completion/status events wake CI reconciliation; Repopay checks must not trigger a verification loop. `installation` and `installation_repositories` events are delivered to GitHub Apps automatically; there is no checkbox for them.
   - Generate a private key. Note App ID, slug, Client ID, Client secret.
-- Demo repo `gitpay-demo`: tiny TypeScript library, vitest suite, GitHub Actions workflow running tests on PRs. Add `contributor` as collaborator. Install the app on it.
+- Demo repo `repopay-demo`: tiny TypeScript library, vitest suite, GitHub Actions workflow running tests on PRs. Add `contributor` as collaborator. Install the app on it.
 
 ### 3.2 PayPal sandbox
 
@@ -212,7 +212,7 @@ Design rules:
 
 ### 4.1 Status comment (one per bounty on the issue, edited in place)
 
-Hidden marker `<!-- gitpay:bounty:{id} -->`. Always shows amount, state, linked PRs and **available actions for the current state**:
+Hidden marker `<!-- repopay:bounty:{id} -->`. Always shows amount, state, linked PRs and **available actions for the current state**:
 
 | State          | Shown actions                                                                                                                                  |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -289,7 +289,7 @@ Unauthorized or invalid-state commands get a short reply explaining why and what
 The following is the **target layout**, not a claim that the runtime exists. [AGENTS.md](AGENTS.md) lists the current tree. Create executable files only in their implementation phase; placeholder directory READMEs describe ownership.
 
 ```
-GitPay/
+Repopay/
 ├─ IMPLEMENTATION_PLAN.md  PLAN.md (pointer)  README.md  AGENTS.md  Agent.md (pointer)
 ├─ CONTRIBUTING.md  LICENSE (MIT)  .gitignore  .gitattributes  .editorconfig  .env.example  ngrok.sh
 ├─ .github/{pull_request_template.md,workflows/ci.yml}
@@ -300,7 +300,7 @@ GitPay/
 ├─ docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md,0003-nemotron-only-and-preflight-scope.md,0004-funding-recovery.md,0005-copilot-verifier.md}
 ├─ docs/phases/{README.md,review-todo.md,copilot-migration.md,00.md,...,12.md} (task source of truth; status in phase index)
 ├─ docker-compose.yml (Phase 0)  render.yaml (prepared hosted sandbox Blueprint)
-├─ postman/README.md  gitpay.postman_collection.json
+├─ postman/README.md  repopay.postman_collection.json
 ├─ packages/
 │  ├─ server/{README.md,package.json,tsconfig.json,tsconfig.build.json}
 │  ├─ server/src/
@@ -817,13 +817,13 @@ Webhook **event names** differ from item statuses (`PAYMENT.PAYOUTS-ITEM.SUCCEED
 | `pull_request.opened/reopened/edited/synchronize`                 | resolve and persist links for every PR; for linked bounties in FUNDED/NEEDS_REVIEW enqueue `verify_pr` (attempt 1 for the head) |
 | `pull_request.closed` with `merged`                               | enqueue `settle_pr` with `considerationId = merge:{merge_commit_sha}` and `headSha = pull_request.head.sha`                     |
 | `check_run.rerequested` (our check)                               | recheck sender write permission, allocate next attempt, enqueue `verify_pr`                                                     |
-| external `check_run.completed`, `check_suite.completed`, `status` | refresh bound CI evidence; reconsider the saved unawarded candidate; never react recursively to GitPay checks                   |
+| external `check_run.completed`, `check_suite.completed`, `status` | refresh bound CI evidence; reconsider the saved unawarded candidate; never react recursively to Repopay checks                   |
 
 - `reconciliation.ts`: periodically rescan relevant open and closed PRs and recover failed webhook deliveries. Before any refund, reconcile live state and stored evidence. Missing webhooks or a 404 cannot establish absence of claims; unavailable evidence blocks authorization.
 - `linking.ts`: GraphQL `closingIssuesReferences(first: 100, after: cursor)` with complete pagination; fallback regex `/\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)\b/gi` on PR body. Same-repo issues only. Snapshot stable PR identity, SHA, observed timeline and merge time in `submission_evidence`; retain closed/rejected submissions for exception review. Persist at open/sync time; never delete `source='command'` links on refresh.
 - `permissions.ts`: current stable actor ID resolved to login, then REST collaborator permission lookup (`admin|maintain|write`); `userCanWrite(userOctokit, repo)` via `GET /repos/{owner}/{repo}` → `permissions`.
-- `checks.ts`: Check Run `GitPay · Bounty verification`; `in_progress` then `success` for RESOLVES, `neutral` otherwise (never `failure`; the app must not block merges). Summary: verdict, coverage, confidence, reasoning, unmet requirements, proposed split, CI state, truncation note, bounty state.
-- `comments.ts`: accept reconciliation markers only on comments authored by this GitHub App; user-authored matching markers cannot substitute for a notice or receipt. Status comment (section 4.1) via marker; each `/bounty status` command also receives a fresh per-command reply, deduplicated across delivery/job retries; settlement result comment on the PR via `<!-- gitpay:settle:{bountyId}:{pr} -->`; command replies. Never include emails.
+- `checks.ts`: Check Run `Repopay · Bounty verification`; `in_progress` then `success` for RESOLVES, `neutral` otherwise (never `failure`; the app must not block merges). Summary: verdict, coverage, confidence, reasoning, unmet requirements, proposed split, CI state, truncation note, bounty state.
+- `comments.ts`: accept reconciliation markers only on comments authored by this GitHub App; user-authored matching markers cannot substitute for a notice or receipt. Status comment (section 4.1) via marker; each `/bounty status` command also receives a fresh per-command reply, deduplicated across delivery/job retries; settlement result comment on the PR via `<!-- repopay:settle:{bountyId}:{pr} -->`; command replies. Never include emails.
 - `oauth.ts`: start flow → random nonce + PKCE S256 challenge + browser-binding cookie → `oauth_states` row → GitHub authorize URL with signed state. Callback: verify signature, binding, expiry, single use, local `return_to`; exchange code; `GET /user`; create `sessions` row with encrypted tokens; set cookie (`httpOnly`, `secure`, `sameSite=lax`). Serialize refresh per session and compare-and-swap token generations; delete a session on confirmed refresh failure only if its generation is still current. Logout invalidates pending refresh results.
 
 ### 10.3 `actions/` (single source of business logic)
@@ -857,7 +857,7 @@ Cancellation analysis may summarize original requirements, all submission snapsh
 
 - `client.ts`: token cache (`POST /v1/oauth2/token`, client credentials), refresh at `expires_in - 60s`; `request()` with timeout, retry reads on network/5xx/429; retry financial POSTs only through the persisted intent recovery guard, within its verified dedupe window, with the **same** request key; typed errors with `debug_id`.
 - `orders.ts`:
-  - `createOrder(attempt, requestKey)` → `POST /v2/checkout/orders` with header `PayPal-Request-Id: requestKey`, `intent: CAPTURE`, `purchase_units[0]{reference_id: "bounty-{id}", custom_id: "{id}", amount{currency_code:"USD",value}}`, `payment_source.paypal.experience_context{return_url: /fund/return?b={bountyId}&a={attemptId}, cancel_url: /fund/cancel?b={bountyId}&a={attemptId}, user_action: "PAY_NOW", brand_name: "GitPay", shipping_preference: "NO_SHIPPING"}`. Approve URL = link `rel=payer-action`. PayPal returns the provider order ID as the `token` query parameter; the return page validates that token against the stored attempt; only a verified provider read in the worker authorizes capture under the existing funding intent.
+  - `createOrder(attempt, requestKey)` → `POST /v2/checkout/orders` with header `PayPal-Request-Id: requestKey`, `intent: CAPTURE`, `purchase_units[0]{reference_id: "bounty-{id}", custom_id: "{id}", amount{currency_code:"USD",value}}`, `payment_source.paypal.experience_context{return_url: /fund/return?b={bountyId}&a={attemptId}, cancel_url: /fund/cancel?b={bountyId}&a={attemptId}, user_action: "PAY_NOW", brand_name: "Repopay", shipping_preference: "NO_SHIPPING"}`. Approve URL = link `rel=payer-action`. PayPal returns the provider order ID as the `token` query parameter; the return page validates that token against the stored attempt; only a verified provider read in the worker authorizes capture under the existing funding intent.
   - `captureOrder(orderId, requestKey)` → `POST /v2/checkout/orders/{id}/capture` with `PayPal-Request-Id`. On `ORDER_ALREADY_CAPTURED` or unknown outcome → `getOrder` and validate the complete capture list and aggregate for the bound purchase unit; unexpected multiple/partial captures require attention, never silently take the first element.
   - `getOrder(orderId)`.
   - Store masked payer email from the documented order/capture response field, validated in Phase 03, for confirm pages only; no dependence on an unverified response path.
@@ -988,7 +988,7 @@ Property tests (fast-check): sum equals `total`; deterministic; no negatives; ne
   5. review → NEEDS_REVIEW; PR comment with reason, AI summary and action hints.
   6. pay → create the unique immutable award and supersede any unexecuted cancellation request; if any payee lacks `contributors` row → AWAITING_CLAIM + mention with connect link; else → PAYING + enqueue `submit_payout`. Same transaction.
 - `payout.ts`:
-  - `submit_payout`: idempotently insert payout rows (`sender_batch_id = gitpay-b{bountyId}-d{decisionId}`, `sender_item_id = {sender_batch_id}-u{ghId}`, `local_status=CREATED`) **before** the call; call `createPayout`; store ids; SUBMITTED; enqueue `poll_payout`.
+  - `submit_payout`: idempotently insert payout rows (`sender_batch_id = repopay-b{bountyId}-d{decisionId}`, `sender_item_id = {sender_batch_id}-u{ghId}`, `local_status=CREATED`) **before** the call; call `createPayout`; store ids; SUBMITTED; enqueue `poll_payout`.
   - `poll_payout`: fetch batch, map items (9.2). All SETTLED_OK → PAID + receipt comment. Any SETTLED_FAIL → attention, stay PAYING. A later verified return/reversal changes the affected item to SETTLED_FAIL, moves the bounty back to PAYING + attention and preserves the prior receipt/history; no automatic replacement payout is created. IN_FLIGHT → reschedule after `POLL_INTERVAL_MS` (back off to 1 min after 10 polls).
 - Background reconciliation also scans previously successful payouts in bounded rotating pages; PAID is not excluded. Webhook gaps must not hide later returns. `/bounty status` can refresh completed transfers too.
 - `claims.ts` (`retry_claims`): on contributor connect, for AWAITING_CLAIM bounties whose pay decision includes them: if all payees connected → PAYING + `submit_payout`.
@@ -1081,7 +1081,7 @@ Implementation priority is risk-first within the dependency graph: prove the loc
 
 | Time      | Shot                                                                                                                                                                                      |
 | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0:00–0:15 | "Paying open source contributors is manual. GitPay does it without leaving GitHub."                                                                                                       |
+| 0:00–0:15 | "Paying open source contributors is manual. Repopay does it without leaving GitHub."                                                                                                       |
 | 0:15–0:40 | Maintainer adds `bounty:$50`. Bot comment appears with **Fund $50.00**. Click → confirm → PayPal sandbox pays → comment flips to FUNDED                                                   |
 | 0:40–1:10 | Contributor opens PR. Check Run: "Resolves #12 · coverage 0.95 · confidence 0.9" with reasoning                                                                                           |
 | 1:10–1:30 | Fake-fix PR from another branch: "Does not resolve: test was skipped". No money moves                                                                                                     |
@@ -1170,7 +1170,7 @@ Confirmation and logout forms use same-origin CORS-mode fetch, retaining strict 
 
 ### Phase 3 implementation refinement
 
-[ADR 0004](docs/decisions/0004-funding-recovery.md) specifies the implemented funding adapter and conservative recovery. It supersedes the earlier route/reference examples: use `/bounties/:id/fund`, `/fund/a/:token`, and `/bounties/:id/funding/:attempt/{return,cancel}`; reference the historical attempt as `gitpay:<attemptId>` with its terms hash as `custom_id`. `funding_attempts.checkout_origin` freezes callback URLs across retries. `funding_hold` on the bounty is authoritative for later disbursement gates. Declined/failed capture attempts remain reserved for investigation instead of returning automatically to OPEN. Provider economics are retained in the durable funded activity, separate from gross promised principal. The transaction exception convention extends to `prepareFunding`/`confirmFunding`; error-valued transactions do not commit partial state.
+[ADR 0004](docs/decisions/0004-funding-recovery.md) specifies the implemented funding adapter and conservative recovery. It supersedes the earlier route/reference examples: use `/bounties/:id/fund`, `/fund/a/:token`, and `/bounties/:id/funding/:attempt/{return,cancel}`; reference the historical attempt as `repopay:<attemptId>` with its terms hash as `custom_id`. `funding_attempts.checkout_origin` freezes callback URLs across retries. `funding_hold` on the bounty is authoritative for later disbursement gates. Declined/failed capture attempts remain reserved for investigation instead of returning automatically to OPEN. Provider economics are retained in the durable funded activity, separate from gross promised principal. The transaction exception convention extends to `prepareFunding`/`confirmFunding`; error-valued transactions do not commit partial state.
 
 
 Phase 7 implementation uses immutable `awards` plus append-only `review_decisions` for the conceptual decision model. `actions/approve.ts` owns preview/token/decision logic, `actions/reject.ts` owns the comment authorization adapter, `http/review.ts` owns browser review, and `settlement/award.ts` shares the final guard with automatic settlement. See [ADR 0009](docs/decisions/0009-maintainer-review-records.md); phase progress remains in the numbered phase documents.
@@ -1183,7 +1183,7 @@ Recovery ownership refinement: [ADR 0012](docs/decisions/0012-recovery-checkpoin
 
 Deployment ownership refinement: [ADR 0013](docs/decisions/0013-deployment-and-restore-hold.md) adds `db/compatibility.ts`, `scripts/check-migrations.ts`, the held Render Blueprint and `docs/deployment.md`. Phase progress and hosted evidence remain in their own files.
 
-Final handoff ownership: `docs/demo.md` describes the sandbox recording; `docs/evidence/12-acceptance.md` traces workflow acceptance. `scripts/demo-seed.ts` defaults to a dry run and requires exact isolated repository confirmation to create ordinary unfunded preparation issues; it has no financial or merge authority. `postman/gitpay.postman_collection.json` contains scoped reads and a guarded loopback synthetic ping. These tools do not replace live acceptance.
+Final handoff ownership: `docs/demo.md` describes the sandbox recording; `docs/evidence/12-acceptance.md` traces workflow acceptance. `scripts/demo-seed.ts` defaults to a dry run and requires exact isolated repository confirmation to create ordinary unfunded preparation issues; it has no financial or merge authority. `postman/repopay.postman_collection.json` contains scoped reads and a guarded loopback synthetic ping. These tools do not replace live acceptance.
 
 Verifier context refinement: [ADR 0014](docs/decisions/0014-exact-revision-test-context.md) adds exact-head, blob-verified full content for up to four changed test files (16 KiB each), labelled as context and sharing the frozen diff limit. Missing/oversize context remains insufficient; snapshots retain original patches and historical verdicts.
 

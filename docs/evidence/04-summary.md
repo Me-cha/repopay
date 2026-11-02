@@ -34,7 +34,7 @@ Using Node 22.23.4 and pnpm 10.29.3:
 
 - `pnpm typecheck` — passed.
 - `pnpm lint` — passed.
-- `pnpm test` with the explicitly configured local `gitpay_test` database — 36 files, 194 tests passed.
+- `pnpm test` with the explicitly configured local `repopay_test` database — 36 files, 194 tests passed.
 - `pnpm build` — passed.
 - `bash -n ngrok.sh`, `git diff --check`, and `GET /healthz` — passed; stable Ngrok tunnel reports `inspect: false`.
 

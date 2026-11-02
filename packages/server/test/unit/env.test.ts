@@ -17,7 +17,7 @@ describe('configuration boundary', () => {
     { PORT: '0' }, { PORT: '3000.5' }, { JOB_LEASE_SEC: '-1' },
     { PROVIDER_TIMEOUT_MS: 'Infinity' }, { POLICY_CI_REQUIRED: 'yes' },
     { RECONCILIATION_PAGE_LIMIT: '10000000' },
-    { TEST_DATABASE_URL: 'postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay' },
+    { TEST_DATABASE_URL: 'postgresql://repopay:repopay@127.0.0.1:5433/repopay' },
   ])('rejects invalid configuration %j', (change) => {
     expect(() => parseEnv({ ...syntheticEnv(), ...change })).toThrow();
   });

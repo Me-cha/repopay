@@ -3,7 +3,7 @@ previews:
   generation: "off"
 services:
   - type: web
-    name: gitpay-sandbox-web
+    name: repopay-sandbox-web
     runtime: node
     region: singapore
     plan: 1c-2g
@@ -15,10 +15,10 @@ services:
     healthCheckPath: /healthz
     maxShutdownDelaySeconds: 300
     envVars:
-      - fromGroup: gitpay-sandbox-runtime
+      - fromGroup: repopay-sandbox-runtime
       - key: DATABASE_URL
         fromDatabase:
-          name: gitpay-sandbox-db
+          name: repopay-sandbox-db
           property: connectionString
       - key: PUBLIC_URL
         sync: false
@@ -49,7 +49,7 @@ services:
       - key: PP_MERCHANT_ID
         sync: false
   - type: worker
-    name: gitpay-sandbox-worker
+    name: repopay-sandbox-worker
     runtime: node
     region: singapore
     plan: 1c-2g
@@ -59,92 +59,92 @@ services:
     startCommand: pnpm start:worker:hosted
     maxShutdownDelaySeconds: 300
     envVars:
-      - fromGroup: gitpay-sandbox-runtime
+      - fromGroup: repopay-sandbox-runtime
       - key: DATABASE_URL
         fromDatabase:
-          name: gitpay-sandbox-db
+          name: repopay-sandbox-db
           property: connectionString
       - key: PUBLIC_URL
         fromService:
           type: web
-          name: gitpay-sandbox-web
+          name: repopay-sandbox-web
           envVarKey: PUBLIC_URL
       - key: GH_APP_ID
         fromService:
           type: web
-          name: gitpay-sandbox-web
+          name: repopay-sandbox-web
           envVarKey: GH_APP_ID
       - key: GH_APP_SLUG
         fromService:
           type: web
-          name: gitpay-sandbox-web
+          name: repopay-sandbox-web
           envVarKey: GH_APP_SLUG
       - key: GH_PRIVATE_KEY
         fromService:
           type: web
-          name: gitpay-sandbox-web
+          name: repopay-sandbox-web
           envVarKey: GH_PRIVATE_KEY
       - key: GH_WEBHOOK_SECRET
         fromService:
           type: web
-          name: gitpay-sandbox-web
+          name: repopay-sandbox-web
           envVarKey: GH_WEBHOOK_SECRET
       - key: GH_CLIENT_ID
         fromService:
           type: web
-          name: gitpay-sandbox-web
+          name: repopay-sandbox-web
           envVarKey: GH_CLIENT_ID
       - key: GH_CLIENT_SECRET
         fromService:
           type: web
-          name: gitpay-sandbox-web
+          name: repopay-sandbox-web
           envVarKey: GH_CLIENT_SECRET
       - key: SESSION_SECRET
         fromService:
           type: web
-          name: gitpay-sandbox-web
+          name: repopay-sandbox-web
           envVarKey: SESSION_SECRET
       - key: TOKEN_ENC_KEY
         fromService:
           type: web
-          name: gitpay-sandbox-web
+          name: repopay-sandbox-web
           envVarKey: TOKEN_ENC_KEY
       - key: PAYMENT_DATA_ENC_KEY
         fromService:
           type: web
-          name: gitpay-sandbox-web
+          name: repopay-sandbox-web
           envVarKey: PAYMENT_DATA_ENC_KEY
       - key: PP_CLIENT_ID
         fromService:
           type: web
-          name: gitpay-sandbox-web
+          name: repopay-sandbox-web
           envVarKey: PP_CLIENT_ID
       - key: PP_SECRET
         fromService:
           type: web
-          name: gitpay-sandbox-web
+          name: repopay-sandbox-web
           envVarKey: PP_SECRET
       - key: PP_WEBHOOK_ID
         fromService:
           type: web
-          name: gitpay-sandbox-web
+          name: repopay-sandbox-web
           envVarKey: PP_WEBHOOK_ID
       - key: PP_MERCHANT_ID
         fromService:
           type: web
-          name: gitpay-sandbox-web
+          name: repopay-sandbox-web
           envVarKey: PP_MERCHANT_ID
 databases:
-  - name: gitpay-sandbox-db
+  - name: repopay-sandbox-db
     region: singapore
     plan: 0.5c-1g
-    databaseName: gitpay
-    user: gitpay
+    databaseName: repopay
+    user: repopay
     postgresMajorVersion: "16"
     diskSizeGB: 5
     ipAllowList: []
 envVarGroups:
-  - name: gitpay-sandbox-runtime
+  - name: repopay-sandbox-runtime
     envVars:
       - key: NODE_ENV
         value: "production"
@@ -201,7 +201,7 @@ envVarGroups:
       - key: CANCELLATION_NOTICE_HOURS
         value: "72"
       - key: POLICY_VERSION
-        value: "gitpay-v2-copilot"
+        value: "repopay-v2-copilot"
       - key: POLICY_CI_CONTEXTS
         value: "{}"
       - key: VERIFIER_DAILY_ATTEMPT_LIMIT

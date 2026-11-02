@@ -16,7 +16,7 @@ export function mountCopilotSponsor(app:Express,deps:AuthenticationDependencies&
    const bounty=await findBounty(database,request.params.id);await authorizeAction(auth,github,session,bounty,'fund');
    const [grant]=await database.orm.select().from(copilotSponsors).where(eq(copilotSponsors.repoId,bounty.repoId));
    const active=grant&&!grant.revokedAt;
-   response.type('html').send(htmlPage('Copilot review sponsor',`<p>Connect the owner account that will sponsor Copilot reviews for <strong>${escapeHtml(bounty.repoFullName)}</strong>.</p><p>GitHub will count review usage toward that account’s Copilot allowance and billing settings. Contributors’ Copilot accounts are not used.</p><p>GitPay requests <code>${escapeHtml(deps.model)}</code>. ${deps.model==='auto'?'GitHub chooses the serving model; GitPay records that model for every review.':'Your account must have access to this model.'}</p>${active?`<div class="kv-grid"><dt>Connected Sponsor</dt><dd><strong>@${escapeHtml(grant.sponsorLogin)}</strong> <span class="chip chip-pass">Authorized</span></dd><dt>Model</dt><dd><span class="chip chip-info">${escapeHtml(deps.model)}</span></dd><dt>Profile Verified</dt><dd>${escapeHtml(formatIST(grant.modelVerifiedAt))}</dd></div>`:''}<p>GitPay sends the issue criteria and bounded PR evidence to GitHub Copilot for review. You can disconnect this sponsor here at any time; new funding will then be blocked until another sponsor connects.</p><form method="post" action="/bounties/${encodeURIComponent(bounty.id)}/copilot-sponsor/connect"><input type="hidden" name="csrf" value="${csrfFor(session,`/bounties/${bounty.id}/copilot-sponsor/connect`)}"><button type="submit">${active?'Reconnect Copilot sponsor':'Connect Copilot sponsor'}</button></form>${active?`<form method="post" action="/bounties/${encodeURIComponent(bounty.id)}/copilot-sponsor/disconnect"><input type="hidden" name="csrf" value="${csrfFor(session,`/bounties/${bounty.id}/copilot-sponsor/disconnect`)}"><button type="submit">Disconnect sponsor</button></form>`:''}<p><a href="/bounties/${encodeURIComponent(bounty.id)}/fund">Return to funding</a></p>`));
+   response.type('html').send(htmlPage('Copilot review sponsor',`<p>Connect the owner account that will sponsor Copilot reviews for <strong>${escapeHtml(bounty.repoFullName)}</strong>.</p><p>GitHub will count review usage toward that account’s Copilot allowance and billing settings. Contributors’ Copilot accounts are not used.</p><p>Repopay requests <code>${escapeHtml(deps.model)}</code>. ${deps.model==='auto'?'GitHub chooses the serving model; Repopay records that model for every review.':'Your account must have access to this model.'}</p>${active?`<div class="kv-grid"><dt>Connected Sponsor</dt><dd><strong>@${escapeHtml(grant.sponsorLogin)}</strong> <span class="chip chip-pass">Authorized</span></dd><dt>Model</dt><dd><span class="chip chip-info">${escapeHtml(deps.model)}</span></dd><dt>Profile Verified</dt><dd>${escapeHtml(formatIST(grant.modelVerifiedAt))}</dd></div>`:''}<p>Repopay sends the issue criteria and bounded PR evidence to GitHub Copilot for review. You can disconnect this sponsor here at any time; new funding will then be blocked until another sponsor connects.</p><form method="post" action="/bounties/${encodeURIComponent(bounty.id)}/copilot-sponsor/connect"><input type="hidden" name="csrf" value="${csrfFor(session,`/bounties/${bounty.id}/copilot-sponsor/connect`)}"><button type="submit">${active?'Reconnect Copilot sponsor':'Connect Copilot sponsor'}</button></form>${active?`<form method="post" action="/bounties/${encodeURIComponent(bounty.id)}/copilot-sponsor/disconnect"><input type="hidden" name="csrf" value="${csrfFor(session,`/bounties/${bounty.id}/copilot-sponsor/disconnect`)}"><button type="submit">Disconnect sponsor</button></form>`:''}<p><a href="/bounties/${encodeURIComponent(bounty.id)}/fund">Return to funding</a></p>`));
   }catch(error){safeError(response,error,request.path);}
  });
  app.post('/bounties/:id/copilot-sponsor/connect',async(request,response)=>{
@@ -26,11 +26,11 @@ export function mountCopilotSponsor(app:Express,deps:AuthenticationDependencies&
    const binding=randomToken();const url=await auth.beginCopilotSponsor(bounty.repoId,bounty.installationId,`/bounties/${bounty.id}/copilot-sponsor`,session,binding);
    // Mutation forms submit through same-origin fetch (see actions.js), which cannot
    // follow a cross-origin redirect; the script navigates to this URL itself.
-   setCookie(response,env,'gitpay_sponsor_oauth',binding,env.OAUTH_STATE_TTL_SEC);response.json({redirect:url});
+   setCookie(response,env,'repopay_sponsor_oauth',binding,env.OAUTH_STATE_TTL_SEC);response.json({redirect:url});
   }catch(error){safeError(response,error,request.path);}
  });
  app.get('/oauth/github/callback',async(request,response)=>{
-  const binding=cookie(request,'gitpay_sponsor_oauth');let returnTo='/';
+  const binding=cookie(request,'repopay_sponsor_oauth');let returnTo='/';
   try{
    const {code,state}=request.query;if(typeof code!=='string'||typeof state!=='string'||!binding)throw new AuthError(400,'Invalid sponsor authorization. Start again.');
    const session=await requireSession(auth,request),grant=await auth.completeCopilotSponsor(code,state,binding,session);returnTo=grant.returnTo;
@@ -40,8 +40,8 @@ export function mountCopilotSponsor(app:Express,deps:AuthenticationDependencies&
     const models=await listCopilotModels(modelEnv);
     if(!models.some(item=>item.model===deps.model&&item.listed))throw new AuthError(409,`This GitHub account cannot use ${deps.model}. Connect an account or organization plan that includes this fixed model.`);
    }
-   await auth.saveCopilotSponsor({...grant,modelId:deps.model});setCookie(response,env,'gitpay_sponsor_oauth','',0);response.redirect(303,grant.returnTo);
-  }catch(error){setCookie(response,env,'gitpay_sponsor_oauth','',0);safeError(response,error,returnTo);}
+   await auth.saveCopilotSponsor({...grant,modelId:deps.model});setCookie(response,env,'repopay_sponsor_oauth','',0);response.redirect(303,grant.returnTo);
+  }catch(error){setCookie(response,env,'repopay_sponsor_oauth','',0);safeError(response,error,returnTo);}
  });
  app.post('/bounties/:id/copilot-sponsor/disconnect',async(request,response)=>{
   try{

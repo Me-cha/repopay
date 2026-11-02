@@ -1,6 +1,6 @@
 {
   "info": {
-    "name": "GitPay local inspection",
+    "name": "Repopay local inspection",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "description": "Read-only inspection plus an opt-in loopback synthetic ping. No payment actions. Keep cookies and signature in local state; never export secrets."
   },
@@ -97,7 +97,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\"zen\":\"GitPay synthetic local ping\"}"
+          "raw": "{\"zen\":\"Repopay synthetic local ping\"}"
         },
         "url": "{{baseUrl}}/webhooks/github",
         "description": "Local-only inert ping. See README for generating the signature locally without exporting the webhook secret. No issue, command, payment or PR data."

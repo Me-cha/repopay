@@ -2,7 +2,7 @@
 
 Date: October 31, 2026. Status: accepted by the user; locally implemented, live split acceptance pending.
 
-The PR author remains GitHub-authenticated. An additional commit author is eligible only after signing in to GitPay, declaring their contribution, and receiving a separate write-authorized maintainer's confirmation. Both attestations bind the submission ID, head SHA and base SHA. GitHub commit identity is a prerequisite, never sufficient proof alone; trailers alone cannot add recipients. The bounty creator and PR author cannot use this additional-author flow. A maintainer cannot confirm their own claim.
+The PR author remains GitHub-authenticated. An additional commit author is eligible only after signing in to Repopay, declaring their contribution, and receiving a separate write-authorized maintainer's confirmation. Both attestations bind the submission ID, head SHA and base SHA. GitHub commit identity is a prerequisite, never sufficient proof alone; trailers alone cannot add recipients. The bounty creator and PR author cannot use this additional-author flow. A maintainer cannot confirm their own claim.
 
 `actions/attribution.ts` checks current repository access, bounded commit evidence and an open current PR before recording immutable attestations. `/submissions/:id/contributors` provides CSRF-protected confirmation. The collector consults the same records for model evidence and final candidate scanning. Changing head or base requires both confirmations again; old history remains intact. This is authenticated human attestation, not cryptographic authorship verification or a guarantee against collusion.
 

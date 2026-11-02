@@ -37,7 +37,7 @@ for(const [index,status] of ['OPEN','CAPTURING','FUNDED','NEEDS_REVIEW','AWAITIN
 await f.database.orm.insert(contributors).values({ghId:'8',ghLogin:'contributor',paypalEmailEnc:encrypt('recipient@example.test',env.PAYMENT_DATA_ENC_KEY,'contributor:8:paypal-email:v1')});
 await f.database.orm.insert(actionTokens).values({tokenHash:sha256('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'),bountyId:'1',action:'cancel_draft',params:{},bountyVersion:0,requestedByGhId:'4',expiresAt:new Date(Date.now()-1000)});
 // Test-only routes live only in this isolated harness, never production build.
-app.get('/_test/login/:role',async(req,res)=>{actor=req.params.role==='contributor'?'8':req.params.role==='operator'?'10':'4';access=true;const start=new URL(await auth.beginLogin('/dashboard/','test-binding')),login=await auth.completeLogin('test-code',start.searchParams.get('state')??'','test-binding');res.setHeader('Set-Cookie','gitpay_session='+login.cookie+'; Path=/; HttpOnly; SameSite=Lax');res.redirect('/dashboard/');});
+app.get('/_test/login/:role',async(req,res)=>{actor=req.params.role==='contributor'?'8':req.params.role==='operator'?'10':'4';access=true;const start=new URL(await auth.beginLogin('/dashboard/','test-binding')),login=await auth.completeLogin('test-code',start.searchParams.get('state')??'','test-binding');res.setHeader('Set-Cookie','repopay_session='+login.cookie+'; Path=/; HttpOnly; SameSite=Lax');res.redirect('/dashboard/');});
 app.post('/_test/revoke',async(_req,res)=>{access=false;await f.database.orm.insert(bountyActivity).values({bountyId:'3',source:'test',action:'access_changed'});res.json({ok:true});});
 app.get('/_test/ready',(_req,res)=>{res.json({ready:true});});
 const server=createServer(app);server.listen(4317,'127.0.0.1');

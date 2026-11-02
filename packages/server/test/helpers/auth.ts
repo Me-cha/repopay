@@ -7,7 +7,7 @@ import { syntheticEnv } from './env.js';
 import { githubFixture } from './github.js';
 import { encrypt } from '../../src/util/crypto.js';
 export async function authFixture(clock={now:()=>new Date()},fundingEnv?:FundingEnv) {
- const f=await githubFixture();const env=fundingEnv??parseAuthEnv({...syntheticEnv(),PUBLIC_URL:'https://gitpay.test'});
+ const f=await githubFixture();const env=fundingEnv??parseAuthEnv({...syntheticEnv(),PUBLIC_URL:'https://repopay.test'});
  const permissions={read:true,write:true,fail:false,repoId:'2'};
  const provider:OAuthProvider={exchange:()=>Promise.resolve({accessToken:'user-access',refreshToken:'user-refresh',expiresIn:3600,refreshExpiresIn:7200}),refresh:()=>Promise.reject(new Error('unexpected refresh')),identity:()=>Promise.resolve({id:'4',login:'maintainer'}),repository:(_token,repoId)=>{if(permissions.fail)return Promise.reject(new Error('provider outage'));return Promise.resolve({id:permissions.repoId===repoId?repoId:permissions.repoId,read:permissions.read,write:permissions.write,admin:true,ownerId:'4',ownerType:'User'});}};
  const auth=createAuth(f.database,env,provider,clock);const loginUrl=new URL(await auth.beginLogin('/','binding'));const login=await auth.completeLogin('code',required(loginUrl.searchParams.get('state')),'binding');
@@ -20,11 +20,11 @@ export async function authFixture(clock={now:()=>new Date()},fundingEnv?:Funding
  return {...f,env,auth,provider,permissions,login,bounty,request,async close(){await new Promise<void>((resolve,reject)=>server.close(e=>{if(e)reject(e);else resolve();}));await f.close();}};
 }
 export function csrfFrom(html:string) {const value=/name="csrf" value="([A-Za-z0-9_-]+)"/.exec(html)?.[1];if(!value)throw new Error('missing csrf');return value;}
-export const form=(csrf:string,extra:Record<string,string>={})=>({method:'POST',headers:{Origin:'https://gitpay.test','Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf,...extra}).toString()});
+export const form=(csrf:string,extra:Record<string,string>={})=>({method:'POST',headers:{Origin:'https://repopay.test','Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({csrf,...extra}).toString()});
 export async function prepare(f:Awaited<ReturnType<typeof authFixture>>) {
  const path=`/bounties/${f.bounty.id}/cancel`;const page=await f.request(path);const response=await f.request(path,form(csrfFrom(await page.text())));expectStatus(response.status,303);const target=response.headers.get('location');if(!target)throw new Error('missing location');return target;
 }
 function expectStatus(actual:number,expected:number){if(actual!==expected)throw new Error(`Expected HTTP ${String(expected)}, received ${String(actual)}`);}
 
 export function required<T>(value:T|null|undefined):T {if(value===null||value===undefined)throw new Error('Missing test fixture value');return value;}
-function mergeHeaders(sessionCookie:string,headers:HeadersInit|undefined) {const result=new Headers(headers);if(!result.has('Cookie'))result.set('Cookie','gitpay_session='+sessionCookie);return result;}
+function mergeHeaders(sessionCookie:string,headers:HeadersInit|undefined) {const result=new Headers(headers);if(!result.has('Cookie'))result.set('Cookie','repopay_session='+sessionCookie);return result;}

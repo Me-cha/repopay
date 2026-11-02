@@ -30,7 +30,7 @@ export function createOAuthProvider(env:AuthEnv):OAuthProvider {
   const v=tokenSchema.parse(response.body);return {accessToken:v.access_token,refreshToken:v.refresh_token,expiresIn:v.expires_in,refreshExpiresIn:v.refresh_token_expires_in};
  }
  async function get(path:string,token:string) {
-  const response=await requestJson(env,'https://api.github.com'+path,{headers:{Authorization:'Bearer '+token,Accept:'application/vnd.github+json','User-Agent':'GitPay','X-GitHub-Api-Version':'2026-03-10'}});
+  const response=await requestJson(env,'https://api.github.com'+path,{headers:{Authorization:'Bearer '+token,Accept:'application/vnd.github+json','User-Agent':'Repopay','X-GitHub-Api-Version':'2026-03-10'}});
   if(response.status!==200)throw new AuthError(response.status===401?401:response.status===404||response.status===403?403:503,'GitHub access could not be verified.');return response.body;
  }
  return {
@@ -47,7 +47,7 @@ export function createOAuthProvider(env:AuthEnv):OAuthProvider {
 export function localReturnTo(value:string):string {
  for(const c of value)if(c.charCodeAt(0)<32||c.charCodeAt(0)===127)throw new AuthError(400,'Invalid return address.');
  if(value.length>2048||!value.startsWith('/')||value.startsWith('//')||/[\\\s]/.test(value)||/%(?:2f|5c|0[0-9a-f]|1[0-9a-f]|7f|25)/i.test(value))throw new AuthError(400,'Invalid return address.');
- const parsed=new URL(value,'https://gitpay.invalid');if(parsed.origin!=='https://gitpay.invalid')throw new AuthError(400,'Invalid return address.');return parsed.pathname+parsed.search;
+ const parsed=new URL(value,'https://repopay.invalid');if(parsed.origin!=='https://repopay.invalid')throw new AuthError(400,'Invalid return address.');return parsed.pathname+parsed.search;
 }
 type SessionRow=typeof sessions.$inferSelect;
 type SponsorRow=typeof copilotSponsors.$inferSelect;
@@ -86,13 +86,13 @@ export function createAuth(db:Database,env:AuthEnv,provider:OAuthProvider=create
   const [stored]=await db.orm.update(copilotSponsorStates).set({usedAt:clock.now()}).where(and(eq(copilotSponsorStates.nonceHash,sha256(nonce)),eq(copilotSponsorStates.browserBindingHash,sha256(browserBinding)),eq(copilotSponsorStates.sessionId,session.id),eq(copilotSponsorStates.actorGhId,session.ghId),isNull(copilotSponsorStates.usedAt),gt(copilotSponsorStates.expiresAt,clock.now()))).returning();
   if(!stored)throw new AuthError(400,'Invalid or expired sponsor authorization. Start again.');
   const token=await provider.exchange(code,decrypt(stored.verifierEnc,env.TOKEN_ENC_KEY,stored.nonceHash+':copilot-pkce'));
-  const user=await provider.identity(token.accessToken);if(user.id!==session.ghId)throw new AuthError(403,'Authorize the same GitHub account that is signed in to GitPay.');
+  const user=await provider.identity(token.accessToken);if(user.id!==session.ghId)throw new AuthError(403,'Authorize the same GitHub account that is signed in to Repopay.');
   const repository=await provider.repository(token.accessToken,stored.repoId);
   if(repository.id!==stored.repoId||repository.ownerId!==user.id||repository.ownerType!=='User'||repository.admin!==true)throw new AuthError(403,'Only the owner of a personal repository can sponsor its Copilot reviews.');
   return {repoId:stored.repoId,installationId:stored.installationId,returnTo:stored.returnTo,user,token};
  }
  async function saveCopilotSponsor(input:{repoId:string;installationId:string;user:{id:string;login:string};token:TokenSet;modelId:string}) {
-  if(!input.modelId)throw new AuthError(409,'GitPay requires a Copilot model or auto.');
+  if(!input.modelId)throw new AuthError(409,'Repopay requires a Copilot model or auto.');
   const id=input.repoId,now=clock.now();
   const values={repoId:id,installationId:input.installationId,sponsorGhId:input.user.id,sponsorLogin:input.user.login,
    accessTokenEnc:encrypt(input.token.accessToken,env.TOKEN_ENC_KEY,id+':copilot-access'),refreshTokenEnc:encrypt(input.token.refreshToken,env.TOKEN_ENC_KEY,id+':copilot-refresh'),

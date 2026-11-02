@@ -51,7 +51,7 @@ export function createGitHub(env: GitHubRuntimeEnv): GitHub {
   return data+'.'+sign('RSA-SHA256',Buffer.from(data),env.GH_PRIVATE_KEY.replaceAll('\\n','\n')).toString('base64url');
  }
  async function request(path:string, token:string, method='GET', body?:unknown) {
-  return requestJson(env,'https://api.github.com'+path,{method,headers:{Authorization:'Bearer '+token,Accept:'application/vnd.github+json','User-Agent':'GitPay','X-GitHub-Api-Version':'2026-03-10','Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});
+  return requestJson(env,'https://api.github.com'+path,{method,headers:{Authorization:'Bearer '+token,Accept:'application/vnd.github+json','User-Agent':'Repopay','X-GitHub-Api-Version':'2026-03-10','Content-Type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})});
  }
  async function token(id:string) {
   const cached=tokens.get(id);if(cached && cached.expires>Date.now()+60000)return cached.token;
@@ -99,8 +99,8 @@ export function createGitHub(env: GitHubRuntimeEnv): GitHub {
   async badge(inst,repo,number,status='OPEN'){
    const acceptingSubmissions=['OPEN','CAPTURING','FUNDED','NEEDS_REVIEW'].includes(status);
    for(const {label,description,color,active} of [
-    {label:'bounty-open',description:'Open GitPay bounty; see the bot comment for funding status',color:'6f42c1',active:acceptingSubmissions},
-    {label:'bounty-paid',description:'GitPay payout completed; see the bot comment for delivery status',color:'0e8a16',active:status==='PAID'},
+    {label:'bounty-open',description:'Open Repopay bounty; see the bot comment for funding status',color:'6f42c1',active:acceptingSubmissions},
+    {label:'bounty-paid',description:'Repopay payout completed; see the bot comment for delivery status',color:'0e8a16',active:status==='PAID'},
    ]){
    if(!active){
     try{await call(inst,`${prefix(repo)}/issues/${String(number)}/labels/${label}`,'DELETE');}

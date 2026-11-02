@@ -38,7 +38,7 @@ export function createFunding(db:Database,env:FundingEnv,provider:Orders,clock:C
   });
  }
  function validate(a:FundingIntent,o:OrderSnapshot) {
-  if((a.orderId&&o.id!==a.orderId)||o.reference!==`gitpay:${a.id}`||o.customId!==a.termsHash||o.merchantId!==a.terms.merchantId||o.amountCents!==a.amountCents||o.currency!=='USD')throw new Error('Order binding mismatch');
+  if((a.orderId&&o.id!==a.orderId)||o.reference!==`repopay:${a.id}`||o.customId!==a.termsHash||o.merchantId!==a.terms.merchantId||o.amountCents!==a.amountCents||o.currency!=='USD')throw new Error('Order binding mismatch');
   if(o.captures.length>1||o.captures.some(c=>c.amountCents!==a.amountCents||c.currency!=='USD'||!c.finalCapture||(a.captureId&&a.captureId!==c.id)))throw new Error('Capture binding mismatch');
  }
  async function observe(a:FundingIntent,o:OrderSnapshot) {

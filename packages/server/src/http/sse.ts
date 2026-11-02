@@ -11,7 +11,7 @@ import type { AuthenticationDependencies } from './auth.js';
 export function mountStream(app:Express,deps:AuthenticationDependencies){
  const models=readModels(deps),subscribers=new Set<()=>void>();let listener:PoolClient|undefined,connecting:Promise<void>|undefined;
  const wake=()=>{for(const notify of subscribers)notify();};
- function connect(){if(listener)return Promise.resolve();connecting??=(async()=>{const client=await deps.database.pool.connect();if(!subscribers.size){client.release();return;}listener=client;client.on('notification',msg=>{if(msg.channel==='gitpay_activity'&&msg.payload===deps.database.schemaName)wake();});client.on('error',()=>{if(listener===client){listener=undefined;client.release(true);}connecting=undefined;wake();});await client.query('LISTEN gitpay_activity');})().catch(()=>{listener?.release(true);listener=undefined;}).finally(()=>{connecting=undefined;});return connecting;}
+ function connect(){if(listener)return Promise.resolve();connecting??=(async()=>{const client=await deps.database.pool.connect();if(!subscribers.size){client.release();return;}listener=client;client.on('notification',msg=>{if(msg.channel==='repopay_activity'&&msg.payload===deps.database.schemaName)wake();});client.on('error',()=>{if(listener===client){listener=undefined;client.release(true);}connecting=undefined;wake();});await client.query('LISTEN repopay_activity');})().catch(()=>{listener?.release(true);listener=undefined;}).finally(()=>{connecting=undefined;});return connecting;}
  app.get('/api/stream',async(req,res)=>{
   let last:string;try{await requireSession(deps.auth,req);last=cursor(req.get('Last-Event-ID')??req.query.cursor);}catch(e){res.status(e instanceof AuthError?e.status:503).json({error:'Live updates require a current session.'});return;}
   res.status(200).set({'Content-Type':'text/event-stream','Cache-Control':'no-store','Connection':'keep-alive','X-Accel-Buffering':'no'});res.flushHeaders();
@@ -27,7 +27,7 @@ export function mountStream(app:Express,deps:AuthenticationDependencies){
    send('refresh',{full:true});if(!listener)void connect();
   }catch{send('access-lost',{message:'Access must be checked again.'});res.end();}finally{busy=false;if(pending){pending=false;void refresh();}}}
   const notify=()=>{void refresh();};subscribers.add(notify);const timer=setInterval(notify,deps.env.SSE_HEARTBEAT_SEC*1000);
-  const close=()=>{if(closed)return;closed=true;clearInterval(timer);subscribers.delete(notify);if(!subscribers.size&&listener){const client=listener;listener=undefined;void client.query('UNLISTEN gitpay_activity').then(()=> { client.release(); },()=> { client.release(true); });}};
+  const close=()=>{if(closed)return;closed=true;clearInterval(timer);subscribers.delete(notify);if(!subscribers.size&&listener){const client=listener;listener=undefined;void client.query('UNLISTEN repopay_activity').then(()=> { client.release(); },()=> { client.release(true); });}};
   req.on('close',close);res.on('close',close);await connect();await refresh();
  });
 }

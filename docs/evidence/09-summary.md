@@ -19,9 +19,9 @@ Commands using repository-local Node 22.23.4:
 ```sh
 pnpm typecheck
 pnpm lint
-TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test pnpm test
+TEST_DATABASE_URL=postgresql://repopay:repopay@127.0.0.1:5433/repopay_test pnpm test
 pnpm build
-TEST_DATABASE_URL=postgresql://gitpay:gitpay@127.0.0.1:5433/gitpay_test pnpm test:e2e
+TEST_DATABASE_URL=postgresql://repopay:repopay@127.0.0.1:5433/repopay_test pnpm test:e2e
 git diff --check
 ```
 
@@ -31,7 +31,7 @@ Build reports a non-fatal >500 kB bundle warning (Community grid entry approxima
 
 ## Local runtime
 
-Created ignored `.local/backups/gitpay-before-phase9.dump`, applied additive migration 0015, built both packages and checked local `/healthz` ready. Migration only adds activity notifications; it does not alter funded terms or authorize financial operations. No activation scope was changed. Unauthenticated `/dashboard/` returns 303 to sign-in. The original bounty remains PAID with exactly one award and one payout item.
+Created ignored `.local/backups/repopay-before-phase9.dump`, applied additive migration 0015, built both packages and checked local `/healthz` ready. Migration only adds activity notifications; it does not alter funded terms or authorize financial operations. No activation scope was changed. Unauthenticated `/dashboard/` returns 303 to sign-in. The original bounty remains PAID with exactly one award and one payout item.
 
 ## Remaining acceptance and limitations
 

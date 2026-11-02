@@ -1,22 +1,22 @@
 # Phase 5 demo walkthrough — pending live evidence
 
-Repository: https://github.com/deepakA18/gitpay-demo-http
-Issue: https://github.com/deepakA18/gitpay-demo-http/issues/1
+Repository: https://github.com/deepakA18/repopay-demo-http
+Issue: https://github.com/deepakA18/repopay-demo-http/issues/1
 Owner/funder: deepakA18. Contributor: Me-cha (collaborator invitation accepted).
-**Verified October 30, 2026:** the $50 sandbox capture is COMPLETED and GitPay records bounty 1 as FUNDED. Me-cha has accepted collaborator access. PR #3 has a completed advisory RESOLVES review, and Me-cha has saved a sandbox payout address. The new-code revision is also verified below. Remaining acceptance includes failed-attempt retry, live sponsor revocation/recovery, a second eligible contributor and Phase 6 merge/payout behavior. Do not repeat checkout.
+**Verified October 30, 2026:** the $50 sandbox capture is COMPLETED and Repopay records bounty 1 as FUNDED. Me-cha has accepted collaborator access. PR #3 has a completed advisory RESOLVES review, and Me-cha has saved a sandbox payout address. The new-code revision is also verified below. Remaining acceptance includes failed-attempt retry, live sponsor revocation/recovery, a second eligible contributor and Phase 6 merge/payout behavior. Do not repeat checkout.
 
 This is an isolated PayPal sandbox demo. PR #3 was subsequently merged under Phase 6 authorization and bounty 1 reached PAID; see [Phase 6 evidence](06-summary.md). Earlier steps below are historical; do not repeat checkout or payment. Do not open upstream PRs.
 
 ## Owner
 
-1. Review the updated issue criteria at `/bounties/1/fund` on the configured GitPay URL. The current draft is $50 USD sandbox.
-2. Prepare/confirm checkout and approve it with a PayPal sandbox Personal account. Wait for GitPay's authoritative captured state; a browser return alone is not proof of capture.
+1. Review the updated issue criteria at `/bounties/1/fund` on the configured Repopay URL. The current draft is $50 USD sandbox.
+2. Prepare/confirm checkout and approve it with a PayPal sandbox Personal account. Wait for Repopay's authoritative captured state; a browser return alone is not proof of capture.
 3. Invite Me-cha to this demo repository and have them accept. The current MVP links same-repository PRs; use a branch here rather than a fork.
 
 ## Share with Me-cha
 
 1. Sign in as Me-cha and accept the repository invitation.
-2. Clone `https://github.com/deepakA18/gitpay-demo-http.git` and create a branch such as `demo/form-field-encoding`. Ensure your commit author is associated with your own GitHub account.
+2. Clone `https://github.com/deepakA18/repopay-demo-http.git` and create a branch such as `demo/form-field-encoding`. Ensure your commit author is associated with your own GitHub account.
 3. In `lib/paypalhttp/serializer/form_encoded.js`, escape the field name with `querystring.escape(key)` as well as the existing escaped value. Preserve all other serialization behavior.
 4. Add regression cases to `demo-test/serializers.test.cjs`, preserving the existing tests. Include names containing `&`, `=`, spaces and Unicode, values requiring escaping, and an ordinary ASCII name. Use fixed expected encoded strings; do not skip tests or change production code to hardcode fixtures.
 5. Run `node --test demo-test/serializers.test.cjs`, commit and push the branch to this demo repository.
@@ -24,7 +24,7 @@ This is an isolated PayPal sandbox demo. PR #3 was subsequently merged under Pha
 
 ## Acceptance still to record
 
-Observe the actual funded-bounty PR link and neutral GitPay Check Run. Push a new commit and verify a new exact-SHA review without replacing history; exercise a failed-attempt retry and check authorization-loss behavior. A second distinct eligible contributor is still needed for the competing-contributor walkthrough: the owner created this bounty and cannot earn it. Two PRs by Me-cha alone do not prove two-contributor acceptance.
+Observe the actual funded-bounty PR link and neutral Repopay Check Run. Push a new commit and verify a new exact-SHA review without replacing history; exercise a failed-attempt retry and check authorization-loss behavior. A second distinct eligible contributor is still needed for the competing-contributor walkthrough: the owner created this bounty and cannot earn it. Two PRs by Me-cha alone do not prove two-contributor acceptance.
 
 The v2 synthetic evaluation passed 18/18. It does not replace these live steps. No result on this page is asserted complete merely because instructions exist. Automatic awards remain disabled, and Phase 6 payout acceptance is separate.
 
@@ -43,15 +43,15 @@ The user subsequently deferred remaining Phase 5 work and authorized scoped Phas
 The user authorized starting this test after Phase 12 preparation. This resumes the competing-PR scenario only; other deferred walkthroughs remain separate.
 
 - Verified `Mecha-Test-Account` has repository **write** access. The creator is deepakA18; the two intended contributors are Me-cha and Mecha-Test-Account. Additional-account availability is no longer the blocker for this scenario. It does not establish authenticated co-author attribution for split payouts.
-- Created [issue #4](https://github.com/deepakA18/gitpay-demo-http/issues/4): array form values must produce repeated escaped pairs, omit empty arrays, retain empty strings, preserve scalar behavior/order, and not mutate input. Both contributors use current `main` and separate same-repository branches. Neither PR should be merged during this test.
-- Posted `/bounty create 1` as deepakA18. Signed intake and the worker created **bounty 3**, amount **100 cents**, status **OPEN**. [Bot confirmation](https://github.com/deepakA18/gitpay-demo-http/issues/4#issuecomment-6541702662) links its funding page. No checkout/capture is claimed from draft creation.
+- Created [issue #4](https://github.com/deepakA18/repopay-demo-http/issues/4): array form values must produce repeated escaped pairs, omit empty arrays, retain empty strings, preserve scalar behavior/order, and not mutate input. Both contributors use current `main` and separate same-repository branches. Neither PR should be merged during this test.
+- Posted `/bounty create 1` as deepakA18. Signed intake and the worker created **bounty 3**, amount **100 cents**, status **OPEN**. [Bot confirmation](https://github.com/deepakA18/repopay-demo-http/issues/4#issuecomment-6541702662) links its funding page. No checkout/capture is claimed from draft creation.
 - Existing bounty 1 remains **PAID**, 5000 cents. Its issue/award/payment is not reused.
 - Local server and existing HTTPS tunnel returned `ready`. Stored owner sponsor is `deepakA18`, model `auto`, with no local revocation marker. This database observation alone does not prove a fresh provider token refresh.
-- Baseline demo main SHA: `ae4e27bb7808336b0f351d3a06f832e7129c16db`. An isolated Node 22 regression harness tested five cases against the fetched serializer: repeated values, escaped array name/elements, omitted empty array, retained empty string, and mixed frozen input. **All five failed as expected** on the baseline (arrays are currently serialized as comma-separated strings). These establish a real missing feature, not successful implementation. Scratch harness: `/private/tmp/gitpay-competing-pr/array-regression.cjs` (not a retained release artifact).
+- Baseline demo main SHA: `ae4e27bb7808336b0f351d3a06f832e7129c16db`. An isolated Node 22 regression harness tested five cases against the fetched serializer: repeated values, escaped array name/elements, omitted empty array, retained empty string, and mixed frozen input. **All five failed as expected** on the baseline (arrays are currently serialized as comma-separated strings). These establish a real missing feature, not successful implementation. Scratch harness: `/private/tmp/repopay-competing-pr/array-regression.cjs` (not a retained release artifact).
 
 ### Contributor steps (each account separately)
 
-1. Clone `https://github.com/deepakA18/gitpay-demo-http.git` into a fresh working directory, or update an existing clean clone from `origin/main`.
+1. Clone `https://github.com/deepakA18/repopay-demo-http.git` into a fresh working directory, or update an existing clean clone from `origin/main`.
 2. Create a separate branch from current `main`: `demo/array-form-mecha` for Me-cha or `demo/array-form-test-account` for Mecha-Test-Account.
 3. Implement all issue #4 acceptance criteria in `lib/paypalhttp/serializer/form_encoded.js`, preserving existing behavior and tests. Add regression tests to `demo-test/serializers.test.cjs`.
 4. Run `node --test demo-test/serializers.test.cjs`, then commit and push the branch using that contributor's own authenticated account.
@@ -61,7 +61,7 @@ The user authorized starting this test after Phase 12 preparation. This resumes 
 
 - User sandbox checkout at `/bounties/3/fund`; authoritative captured/FUNDED state must be observed.
 - Explicit allowance requested for at most **6 Copilot Auto requests** including necessary retries; approval is pending. Prior evaluation allowances are not reused.
-- Both real contributor PRs, their persistent links, exact-head external CI and GitPay Check Runs. The current CLI is authenticated only as deepakA18; changing commit author metadata cannot substitute for contributor-authored PRs.
+- Both real contributor PRs, their persistent links, exact-head external CI and Repopay Check Runs. The current CLI is authenticated only as deepakA18; changing commit author metadata cannot substitute for contributor-authored PRs.
 - Record verdicts, attempt counts, immutable evidence, distinct author IDs and no pre-merge award/payment. Only then mark this scenario passed.
 
 CI setup checked: `.github/workflows/demo-ci.yml` runs on push and pull_request with read-only contents permissions, Node 22 and `npm test`. The demo package maps that command to `node --test demo-test/*.test.cjs`, so the requested serializer regressions are included. Final observation before contributor handoff: no open PRs, bounty 3 still OPEN/unfunded, and zero review attempts today. The test is pending participant actions, not passed.
@@ -73,14 +73,14 @@ The user confirmed checkout approval and explicitly authorized **up to 6 Copilot
 
 | PR | Actual GitHub author | Exact head | Observation |
 | --- | --- | --- | --- |
-| [#5](https://github.com/deepakA18/gitpay-demo-http/pull/5) | Me-cha | `7d05bba11b1cd6c39bb46bbd4ade149cb18a9d25` | Open/unmerged; description includes `Fixes #4`; implementation and five added regression tests |
-| [#6](https://github.com/deepakA18/gitpay-demo-http/pull/6) | Mecha-Test-Account | `73a4eb89d7a7f0db3ad9b7ccc1f4381b78ab9b67` | Open/unmerged; description says `Fixed the issue #4`, which does not match automatic closing-reference parsing; production implementation only, no new regression tests |
+| [#5](https://github.com/deepakA18/repopay-demo-http/pull/5) | Me-cha | `7d05bba11b1cd6c39bb46bbd4ade149cb18a9d25` | Open/unmerged; description includes `Fixes #4`; implementation and five added regression tests |
+| [#6](https://github.com/deepakA18/repopay-demo-http/pull/6) | Mecha-Test-Account | `73a4eb89d7a7f0db3ad9b7ccc1f4381b78ab9b67` | Open/unmerged; description says `Fixed the issue #4`, which does not match automatic closing-reference parsing; production implementation only, no new regression tests |
 
 Both heads have completed successful external GitHub Actions `test` Check Runs. An independent isolated Node harness ran the same five acceptance cases against each exact-head serializer: **10/10 passed**. This does not replace missing committed tests in PR #6, Copilot assessment, or payment acceptance.
 
-The initial `/bounty link #6` command was rejected as unavailable: the actual parser expects `/bounty link 6`. A corrected [manual link command](https://github.com/deepakA18/gitpay-demo-http/issues/4#issuecomment-6541872054) was posted. README syntax corrected to match the implementation; no parser or financial behavior changed.
+The initial `/bounty link #6` command was rejected as unavailable: the actual parser expects `/bounty link 6`. A corrected [manual link command](https://github.com/deepakA18/repopay-demo-http/issues/4#issuecomment-6541872054) was posted. README syntax corrected to match the implementation; no parser or financial behavior changed.
 
-Funding remains the blocker: a direct read through the sandbox Orders adapter returned order `8MC07017K60287144` as **PAYER_ACTION_REQUIRED**, amount 100 cents USD, with no captures. GitPay funding attempt 2 remained CREATED and bounty 3 OPEN. The user was asked to continue the existing checkout at `/bounties/3/funding/2`; no replacement order or forced database transition was created. Copilot usage for these PRs at this observation: **0 of 6 approved requests**. Neither PR was merged and no new award/payout was initiated.
+Funding remains the blocker: a direct read through the sandbox Orders adapter returned order `8MC07017K60287144` as **PAYER_ACTION_REQUIRED**, amount 100 cents USD, with no captures. Repopay funding attempt 2 remained CREATED and bounty 3 OPEN. The user was asked to continue the existing checkout at `/bounties/3/funding/2`; no replacement order or forced database transition was created. Copilot usage for these PRs at this observation: **0 of 6 approved requests**. Neither PR was merged and no new award/payout was initiated.
 
 The corrected manual link was processed: submission 2 is PR #5 / Me-cha, submission 3 is PR #6 / Mecha-Test-Account, both OPEN on bounty 3. Thus two distinct contributor links are now persisted concurrently, but the **funded + reviewed** competing-PR acceptance remains pending checkout/capture.
 
@@ -93,8 +93,8 @@ Both pre-funding submissions were retained and automatically reviewed after capt
 
 | Submission / PR | Author | Verification | Published Check Run | Result |
 | --- | --- | --- | --- | --- |
-| 2 / [#5](https://github.com/deepakA18/gitpay-demo-http/pull/5) | Me-cha | 12, DONE | 124505964176, completed/neutral | RESOLVES; coverage 100%, confidence 97%; exact head `7d05bba11b1cd6c39bb46bbd4ade149cb18a9d25` |
-| 3 / [#6](https://github.com/deepakA18/gitpay-demo-http/pull/6) | Mecha-Test-Account | 13, DONE | 124506039840, completed/neutral | PARTIAL; coverage 83%, confidence 98%; exact head `73a4eb89d7a7f0db3ad9b7ccc1f4381b78ab9b67` |
+| 2 / [#5](https://github.com/deepakA18/repopay-demo-http/pull/5) | Me-cha | 12, DONE | 124505964176, completed/neutral | RESOLVES; coverage 100%, confidence 97%; exact head `7d05bba11b1cd6c39bb46bbd4ade149cb18a9d25` |
+| 3 / [#6](https://github.com/deepakA18/repopay-demo-http/pull/6) | Mecha-Test-Account | 13, DONE | 124506039840, completed/neutral | PARTIAL; coverage 83%, confidence 98%; exact head `73a4eb89d7a7f0db3ad9b7ccc1f4381b78ab9b67` |
 
 Both external GitHub Actions checks passed at those exact heads. PR #6's model reasoning correctly retained the missing committed regression-test requirement despite its production implementation passing the independent harness. Advisory neutral Check Run conclusions are not payment approvals.
 
@@ -104,7 +104,7 @@ This completes the narrow live case: two distinct eligible contributors linked a
 
 ### Same-revision recovery — failure step verified (October 31)
 
-The user disconnected the repository sponsor through GitPay and requested one authenticated retry for submission 2 / PR #5. The saved sponsor is revoked locally. Verification 14, attempt 2, finished ERROR / VERIFIER_UNAVAILABLE at unchanged head `7d05bba11b1cd6c39bb46bbd4ade149cb18a9d25`. GitHub Check Run 124506973532 is completed/neutral and explicitly reports no model verdict; external CI remains pass. Original successful verification 12 remains preserved. The sponsor check fails before the model call; no SDK usage was recorded for attempt 2, so the walkthrough still has 2 of 6 approved model requests consumed.
+The user disconnected the repository sponsor through Repopay and requested one authenticated retry for submission 2 / PR #5. The saved sponsor is revoked locally. Verification 14, attempt 2, finished ERROR / VERIFIER_UNAVAILABLE at unchanged head `7d05bba11b1cd6c39bb46bbd4ade149cb18a9d25`. GitHub Check Run 124506973532 is completed/neutral and explicitly reports no model verdict; external CI remains pass. Original successful verification 12 remains preserved. The sponsor check fails before the model call; no SDK usage was recorded for attempt 2, so the walkthrough still has 2 of 6 approved model requests consumed.
 
 GitHub confirms PR #5 remains open/unmerged at that head. Bounty 3 remains FUNDED, zero awards, no queued/running jobs. Reconnection and a single authenticated retry on the same revision are next; successful recovery is **not yet evidenced**. The next attempt is the third allowed attempt on this revision; do not click retry repeatedly or alter/reset attempt history.
 

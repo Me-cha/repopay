@@ -2,7 +2,7 @@
 
 Result: **FAIL, 24/27 expected verdicts**. The user approved up to 27 requests through deepakA18's saved repository-owner sponsor. All 27 completed through the application adapter; the allowance is exhausted. No GitHub posts, merges, awards or payments were created by this evaluator. [Validated observations](05-auto-v4-20261031.json) preserve every result, reasoning, split, policy reason and SDK usage metric.
 
-Prompt: `gitpay-verifier-v4`. SDK: `1.0.28`. Auto selected `gpt-6-luna` for every request. Recorded premium-request cost totals 27 units; these are SDK billing telemetry, not dollars or a spending guarantee.
+Prompt: `repopay-verifier-v4`. SDK: `1.0.28`. Auto selected `gpt-6-luna` for every request. Recorded premium-request cost totals 27 units; these are SDK billing telemetry, not dollars or a spending guarantee.
 
 | Case | Expected matches | Result |
 | --- | --- | --- |

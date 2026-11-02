@@ -1,6 +1,6 @@
-# GitPay server
+# Repopay server
 
-`@gitpay/server` provides the Phase 0 foundation, Phase 1 draft workflow, Phase 2 authenticated cancellation, Phase 3 sandbox funding, Phase 4 encrypted contributor connections and the local Phase 5 submission/verifier pipeline. [Setup](../../docs/setup.md) covers installation, local Postgres, configuration and provider probes. Phase 4/5 evidence distinguishes automated local checks from missing browser/provider acceptance.
+`@repopay/server` provides the Phase 0 foundation, Phase 1 draft workflow, Phase 2 authenticated cancellation, Phase 3 sandbox funding, Phase 4 encrypted contributor connections and the local Phase 5 submission/verifier pipeline. [Setup](../../docs/setup.md) covers installation, local Postgres, configuration and provider probes. Phase 4/5 evidence distinguishes automated local checks from missing browser/provider acceptance.
 
 - `src/env.ts` validates explicit configuration; `src/log.ts` redacts secrets.
 - `src/main.ts` owns startup/shutdown; `src/http/routes.ts` exposes `GET /healthz` and signed raw-body `POST /webhooks/github`.
