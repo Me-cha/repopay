@@ -1,5 +1,15 @@
 # Phase 11 — hosted validation in progress
 
+## November 2 funding-hold regression
+
+User requested an end-to-end test of the newly hosted frontend. Homepage/JS/CSS returned HTTP 200, `/healthz` reported ready, `/login` supplied the hosted callback, `/api/bounties/2` rejected signed-out access with 401, and protected page routes redirected signed-out callers to `/`. Browser automation timed out, so authenticated UI behavior was not independently verified.
+
+The [latest issue #11 bot projection](https://github.com/deepakA18/gitpay-demo-http/issues/11#issuecomment-6577403331) shows FUNDED with a funding hold; the user supplied the authenticated attention reason: `Provider amount, receiver or reference mismatch; investigate before continuing`. PR #12 remains open/unmerged at head `c934a41163d57eeeb714593b99d983218fff9725`, base `eda6f57b158571f25fe3ca6edea944614400ef22`.
+
+Published source at `6bea51e1dbd1cec083a5919b3600986fcf9f80f6` changed the funding validator and order creator from `gitpay:` to `repopay:`. A regression test against that source reproduced rejection of a valid, already-bound legacy order (29 capture tests passed, the legacy case failed). A local patch allows the legacy attempt reference only when its saved order ID matches, without changing amount/merchant/terms/capture checks or automatically releasing holds. The actual hosted PayPal comparison and any scoped recovery remain pending. No new checkout, capture, payout, merge, model request or deployment was performed for this investigation.
+
+Final focused verification: 44 capture/checkout/provider-adapter tests passed with mocked PayPal and isolated local PostgreSQL schemas; typecheck, build, changed-file lint and `git diff --check` passed. Four web tests passed separately. The full server run had 396 passing and five failing tests: four authentication/redirect expectations also fail on unchanged `6bea51e`; the restore-tool failure passed when rerun with the existing local Docker project name (`COMPOSE_PROJECT_NAME=gitpay`). Whole-repository lint fails on the release's existing `capture_localhost.mjs` typed-lint configuration. These are recorded separately rather than claiming a fully green release. No dependency or migration changes are needed for this patch.
+
 The user manually deployed the web service and selected Free Postgres (1 GB). On October 31, 2026 at 20:07 IST, public GET https://repopay.onrender.com/healthz returned HTTP 200 with {"status":"ready","version":"0.0.0"}; the homepage also rendered Repopay and its sign-in link. Runtime health verifies database reachability and exact migration compatibility. Release commit, database identity, recovery hold, worker operation and provider configuration have not been independently verified. This is partial hosted evidence, not full acceptance.
 
 - [ ] Approve the concrete Render resource/cost configuration and region; record actual service/database identifiers and release commit.

@@ -26,6 +26,16 @@ When a provider ID is unknown after the retry window, stop POST retries and inve
 
 ## Recovery and reconciliation (Phase 10)
 
+### Existing PayPal orders after the Repopay rebrand
+
+PayPal purchase-unit references are financial bindings, not display text. Orders created before the rebrand used `gitpay:<funding-attempt-id>`; the rebranded release creates `repopay:<funding-attempt-id>`. Funding reconciliation accepts the legacy reference only when the returned order ID exactly matches the attempt's already-saved order ID. Terms hash, merchant, amount, USD currency, capture count, final-capture flag and saved capture identity must still match. No provider order, frozen terms or idempotency key is rewritten.
+
+The November 2 hosted bounty-2 hold reports `Provider amount, receiver or reference mismatch; investigate before continuing`. The pre-fix rebranded validator rejects legacy references; this reproduces locally. The actual hosted order/capture must still be checked before declaring that its only mismatch was the prefix. Deploying compatibility code does **not** clear an existing hold.
+
+For a held order, an operator must read the saved funding attempt and the original sandbox order/capture using the same merchant credentials. Compare the exact order ID, attempt reference, custom terms hash, merchant, gross amount/currency and the single final capture ID/status with the immutable saved records. Require provider-confirmed completed funds, no refund/reversal or other unresolved discrepancy, and preservation of existing awards before preparing a narrowly scoped, audited recovery. Keep secrets, raw provider responses and personal details out of logs. Do not simply set `funding_hold=false`, start another checkout, or change the saved reference/terms to make validation pass. An order without a saved provider ID remains an operator recovery case; the compatibility exception cannot bind an arbitrary legacy response to it.
+
+Existing holds remain sticky pending that reviewed recovery; no automatic hold-release behavior was added.
+
 Keep `RECONCILIATION_DISCOVERY_ENABLED=false` until the deferred live discovery/review session is authorized. Existing capture, claim, payout and refund polling remains active. Discovery scans all bounty lifecycles using migration 0016 checkpoints; interrupted scheduling cannot advance without durable work. Rate and page bounds are documented in [ADR 0012](decisions/0012-recovery-checkpoints.md). A capped/failed inventory means **unknown**, never no claim.
 
 Read diagnostic IDs and classes without payloads or destinations:

@@ -38,7 +38,10 @@ export function createFunding(db:Database,env:FundingEnv,provider:Orders,clock:C
   });
  }
  function validate(a:FundingIntent,o:OrderSnapshot) {
-  if((a.orderId&&o.id!==a.orderId)||o.reference!==`repopay:${a.id}`||o.customId!==a.termsHash||o.merchantId!==a.terms.merchantId||o.amountCents!==a.amountCents||o.currency!=='USD')throw new Error('Order binding mismatch');
+  // Display-name changes cannot rewrite references on previously saved orders.
+  // Legacy references are allowed only for an exact, already-bound order ID.
+  const referenceMatches=o.reference===`repopay:${a.id}`||(a.orderId===o.id&&o.reference===`gitpay:${a.id}`);
+  if((a.orderId&&o.id!==a.orderId)||!referenceMatches||o.customId!==a.termsHash||o.merchantId!==a.terms.merchantId||o.amountCents!==a.amountCents||o.currency!=='USD')throw new Error('Order binding mismatch');
   if(o.captures.length>1||o.captures.some(c=>c.amountCents!==a.amountCents||c.currency!=='USD'||!c.finalCapture||(a.captureId&&a.captureId!==c.id)))throw new Error('Capture binding mismatch');
  }
  async function observe(a:FundingIntent,o:OrderSnapshot) {

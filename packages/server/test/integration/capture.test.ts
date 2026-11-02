@@ -6,6 +6,49 @@ import { required } from '../helpers/auth.js';
 import { bounties,fundingAttempts } from '../../src/db/schema.js';
 import { cancelDraft } from '../../src/actions/cancel.js';
 import { captureFixture as fixture } from '../helpers/funding.js';
+it.each(['gitpay','repopay'])('reconciles an existing %s order without changing payment identity',async prefix=>{
+ const f=await fixture();try{
+  // Simulate a saved order made before or after the display-name rebrand.
+  await f.database.orm.update(fundingAttempts).set({orderId:f.order.id}).where(eq(fundingAttempts.id,f.attempt.id));
+  f.order.reference=`${prefix}:${f.attempt.id}`;f.order.status='COMPLETED';
+  f.order.captures=[{id:'CAPTURE123',status:'COMPLETED',amountCents:5000,currency:'USD',finalCapture:true}];
+  await f.service.reconcile(f.attempt.id);await f.service.reconcile(f.attempt.id);
+  const b=await f.getBounty(),a=await f.get();
+  expect(b.status).toBe('FUNDED');expect(b.fundingHold).toBe(false);
+  expect(b.captureId).toBe('CAPTURE123');expect(b.fundedTerms).toEqual(f.terms);
+  expect(a.orderId).toBe(f.order.id);expect(a.orderRequestKey).toBe(f.attempt.orderRequestKey);expect(a.captureRequestKey).toBe(f.attempt.captureRequestKey);
+  expect(f.api.createOrder).not.toHaveBeenCalled();expect(f.api.captureOrder).not.toHaveBeenCalled();
+ }finally{await f.close();}
+});
+it.each(['gitpay:other','repopay:other','unknown:1'])('rejects a foreign reference %s on a saved order',async reference=>{
+ const f=await fixture();try{
+  await f.database.orm.update(fundingAttempts).set({orderId:f.order.id}).where(eq(fundingAttempts.id,f.attempt.id));
+  f.order.reference=reference;await f.service.reconcile(f.attempt.id);
+  expect((await f.getBounty()).fundingHold).toBe(true);expect(f.api.captureOrder).not.toHaveBeenCalled();
+ }finally{await f.close();}
+});
+it('does not clear an existing funding hold merely because a legacy order now validates',async()=>{
+ const f=await fixture();try{
+  await f.database.orm.update(fundingAttempts).set({orderId:f.order.id,captureId:'CAPTURE123',status:'HOLD'}).where(eq(fundingAttempts.id,f.attempt.id));
+  await f.database.orm.update(bounties).set({status:'FUNDED',captureId:'CAPTURE123',fundedAt:new Date(),fundingHold:true,needsAttention:true,attentionReason:'Provider amount, receiver or reference mismatch; investigate before continuing'}).where(eq(bounties.id,f.bounty.id));
+  f.order.reference=`gitpay:${f.attempt.id}`;f.order.status='COMPLETED';f.order.captures=[{id:'CAPTURE123',status:'COMPLETED',amountCents:5000,currency:'USD',finalCapture:true}];
+  await f.service.reconcile(f.attempt.id);
+  expect((await f.getBounty()).fundingHold).toBe(true);expect((await f.get()).status).toBe('HOLD');
+  expect(f.api.createOrder).not.toHaveBeenCalled();expect(f.api.captureOrder).not.toHaveBeenCalled();
+ }finally{await f.close();}
+});
+it.each(['unbound','order','terms','merchant','amount','currency','capture'])('legacy reference compatibility retains the %s guard',async mismatch=>{
+ const f=await fixture();try{
+  if(mismatch!=='unbound')await f.database.orm.update(fundingAttempts).set({orderId:mismatch==='order'?'OTHERORDER':f.order.id,...(mismatch==='capture'?{captureId:'OTHERCAPTURE'}:{})}).where(eq(fundingAttempts.id,f.attempt.id));
+  f.order.reference=`gitpay:${f.attempt.id}`;f.order.status='COMPLETED';f.order.captures=[{id:'CAPTURE123',status:'COMPLETED',amountCents:5000,currency:'USD',finalCapture:true}];
+  if(mismatch==='terms')f.order.customId='other-terms';
+  if(mismatch==='merchant')f.order.merchantId='OTHER';
+  if(mismatch==='amount')f.order.amountCents=1;
+  if(mismatch==='currency')f.order.currency='EUR';
+  await f.service.reconcile(f.attempt.id);
+  expect((await f.getBounty()).fundingHold).toBe(true);expect((await f.getBounty()).status).not.toBe('FUNDED');expect(f.api.captureOrder).not.toHaveBeenCalled();
+ }finally{await f.close();}
+});
 it('polling captures without a browser return or webhook; concurrent reconciliation captures once',async()=>{
  const f=await fixture();try{
   await f.service.reconcile(f.attempt.id);f.order.status='APPROVED';
