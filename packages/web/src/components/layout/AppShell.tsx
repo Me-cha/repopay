@@ -1,3 +1,4 @@
+import { DashboardTour } from '../onboarding/DashboardTour.js';
 import { useState, type ReactNode } from 'react';
 import { useAuth } from '../../context/AuthContext.js';
 import { useWorkspaceData } from '../../context/WorkspaceDataContext.js';
@@ -61,6 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <BountyDetailModal />
+      <DashboardTour closeNavigation={() => { setMobileOpen(false); }} />
     </div>
   );
 }

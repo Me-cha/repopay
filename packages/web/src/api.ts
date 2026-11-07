@@ -33,6 +33,8 @@ async function postForm<T extends z.ZodType>(path:string,params:Record<string,st
  return schema.parse(await response.json());
 }
 export const api={
+ dashboardTour:()=>get('/api/onboarding/dashboard',z.object({seen:z.boolean(),csrf:z.string()})),
+ claimDashboardTour:(csrf:string)=>postForm('/api/onboarding/dashboard',{csrf},z.object({show:z.boolean()})),
  me:(signal?:AbortSignal)=>get('/api/me',meSchema,signal),
  bounties:(cursor='0',signal?:AbortSignal)=>get('/api/bounties?cursor='+encodeURIComponent(cursor),bountyPageSchema,signal),
  payouts:(cursor='0',signal?:AbortSignal)=>get('/api/payouts?cursor='+encodeURIComponent(cursor),payoutPageSchema,signal),

@@ -7,3 +7,5 @@ Run `pnpm build` at the repository root, start the server, and sign in on its or
 `pnpm --filter @repopay/web test` runs DOM tests. Root `pnpm test:e2e` runs Chromium journeys with isolated test data; see [setup](../../docs/setup.md). No Enterprise module/license, payment address, mutation API or browser financial decision is used. Server-rendered action links preserve their existing authorization and confirmations.
 
 [Phase 9 evidence](../../docs/evidence/09-summary.md) · [scope and update contract](../../docs/decisions/0011-scoped-dashboard.md)
+
+First-visit tour: `components/onboarding/` defines the six controlled React Joyride 3.2.0 steps and an accessible tooltip that enables navigation only after positioning completes; `hooks/useDashboardTour.ts` obtains the account-level presentation claim. AppShell mounts it after workspace data loads. Skip/Close/Done/reload never reset eligibility. Missing persistence or targets suppresses the tour without blocking the dashboard. `test/onboarding.spec.ts` covers actual browser navigation, dismissal, mobile and another session.

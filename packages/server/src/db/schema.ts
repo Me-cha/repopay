@@ -145,3 +145,8 @@ export const reconciliationCheckpoints=pgTable('reconciliation_checkpoints',{
  nextRunAt:timestamp('next_run_at',{withTimezone:true}).notNull().defaultNow(),
  updatedAt:timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
 });
+
+// Independent UI preference, retained across logout and payout-profile changes.
+export const userOnboarding = pgTable('user_onboarding', {
+ ghId: text('gh_id').primaryKey(), dashboardTourSeenAt: timestamp('dashboard_tour_seen_at', {withTimezone:true}).notNull().defaultNow(),
+});
