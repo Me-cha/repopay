@@ -106,7 +106,7 @@ export function PayoutsPage() {
   return (
     <div className="c2-page">
       {/* Compact Header */}
-      <header className="c2-page-head">
+      <header className="c2-page-head" data-tour={isSettingsTab ? 'payout-settings' : 'payouts'}>
         <div>
           {isSettingsTab ? (
             <>

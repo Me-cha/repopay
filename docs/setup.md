@@ -282,3 +282,7 @@ Apply migration 0018 with `pnpm db:migrate`. Before merging a multi-author PR, e
 ### GitHub-native work actions (ADR 0019)
 
 After deploying this release, contributor declarations/maintainer confirmations, fresh review requests, status and rejection run through new PR comments. `/bounty cancel` cancels an unfunded draft on its issue directly; it cannot refund funded work. Funding, payouts and account/sponsor consent retain authenticated pages. No environment variable or migration is added. Prompt v4 retains contribution evidence; keep new settlement disabled until separately evaluated and accepted. Existing v3 evaluation results are not v4 acceptance.
+
+### First-visit dashboard tour
+
+Install the locked dependencies and run the existing `pnpm db:migrate` before starting this release (migration 0020). No new environment variables are required. The tour is shown at most once per GitHub account across browsers. Existing accounts are eligible on their first dashboard visit after this release. Presentation is recorded before display, so a lost response or mid-tour refresh can suppress the tour permanently. There is no replay/reset control.

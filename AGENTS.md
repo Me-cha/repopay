@@ -33,8 +33,8 @@ repopay/
 │   ├── src/db/{client.ts,transaction.ts,schema.ts,migrate.ts,compatibility.ts,migrations/}
 │   ├── src/github/{app.ts,handlers.ts,commands.ts,permissions.ts,comments.ts,oauth.ts,linking.ts,ci.ts,reconciliation.ts}
 │   ├── src/jobs/{queue.ts,runner.ts,kinds.ts,scheduler.ts}
-│   ├── src/actions/{create.ts,status.ts,cancel.ts,guards.ts,tokens.ts,fund.ts,connect.ts,link.ts,approve.ts,reject.ts,attribution.ts,retry.ts}
-│   ├── src/http/{routes.ts,auth.ts,session.ts,confirm.ts,api.ts,fund.ts,sponsor.ts,connect.ts,retry.ts,review.ts,cancellation.ts,dashboard.ts,sse.ts,attribution.ts}
+│   ├── src/actions/{create.ts,status.ts,cancel.ts,guards.ts,tokens.ts,fund.ts,connect.ts,link.ts,approve.ts,reject.ts,attribution.ts,retry.ts,onboarding.ts}
+│   ├── src/http/{routes.ts,auth.ts,session.ts,confirm.ts,api.ts,fund.ts,sponsor.ts,connect.ts,retry.ts,review.ts,cancellation.ts,dashboard.ts,sse.ts,attribution.ts,onboarding.ts}
 │   ├── src/operations/attention.ts # Safe retry classification and preserved failed-job identity
 │   ├── src/read-models/{contracts.ts,bounties.ts,payouts.ts}
 │   ├── src/util/crypto.ts
@@ -48,7 +48,7 @@ repopay/
 │   ├── scripts/{migrate.ts,preflight.ts,eval-verifier.ts,retry-job.ts,check-migrations.ts,demo-seed.ts}
 │   └── test/{fixtures/verifier/,helpers/,unit/,integration/,e2e/}
 ├── packages/web/{README.md,package.json,index.html,tsconfig.json,vite.config.ts,vitest.config.ts}
-│   ├── src/{main.tsx,App.tsx,Detail.tsx,api.ts,styles.css,grid/Bounties.tsx,router/,context/,components/,pages/}
+│   ├── src/{main.tsx,App.tsx,Detail.tsx,api.ts,styles.css,grid/Bounties.tsx,router/,context/,hooks/useDashboardTour.ts,components/{onboarding/,layout/,common/,pr/,charts/},pages/}
 │   └── test/                       # DOM and browser journeys
 ├── playwright.config.ts
 └── postman/{README.md,repopay.postman_collection.json} # Read-only inspection / guarded local ping
@@ -112,3 +112,5 @@ October 31 latest: the corrected complete-context Auto v3 evaluation passed 18/1
 PR contribution commands and actionable GitHub projections follow ADR 0018. `actions/attribution.ts` shares browser-session and signed-comment authorization with revision/award fences; `github/commands.ts`, `handlers.ts` and `jobs/runner.ts` route declarations/confirmations. `github/comments.ts` owns issue, submission and winning-PR projections; `sync_submission` is durable projection-only work, independently retryable without model calls. Do not reintroduce browser-only contributor confirmation or merge-first rejection.
 
 ADR 0019: `actions/retry.ts` owns signed PR-comment review requests and durable coalescing; `actions/cancel.ts` also owns signed issue-command unfunded cancellation. `verifier/collect.ts` retains bounded commit/attestation evidence in the immutable diff/context snapshot. Current prompt is v5 under ADR 0020. ADR 0021 supersedes full evaluation as a foundation sandbox blocker: user retained automatic qualifying-merge payouts with default-off exact bounty scope and all existing payment guards. V4 failed 24/27; v5 is locally tested but not live-evaluated. Do not claim evaluation/production acceptance. The 30-request suite is deferred; no further model allowance is implied. Bot work actions are GitHub-native, with authenticated legacy pages kept only as compatible fallbacks. See `docs/decisions/0019-review-evidence-and-pr-retry.md`.
+
+Dashboard onboarding: `actions/onboarding.ts` owns the atomic account-level presentation claim; `http/onboarding.ts` exposes authenticated GET/CSRF-protected POST, with migration 0020. `components/onboarding/` and `hooks/useDashboardTour.ts` own the controlled tour; AppShell mounts it once. Tutorial state is independent of financial state and sessions. See [tour evidence](docs/evidence/dashboard-onboarding.md).

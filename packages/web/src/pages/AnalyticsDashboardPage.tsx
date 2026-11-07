@@ -303,7 +303,7 @@ export function AnalyticsDashboardPage() {
   return (
     <div className="c2-page">
       {/* Compact Shadcn-style Page Header */}
-      <header className="c2-page-head">
+      <header className="c2-page-head" data-tour="overview">
         <div>
           <h1 className="c2-page-title">
             Escrow <span className="c2-title-muted">overview</span>

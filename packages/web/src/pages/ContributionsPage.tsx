@@ -132,7 +132,7 @@ export function ContributionsPage() {
   return (
     <div className="c2-page">
       {/* Compact Header */}
-      <header className="c2-page-head">
+      <header className="c2-page-head" data-tour={activeFilter === 'NEEDS_REVIEW' ? 'needs-review' : 'contributions'}>
         <div>
           <h1 className="c2-page-title">
             Contribution <span className="c2-title-muted">management</span>
@@ -306,6 +306,7 @@ export function ContributionsPage() {
           <section
             className="c2-card c2-card-divided"
             aria-label="Bounty and contribution records"
+            data-tour="bounty-records"
           >
             <div className="c2-card-bar is-wrap">
               <div

@@ -233,3 +233,5 @@ October 31 evaluation-fixture correction: complete synthetic source/test context
 October 31 latest: the corrected complete-context Auto v3 evaluation passed 18/18; the user explicitly accepted v3 / SDK 1.0.28 for default-off, exact-bounty sandbox demos (ADR 0008). The prior 17/18 failure remains historical evidence. Hosted two-author workflow acceptance and other unchecked cases remain pending; no settlement environment scope was enabled. See [evaluation evidence](../evidence/05-auto-v3-result.md).
 
 October 31 GitHub-first interaction update: ADR 0018 PR contribution commands and actionable issue/PR projections pass 375 server + 4 web tests, typecheck, lint and build. Hosted acceptance remains pending; no additional model or financial operation was run.
+
+November 7 dashboard addition: account-once onboarding follows existing UI/authentication boundaries; see [implementation and test evidence](../evidence/dashboard-onboarding.md). This does not reopen or change previously accepted phase scope.

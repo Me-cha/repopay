@@ -2968,3 +2968,15 @@ pre {
     align-items: flex-start;
   }
 }
+
+/* First-visit tour: isolated from dashboard cards and financial controls. */
+.c2-tour { text-align: left; }
+.c2-tour h2 { margin: 8px 32px 12px 0; font-size: 18px; line-height: 1.35; }
+.c2-tour p { line-height: 1.55; }
+.c2-tour-progress { margin: 0 32px 0 0; color: var(--c2-ink-secondary); font-size: 12px; }
+.c2-tour-close { position: absolute; top: 0; right: 0; width: 44px; height: 44px; background: transparent; border: 0; border-radius: var(--c2-radius-sm); color: var(--c2-ink); font-size: 28px; cursor: pointer; }
+.c2-tour-footer { display: flex; align-items: center; gap: 8px; margin-top: 20px; }
+.c2-tour-footer button { min-height: 44px; }
+.c2-tour-skip { margin-right: auto; padding: 8px; background: transparent; color: var(--c2-ink-secondary); border: 0; border-radius: var(--c2-radius-sm); cursor: pointer; }
+.c2-tour button:focus-visible { outline: 2px solid var(--c2-ink); outline-offset: 2px; }
+.c2-tour button:disabled { opacity: 0.5; cursor: wait; }
