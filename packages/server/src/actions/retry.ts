@@ -1,6 +1,6 @@
-import { and,eq,inArray,sql } from 'drizzle-orm';
+import { and,eq,inArray,or,sql } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
-import { awards,bountyActivity,jobs,submissions } from '../db/schema.js';
+import { awards,bountyActivity,jobs,submissions,reviewDispatches } from '../db/schema.js';
 import type { GitHub } from '../github/app.js';
 import { AuthError } from '../github/oauth.js';
 import { currentAccess } from '../github/permissions.js';
@@ -32,8 +32,10 @@ export async function retryCommentReview(db:Database,github:GitHub,job:LeasedJob
   const [prior]=await tx.select({id:bountyActivity.id}).from(bountyActivity).where(eq(bountyActivity.action,marker));
   if(prior)return {queued:false,headSha:sub.headSha};
   const [active]=await tx.select({id:jobs.id}).from(jobs).where(and(eq(jobs.kind,'verify_submission'),sql`${jobs.payload}->>'submissionId'=${sub.id}`,inArray(jobs.status,['queued','running']))).limit(1);
-  if(!active)await enqueue(tx,{kind:'verify_submission',payload:{submissionId:sub.id,headSha:sub.headSha,baseSha:sub.baseSha,force:true},dedupeKey:marker,maxAttempts:1});
-  await tx.insert(bountyActivity).values({bountyId:bounty.id,actorGhId:work.actorId,source:'github_comment',action:marker,metadata:{submissionId:sub.id,headSha:sub.headSha,baseSha:sub.baseSha,coalesced:!!active}});
-  return {queued:!active,headSha:sub.headSha};
+  const [dispatch]=await tx.select({id:reviewDispatches.id}).from(reviewDispatches).where(and(eq(reviewDispatches.submissionId,sub.id),or(eq(reviewDispatches.status,'READY'),eq(reviewDispatches.capacityHeld,true)))).limit(1);
+  const busy=!!active||!!dispatch;
+  if(!busy)await enqueue(tx,{kind:'verify_submission',payload:{submissionId:sub.id,headSha:sub.headSha,baseSha:sub.baseSha,force:true},dedupeKey:marker,maxAttempts:1});
+  await tx.insert(bountyActivity).values({bountyId:bounty.id,actorGhId:work.actorId,source:'github_comment',action:marker,metadata:{submissionId:sub.id,headSha:sub.headSha,baseSha:sub.baseSha,coalesced:busy}});
+  return {queued:!busy,headSha:sub.headSha};
  });
 }

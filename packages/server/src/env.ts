@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseReviewSettings,reviewSettings } from './reviews/config.js';
 const text = z.string().trim().min(1);
 const integer = (min: number, max: number) => z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().min(min).max(max));
 const fraction = z.string().regex(/^(0(\.\d+)?|1(\.0+)?)$/).transform(Number);
@@ -38,6 +39,7 @@ export function parsePreflightEnv(input: Record<string, string | undefined>): Pr
   return result.data;
 }
 const schema = z.object({
+  ...reviewSettings.shape,
   ...preflightSchema.shape,
   NODE_ENV: z.enum(['development', 'test', 'production']), PORT: integer(1, 65535),
   PUBLIC_URL: z.url().refine(value => ['http:', 'https:'].includes(new URL(value).protocol)),
@@ -71,6 +73,7 @@ export function parseEnv(input: Record<string, string | undefined>): Env {
 // Phase 01 consumes GitHub and database settings only. Full payment/application
 // validation above remains mandatory when those capabilities are introduced.
 const githubRuntimeSchema = z.object({
+ REVIEW_BACKEND:reviewSettings.shape.REVIEW_BACKEND,
  NODE_ENV: schema.shape.NODE_ENV, PORT: schema.shape.PORT, PUBLIC_URL: schema.shape.PUBLIC_URL,
  DATABASE_URL: schema.shape.DATABASE_URL, WORKER_MODE: schema.shape.WORKER_MODE,
  RECOVERY_MODE:z.enum(['normal','hold']).default('normal'),
@@ -111,6 +114,7 @@ export function parseAuthEnv(input:Record<string,string|undefined>):AuthEnv {
 
 const settlementScope=z.object({bountyId:z.string().regex(/^[1-9]\d*$/),repoId:z.string().regex(/^[1-9]\d*$/),amountCents:z.number().int().positive().max(2147483647),termsHash:z.string().regex(/^[a-f0-9]{64}$/)}).strict();
 const fundingSettings = z.object({
+ ...reviewSettings.shape,
  FUNDED_CANCELLATION_ENABLED:flag.default(false),
  CANCELLATION_OPERATOR_GH_IDS:schema.shape.CANCELLATION_OPERATOR_GH_IDS.default([]),
  CANCELLATION_SANDBOX_REPO_ID:z.string().regex(/^[1-9]\d*$|^$/).default(''),
@@ -131,6 +135,7 @@ const fundingSettings = z.object({
 });
 export type FundingEnv=AuthEnv & z.infer<typeof fundingSettings>;
 export function parseFundingEnv(input:Record<string,string|undefined>):FundingEnv {
+ parseReviewSettings(input);
  const auth=parseAuthEnv(input),result=fundingSettings.safeParse(input);
  if(!result.success)throw new Error('Invalid configuration: '+[...new Set(result.error.issues.map(issue=>issue.path.join('.')))].join(', '));
  if(result.data.FUNDED_CANCELLATION_ENABLED&&(!result.data.CANCELLATION_OPERATOR_GH_IDS.length||!result.data.CANCELLATION_SANDBOX_REPO_ID))throw new Error('Cancellation requires operators and an isolated sandbox repository');

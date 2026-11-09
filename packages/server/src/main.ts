@@ -17,6 +17,9 @@ import { startWorker } from './jobs/runner.js';
 import { buildApp } from './http/routes.js';
 import { createAuth,type OAuthProvider } from './github/oauth.js';
 import { createPhase5 } from './verifier/service.js';
+import { configureReviews,pauseReviews } from './reviews/store.js';
+import { createReviewService } from './reviews/service.js';
+import { startReviewDispatcher } from './reviews/dispatcher.js';
 const { version } = z.object({ version: z.string() }).parse(JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')));
 export async function startServer(env: AuthEnv|FundingEnv, database: Database, port = env.PORT, options: {runWorker?:boolean;github?:GitHub;oauth?:OAuthProvider;orders?:Orders} = {}) {
   try{await database.health();await checkMigrations(database);}catch(error){await database.close();throw error;}
@@ -25,7 +28,9 @@ export async function startServer(env: AuthEnv|FundingEnv, database: Database, p
   const funding=fundingEnv?createFunding(database,fundingEnv,options.orders??createOrders(fundingEnv)):undefined;
   const auth=createAuth(database,env,options.oauth);
   const phase5=fundingEnv?createPhase5(database,github,fundingEnv,auth):undefined;
-  const app = buildApp({ database:{health:async()=>{await database.health();await checkMigrations(database);}}, version,recoveryMode:env.RECOVERY_MODE,...(fundingEnv?{funding:{env:fundingEnv,ingest:createPayPalIntake(database,fundingEnv)}}:{}), authentication:{database,env,auth,github}, webhook: {maxBytes:env.WEBHOOK_BODY_MAX_BYTES,ingest:(body,headers)=>ingestGitHub(database,env.GH_WEBHOOK_SECRET,env.RECONCILIATION_MAX_ATTEMPTS,body,headers,env.GH_APP_ID)} });
+  try{if(fundingEnv){await configureReviews(database,fundingEnv.REVIEW_BACKEND,fundingEnv.REVIEW_GENERATION);if(env.RECOVERY_MODE==='hold')await pauseReviews(database);}}catch(error){await database.close();throw error;}
+  const reviewExecutor=fundingEnv?.REVIEW_EXECUTOR_KEY?{database,key:fundingEnv.REVIEW_EXECUTOR_KEY,service:createReviewService(database,github,fundingEnv,auth)}:undefined;
+  const app = buildApp({ ...(reviewExecutor?{reviewExecutor}:{}),database:{health:async()=>{await database.health();await checkMigrations(database);}}, version,recoveryMode:env.RECOVERY_MODE,...(fundingEnv?{funding:{env:fundingEnv,ingest:createPayPalIntake(database,fundingEnv)}}:{}), authentication:{database,env,auth,github}, webhook: {maxBytes:env.WEBHOOK_BODY_MAX_BYTES,ingest:(body,headers)=>ingestGitHub(database,env.GH_WEBHOOK_SECRET,env.RECONCILIATION_MAX_ATTEMPTS,body,headers,env.GH_APP_ID)} });
   const server = app.listen(port);
   try {
     await new Promise<void>((resolve, reject) => { server.once('listening', resolve); server.once('error', reject); });
@@ -33,10 +38,11 @@ export async function startServer(env: AuthEnv|FundingEnv, database: Database, p
   const address = server.address();
   if (!address || typeof address === 'string') throw new Error('No listening address');
   const worker=env.RECOVERY_MODE!=='hold' && options.runWorker!==false && env.WORKER_MODE==='inline'?startWorker(database,github,env,()=> { createLogger(env).error({event:'worker_poll_failed'}); },funding,phase5,fundingEnv?createPhase6(database,github,fundingEnv,undefined,auth):undefined,fundingEnv?createPhase8(database,github,fundingEnv).refunds:undefined,fundingEnv?.RECONCILIATION_DISCOVERY_ENABLED?createScheduler(database,fundingEnv):undefined):undefined;
+  const dispatcher=worker&&fundingEnv&&fundingEnv.REVIEW_BACKEND!=='shared'?startReviewDispatcher(database,fundingEnv,()=> { createLogger(env).error({event:'review_dispatch_failed'}); }):undefined;
   let closing: Promise<void> | undefined;
   return { url: `http://127.0.0.1:${String(address.port)}`, close(): Promise<void> {
     closing ??= (async () => {
-      await worker?.close();
+      await dispatcher?.close();await worker?.close();
       server.closeAllConnections();
       try { await new Promise<void>((resolve, reject) => { server.close(error => { if (error) reject(error); else resolve(); }); }); }
       finally { await database.close(); }

@@ -28,7 +28,11 @@
     "start:hosted": "node packages/server/dist/main.js",
     "start:worker:hosted": "node packages/server/dist/worker.js",
     "db:migrate:hosted": "tsx packages/server/scripts/migrate.ts",
-    "demo:seed": "tsx packages/server/scripts/demo-seed.ts"
+    "demo:seed": "tsx packages/server/scripts/demo-seed.ts",
+    "start:reviews:render": "node packages/server/dist/review-workflow.js",
+    "start:reviews:dedicated": "node packages/server/dist/review-worker.js",
+    "ops:reviews": "tsx --env-file-if-exists=.env packages/server/scripts/reviews.ts",
+    "smoke:reviews": "tsx packages/server/scripts/smoke-review-runtime.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

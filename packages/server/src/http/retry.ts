@@ -1,8 +1,8 @@
-import { and,desc,eq,max,sql } from 'drizzle-orm';
+import { and,desc,eq,max,or,sql } from 'drizzle-orm';
 import { z } from 'zod';
 import type { Express } from 'express';
 import { AuthError } from '../github/oauth.js';
-import { submissions,bounties,verifications,jobs } from '../db/schema.js';
+import { submissions,bounties,verifications,jobs,reviewDispatches } from '../db/schema.js';
 import { authorizeAction,assertSession,lockBounty } from '../actions/guards.js';
 import { enqueue } from '../jobs/queue.js';
 import { checkCsrf,csrfFor,requireSession } from './session.js';
@@ -37,6 +37,8 @@ export function mountVerificationRetry(app:Express,deps:AuthenticationDependenci
     const [sub]=await tx.select().from(submissions).where(eq(submissions.id,submission.id)).for('update');
     if(stored.expiresAt<=deps.auth.clock.now()||!current||current.status!=='FUNDED'||current.fundingHold||sub?.headSha!==body.data.headSha)throw new AuthError(409,'Review state changed. Reload the page.');
     const key=`retry:${submission.id}:${submission.headSha}:job:${body.data.retryVersion}`;
+    const [dispatch]=await tx.select({id:reviewDispatches.id}).from(reviewDispatches).where(and(eq(reviewDispatches.submissionId,submission.id),or(eq(reviewDispatches.status,'READY'),eq(reviewDispatches.capacityHeld,true)))).limit(1);
+    if(dispatch)throw new AuthError(409,'A review is already queued, running or awaiting reconciliation.');
     const [duplicate]=await tx.select({id:jobs.id}).from(jobs).where(eq(jobs.dedupeKey,key));if(duplicate)return;
     const [last]=await tx.select({id:max(jobs.id)}).from(jobs).where(and(eq(jobs.kind,'verify_submission'),sql`${jobs.payload}->>'submissionId'=${submission.id}`));
     if((last?.id??'0')!==body.data.retryVersion)throw new AuthError(409,'Another review was requested. Reload the page.');

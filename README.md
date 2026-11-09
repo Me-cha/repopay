@@ -67,6 +67,8 @@ Maintainer commands require current repository write/maintain/admin permission; 
 
 ## Architecture
 
+The [Render Workflows improvement plan](docs/evidence/render-workflows-plan.md) is under local implementation. Durable dispatch, admission, isolated dedicated/Render executors and independent GitHub publication are implemented locally and default off. Hosted runtime and latency/cost acceptance remain pending. See the [execution runbook](docs/review-execution.md). See [implementation evidence](docs/evidence/render-workflows-implementation.md).
+
 ```mermaid
 flowchart LR
     GH[GitHub issues, PRs and CI] -->|Signed webhooks| API[Express server]

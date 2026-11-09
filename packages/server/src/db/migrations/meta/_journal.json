@@ -148,6 +148,20 @@
       "when": 1794051000000,
       "tag": "0020_dashboard_onboarding",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794220000000,
+      "tag": "0021_verification_publications",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1794221000000,
+      "tag": "0022_review_dispatches",
+      "breakpoints": true
     }
   ]
 }

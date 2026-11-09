@@ -5,5 +5,15 @@ export default tseslint.config(
   js.configs.recommended,
   tseslint.configs.strictTypeChecked,
   { files: ['**/*.ts','**/*.tsx'], languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } } },
-  { files: ['**/*.js'], ...tseslint.configs.disableTypeChecked },
+  {
+    files: ['**/*.{js,mjs,cjs}'],
+    ...tseslint.configs.disableTypeChecked,
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        setTimeout: 'readonly',
+      },
+    },
+  },
 );

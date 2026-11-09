@@ -2,7 +2,7 @@ import { randomUUID,createHash } from 'node:crypto';
 import { and,count,desc,eq,gte,isNull,max,ne,or } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import type { FundingEnv } from '../env.js';
-import { submissions,submissionEvidence,verifications,bounties } from '../db/schema.js';
+import { submissions,submissionEvidence,verifications,verificationPublications,bounties } from '../db/schema.js';
 import type { AuthService } from '../github/oauth.js';
 import type { GitHub } from '../github/app.js';
 import { currentAccess } from '../github/permissions.js';
@@ -14,26 +14,10 @@ import { parseCopilotEnv } from '../env.js';
 import { isSponsoredTerms } from '../domain/funded-terms.js';
 import { REVIEW_UNAVAILABLE_REASON } from '../domain/types.js';
 import { PROMPT_VERSION } from './prompt.js';
-import { contributionCommands } from '../github/comments.js';
+import { checkSummary,insufficientReasons } from './presentation.js';
 import { assertLease,enqueue } from '../jobs/queue.js';
 import type { LeasedJob } from '../jobs/kinds.js';
 
-function md(value:string):string{return value.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('`','\\`').replaceAll('[','\\[').replaceAll(']','\\]');}
-function checkSummary(input:{advisory:string;ci:string;reasoning?:string;unmet?:string[];headSha:string;baseSha:string;issueNumber:number}) {
- return `**${input.advisory}**\n\nCI for this exact revision: **${md(input.ci)}**. This check is advisory; it does not select an award or authorize payment. Contributors should address unmet requirements before merge. Maintainers can comment, request changes or close the PR on GitHub regardless of this assessment.\n\n${input.reasoning?md(input.reasoning):'No verifier verdict is available.'}${input.unmet?.length?`\n\nUnmet requirements:\n${input.unmet.map(value=>`- ${md(value)}`).join('\n')}`:''}\n\nA maintainer can request a fresh review in this PR with \`/bounty retry #${String(input.issueNumber)} ${input.headSha} ${input.baseSha}\`. Use \`/bounty status #${String(input.issueNumber)}\` for progress. Review attempt limits apply.\n\n${contributionCommands(input.issueNumber,input.headSha,input.baseSha)}`;
-}
-// Name why evidence is insufficient instead of a generic "ambiguous" message.
-function insufficientReasons(evidence:VerifyInput,prAuthorGhId:string,creatorGhId:string,ciRequired:boolean):string[] {
- const reasons:string[]=[];
- if(!evidence.eligibleAuthors.length)reasons.push(prAuthorGhId===creatorGhId?'The pull request author created this bounty, and bounty creators cannot earn their own bounty. A submission from another contributor is needed.':'The pull request author is not an eligible GitHub user account.');
- if(prAuthorGhId!==creatorGhId&&evidence.unverifiedAuthors.includes(creatorGhId))reasons.push('The bounty creator also authored commits in this pull request; a maintainer must review authorship.');
- const others=evidence.unverifiedAuthors.filter(id=>id!==creatorGhId).length;
- if(others)reasons.push(`${String(others)} additional commit author${others===1?'':'s'} could not be verified as payees; a maintainer must review authorship.`);
- if(evidence.truncated)reasons.push('Some of the pull request description or diff could not be collected in full.');
- if(!evidence.diff.trim())reasons.push('No reviewable code changes were found.');
- if(ciRequired&&evidence.ci.status!=='pass')reasons.push(`Required CI has not passed for this revision (${evidence.ci.status}).`);
- return reasons.length?reasons:['The collected evidence is incomplete.'];
-}
 const safeErrorCode=(error:unknown)=>error instanceof Error&&/model/i.test(error.message)?'MODEL_UNAVAILABLE':error instanceof StaleEvidenceError?'STALE_EVIDENCE':'VERIFIER_UNAVAILABLE';
 
 export function createPhase5(db:Database,github:GitHub,env:FundingEnv,auth:AuthService,verifyFn:typeof verify=verify) {
@@ -97,8 +81,8 @@ export function createPhase5(db:Database,github:GitHub,env:FundingEnv,auth:AuthS
    return (daily?.value??0)<=env.VERIFIER_DAILY_ATTEMPT_LIMIT&&(revision?.value??0)<=env.VERIFIER_MAX_ATTEMPTS_PER_SHA;
   } finally {await client.query('select pg_advisory_unlock(hashtext($1))',[lock]);}
  }
- async function setAttempt(attemptId:string,values:Partial<typeof verifications.$inferInsert>,lease?:LeasedJob) {
-  await db.withTransaction(async tx=>{if(lease)await assertLease(tx,lease);const [saved]=await tx.update(verifications).set(values).where(eq(verifications.id,attemptId)).returning();if(saved&&values.completedAt)await enqueue(tx,{kind:'sync_submission',payload:{submissionId:saved.submissionId},dedupeKey:`review-projection:${attemptId}`,maxAttempts:env.RECONCILIATION_MAX_ATTEMPTS});});
+ async function setCheckRunId(attemptId:string,checkRunId:string,lease?:LeasedJob) {
+  await db.withTransaction(async tx=>{if(lease)await assertLease(tx,lease);await tx.update(verifications).set({checkRunId}).where(eq(verifications.id,attemptId));});
  }
  async function verifySubmission(submissionId:string,expectedHeadSha:string,force=false,lease?:LeasedJob,expectedBaseSha?:string) {
   const checkLease=async()=>{if(lease)await db.withTransaction(tx=>assertLease(tx,lease));};
@@ -136,22 +120,26 @@ export function createPhase5(db:Database,github:GitHub,env:FundingEnv,auth:AuthS
    }
    await checkLease();
    const checkRunId=recoveredId??await github.createCheckRun(installation.id,repo,{name:'Repopay solution review',headSha:evidence.headSha,externalId,detailsUrl,status:'in_progress',title:'Repopay is reviewing this revision',summary:'Collecting bounded issue, pull request, CI, and author evidence. This check is advisory and cannot authorize payment.'});
-   await setAttempt(record.id,{checkRunId},lease);
+   await setCheckRunId(record.id,checkRunId,lease);
    const finish=async(values:Partial<typeof verifications.$inferInsert>,title:string,summary:string)=>{
-    await checkLease();
-    await github.updateCheckRun(installation.id,repo,checkRunId,{detailsUrl,status:'completed',conclusion:'neutral',title,summary});
-    await setAttempt(record.id,{...values,completedAt:new Date()},lease);
-    // A review that reached an outcome supersedes an earlier failed-job warning.
-    if(values.status==='DONE'||values.errorCode==='INSUFFICIENT_EVIDENCE')await db.withTransaction(async tx=>{
+    await db.withTransaction(async tx=>{
      if(lease)await assertLease(tx,lease);
      await tx.select({id:bounties.id}).from(bounties).where(eq(bounties.id,bounty.id)).for('update');
      const [current]=await tx.select().from(submissions).where(eq(submissions.id,sub.id)).for('update');
+     const [saved]=await tx.update(verifications).set({...values,completedAt:new Date()}).where(and(eq(verifications.id,record.id),eq(verifications.status,'PENDING'))).returning();
+     if(!saved)return;
+     await tx.insert(verificationPublications).values({verificationId:record.id,title,summary});
+     await enqueue(tx,{kind:'publish_verification',payload:{verificationId:record.id},dedupeKey:`review-check:${record.id}`,maxAttempts:env.RECONCILIATION_MAX_ATTEMPTS});
+     await enqueue(tx,{kind:'sync_submission',payload:{submissionId:sub.id},dedupeKey:`review-projection:${record.id}`,maxAttempts:env.RECONCILIATION_MAX_ATTEMPTS});
+     // A saved outcome can clear a review warning, never a funding warning.
+     if(values.status!=='DONE'&&values.errorCode!=='INSUFFICIENT_EVIDENCE')return;
      if(!current||current.headSha!==evidence.headSha||current.evidenceVersion!==evidenceRow.version)return;
      await tx.update(bounties).set({needsAttention:false,attentionReason:null,updatedAt:new Date()}).where(and(eq(bounties.id,bounty.id),eq(bounties.attentionReason,REVIEW_UNAVAILABLE_REASON)));
     });
    };
    if(!evidence.sufficient){await finish({status:'ERROR',errorCode:'INSUFFICIENT_EVIDENCE'},'Repopay did not review this revision',checkSummary({advisory:'This revision was not sent for model review.',ci:evidence.ci.status,reasoning:insufficientReasons(evidence,sub.authorGhId,bounty.createdByGhId,terms.policy.ciRequired).join('\n\n'),headSha:evidence.headSha,baseSha:evidence.baseSha,issueNumber:bounty.issueNumber}));return;}
    if(!await withinAttemptBudget(client,bounty.repoId,sub.id,evidence.headSha)){await finish({status:'ERROR',errorCode:'VERIFIER_BUDGET_EXHAUSTED'},'Repopay review paused',checkSummary({advisory:'The repository review-attempt limit has been reached for today or this PR revision. No model request was made for this attempt.',ci:evidence.ci.status,headSha:evidence.headSha,baseSha:evidence.baseSha,issueNumber:bounty.issueNumber}));return;}
+   let output:Awaited<ReturnType<typeof verify>>;
    try {
     const sponsor=await auth.getCopilotSponsor(bounty.repoId);
     if(sponsor.sponsorGhId!==terms.sponsor.id||sponsor.modelId!==terms.policy.model||sponsor.installationId!==bounty.installationId)throw new Error('Sponsor binding is unavailable');
@@ -159,12 +147,13 @@ export function createPhase5(db:Database,github:GitHub,env:FundingEnv,auth:AuthS
     if(identity.id!==terms.sponsor.id||access.ownerId!==identity.id||access.ownerType!=='User'||access.admin!==true)throw new Error('Sponsor ownership is unavailable');
     const copilotEnv=parseCopilotEnv({COPILOT_GITHUB_TOKEN:sponsor.accessToken,COPILOT_BILLING_OWNER_ID:sponsor.sponsorGhId,COPILOT_AUTH_KIND:'user',COPILOT_MODEL:terms.policy.model,COPILOT_TIMEOUT_MS:'120000',COPILOT_SHUTDOWN_TIMEOUT_MS:'5000',COPILOT_MAX_INPUT_BYTES:'200000',PROVIDER_RESPONSE_MAX_BYTES:String(env.PROVIDER_RESPONSE_MAX_BYTES)});
     await checkLease();
-    const output=await verifyFn(evidence,copilotEnv);
+    output=await verifyFn(evidence,copilotEnv);
     const currentSponsor=await auth.getCopilotSponsor(bounty.repoId);
     if(currentSponsor.tokenGeneration!==sponsor.tokenGeneration||currentSponsor.sponsorGhId!==terms.sponsor.id||currentSponsor.modelId!==terms.policy.model||currentSponsor.installationId!==bounty.installationId)throw new Error('Sponsor changed during review');
-    // Under Auto terms this is the serving model Copilot reported, not `auto`.
-    await finish({status:'DONE',model:output.model,result:output.value,usageMetrics:{...output.usage},elapsedMs:output.elapsedMs,promptHash:output.promptHash},`${output.value.verdict} · confidence ${(output.value.confidence*100).toFixed(0)}%`,checkSummary({advisory:`Model assessment: ${output.value.verdict} · coverage ${(output.value.coverage*100).toFixed(0)}% · confidence ${(output.value.confidence*100).toFixed(0)}%.`,ci:evidence.ci.status,reasoning:output.value.reasoning,unmet:output.value.unmet_requirements,headSha:evidence.headSha,baseSha:evidence.baseSha,issueNumber:bounty.issueNumber}));
-   }catch(error){const code=safeErrorCode(error);await finish({status:'ERROR',errorCode:code},'Repopay review unavailable',checkSummary({advisory:`No model verdict was recorded (${code}).`,ci:evidence.ci.status,headSha:evidence.headSha,baseSha:evidence.baseSha,issueNumber:bounty.issueNumber}));}
+   }catch(error){const code=safeErrorCode(error);await finish({status:'ERROR',errorCode:code},'Repopay review unavailable',checkSummary({advisory:`No model verdict was recorded (${code}).`,ci:evidence.ci.status,headSha:evidence.headSha,baseSha:evidence.baseSha,issueNumber:bounty.issueNumber}));return;}
+   // A persistence failure is not a model error. Never replace a valid outcome
+   // with ERROR because saving or scheduling its projection failed.
+   await finish({status:'DONE',model:output.model,result:output.value,usageMetrics:{...output.usage},elapsedMs:output.elapsedMs,promptHash:output.promptHash},`${output.value.verdict} · confidence ${(output.value.confidence*100).toFixed(0)}%`,checkSummary({advisory:`Model assessment: ${output.value.verdict} · coverage ${(output.value.coverage*100).toFixed(0)}% · confidence ${(output.value.confidence*100).toFixed(0)}%.`,ci:evidence.ci.status,reasoning:output.value.reasoning,unmet:output.value.unmet_requirements,headSha:evidence.headSha,baseSha:evidence.baseSha,issueNumber:bounty.issueNumber}));
   } catch(error){destroy=true;throw error;} finally {
    if(acquired){try{const result=await client.query<{unlocked:boolean}>('select pg_advisory_unlock(hashtext($1)) as unlocked',[lock]);if(result.rows[0]?.unlocked!==true)destroy=true;}catch{destroy=true;}}
    client.off('error',onError);

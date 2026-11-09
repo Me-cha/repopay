@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import type { FundedTerms } from '../domain/funded-terms.js';
-import { boolean, check, customType, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import type { VerifyInput } from '../verifier/collect.js';
+import { boolean, check, customType, date, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 const stringSerial = customType<{ data: string; driverData: string; default: true }>({ dataType: () => 'bigserial', fromDriver: value => value });
 export const jobs = pgTable('jobs', {
   id: stringSerial('id').primaryKey(), kind: text('kind').notNull(), payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
@@ -72,6 +73,30 @@ export const submissionEvidence = pgTable('submission_evidence', {
 export const verifications = pgTable('verifications', {
  id:stringSerial('id').primaryKey(),submissionId:stringBigint('submission_id').notNull().references(()=>submissions.id),evidenceId:stringBigint('evidence_id').notNull().references(()=>submissionEvidence.id),headSha:text('head_sha').notNull(),attempt:integer('attempt').notNull(),status:text('status').notNull().default('PENDING'),result:jsonb('result').$type<Record<string,unknown>>(),usageMetrics:jsonb('usage_metrics').$type<Record<string,unknown>>(),provider:text('provider').notNull(),model:text('model').notNull(),sdkVersion:text('sdk_version').notNull(),sponsorGhId:stringBigint('sponsor_gh_id').notNull(),promptHash:text('prompt_hash').notNull(),elapsedMs:integer('elapsed_ms'),errorCode:text('error_code'),checkRunId:stringBigint('check_run_id'),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),completedAt:timestamp('completed_at',{withTimezone:true}),
 },t=>[uniqueIndex('verification_attempt_unique').on(t.submissionId,t.headSha,t.attempt),check('verification_status_check',sql`${t.status} in ('PENDING','DONE','ERROR')`)]);
+
+// Immutable Check output is committed with the review, then published separately.
+export const verificationPublications = pgTable('verification_publications', {
+ verificationId:stringBigint('verification_id').primaryKey().references(()=>verifications.id),
+ title:text('title').notNull(),summary:text('summary').notNull(),
+ createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
+ publishedAt:timestamp('published_at',{withTimezone:true}),
+ createStartedAt:timestamp('create_started_at',{withTimezone:true}),
+});
+
+export const reviewControl=pgTable('review_execution_control',{
+ id:integer('id').primaryKey(),backend:text('backend').notNull(),generation:integer('generation').notNull(),artifactVersion:text('artifact_version').notNull(),paused:boolean('paused').notNull().default(false),
+});
+export const reviewDispatches=pgTable('review_dispatches',{
+ id:text('id').primaryKey(),jobId:stringBigint('job_id').notNull().unique().references(()=>jobs.id),
+ submissionId:stringBigint('submission_id').notNull().references(()=>submissions.id),repoId:stringBigint('repo_id').notNull(),sponsorGhId:stringBigint('sponsor_gh_id').notNull(),
+ headSha:text('head_sha').notNull(),baseSha:text('base_sha').notNull(),forceReview:boolean('force_review').notNull().default(false),
+ backend:text('backend').notNull(),generation:integer('generation').notNull(),artifactVersion:text('artifact_version').notNull(),taskIdentifier:text('task_identifier'),
+ status:text('status').notNull().default('READY'),capacityHeld:boolean('capacity_held').notNull().default(false),runId:text('run_id').unique(),ownerToken:text('owner_token'),
+ heartbeatUntil:timestamp('heartbeat_until',{withTimezone:true}),launchStartedAt:timestamp('launch_started_at',{withTimezone:true}),nextLaunchAt:timestamp('next_launch_at',{withTimezone:true}).notNull().defaultNow(),
+ inferenceStartedAt:timestamp('inference_started_at',{withTimezone:true}),allowanceDate:date('allowance_date'),
+ verificationId:stringBigint('verification_id').unique().references(()=>verifications.id),evidenceVersion:integer('evidence_version'),sponsorGeneration:integer('sponsor_generation'),input:jsonb('input').$type<VerifyInput>(),
+ errorCode:text('error_code'),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),completedAt:timestamp('completed_at',{withTimezone:true}),
+},t=>[uniqueIndex('review_capacity_sponsor').on(t.sponsorGhId).where(sql`${t.capacityHeld}`),uniqueIndex('review_capacity_submission').on(t.submissionId).where(sql`${t.capacityHeld}`)]);
 
 // A Copilot sponsor is separate from a browser session. Its credentials remain
 // usable for background reviews after the owner signs out of Repopay.

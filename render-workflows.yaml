@@ -1,0 +1,23 @@
+# Optional workflow-only Blueprint. Does not replace the existing web service.
+# Applying this creates a metered service; deployment is a separate approval.
+services:
+  - type: workflow
+    name: repopay-reviews
+    runtime: node
+    region: singapore
+    repo: https://github.com/Me-cha/repopay
+    branch: main
+    autoDeployTrigger: "off"
+    buildCommand: corepack enable && corepack prepare pnpm@10.29.3 --activate && pnpm install --frozen-lockfile --prod=false && pnpm --filter @repopay/server build
+    startCommand: pnpm start:reviews:render
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: REVIEW_BACKEND
+        value: render
+      - key: REVIEW_BROKER_URL
+        value: https://repo-pay.onrender.com
+      - key: REVIEW_GENERATION
+        sync: false
+      - key: REVIEW_EXECUTOR_KEY
+        sync: false

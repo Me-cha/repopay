@@ -8,7 +8,7 @@ it('preview GET never changes the bounty or issues a token; unauthenticated acce
  const path=`/bounties/${f.bounty.id}/cancel`;
  const response=await f.request(path);expect(response.status).toBe(200);expect(response.headers.get('cache-control')).toBe('no-store');expect(response.headers.get('referrer-policy')).toBe('no-referrer');expect(await response.text()).toContain('$50.00');
  expect(await f.database.orm.select().from(actionTokens)).toHaveLength(0);expect((await f.database.orm.select().from(bounties))[0]?.status).toBe('OPEN');
- expect((await f.request(path,{headers:{Cookie:''}})).headers.get('location')).toContain('/login?returnTo=');
+ const signedOut=await f.request(path,{headers:{Cookie:''}});expect(signedOut.status).toBe(303);expect(signedOut.headers.get('location')).toBe('/');
  }finally{await f.close();}
 });
 it('concurrent double POST consumes token and cancels exactly once; lost response can be refreshed',async()=>{

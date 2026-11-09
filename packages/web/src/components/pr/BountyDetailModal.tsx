@@ -340,6 +340,15 @@ export function BountyDetailModal() {
                               <span className="c2-audit-time">{formatDateTimeIST(v.createdAt)}</span>
                             </div>
                             {v.reasoning && <p className="c2-review-note">{v.reasoning}</p>}
+                            {v.unmetRequirements.length > 0 && (
+                              <ul className="c2-audit-list" aria-label="Unmet requirements">
+                                {v.unmetRequirements.map((requirement) => (
+                                  <li key={requirement} className="c2-audit-item">
+                                    {requirement}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
                           </li>
                         ))}
                       </ul>

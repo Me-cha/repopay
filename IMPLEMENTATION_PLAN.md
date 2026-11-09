@@ -312,7 +312,9 @@ Repopay/
 │  │  ├─ github/{app.ts,handlers.ts,commands.ts,linking.ts,reconciliation.ts,checks.ts,comments.ts,permissions.ts,oauth.ts}
 │  │  ├─ actions/{create.ts,fund.ts,cancel.ts,approve.ts,reject.ts,link.ts,retry.ts,status.ts,guards.ts,tokens.ts,activity.ts}
 │  │  ├─ paypal/{client.ts,orders.ts,payouts.ts,refunds.ts,webhooks.ts,status-map.ts}
-│  │  ├─ verifier/{collect.ts,prompt.ts,schema.ts,verify.ts,service.ts,evaluation.ts,evaluate.ts}
+│  │  ├─ verifier/{collect.ts,prompt.ts,schema.ts,verify.ts,service.ts,publication.ts,presentation.ts,evaluation.ts,evaluate.ts}
+│  │  ├─ reviews/{config.ts,store.ts,service.ts,auth.ts,contracts.ts,executor.ts,dispatcher.ts,render.ts}
+│  │  ├─ review-worker.ts, review-workflow.ts
 │  │  ├─ policy/{decide.ts,allocate.ts}
 │  │  ├─ settlement/{funding.ts,claims.ts,candidates.ts,settle.ts,payout.ts,service.ts,profile.ts,award.ts,refund.ts}
 │  │  ├─ http/{routes.ts,confirm.ts,fund.ts,connect.ts,retry.ts,sponsor.ts,auth.ts,session.ts,api.ts,review.ts,cancellation.ts,sse.ts,dashboard.ts}
@@ -875,6 +877,8 @@ Cancellation analysis may summarize original requirements, all submission snapsh
   - `PAYMENT.CAPTURE.REFUNDED` → reconcile refunds for that capture
 
 ### 10.5 `verifier/`
+
+[ADR 0022](docs/decisions/0022-review-publication-and-execution.md) adds atomic review/publication persistence (0021) and durable dispatch/admission/generation (0022). `reviews/service.ts` brokers bounded evidence, sponsor grants and guarded result writes; isolated tasks have no database or financial credentials. `reviews/dispatcher.ts` launches version-pinned Render tasks independently of the ordinary worker; `review-worker.ts` provides the same contract as a dedicated baseline. The default remains shared. See [review execution](docs/review-execution.md) for configuration and pause/drain/reconciliation. Hosted feasibility and backend adoption require separate evidence.
 
 `collect.ts` builds `VerifyInput`:
 

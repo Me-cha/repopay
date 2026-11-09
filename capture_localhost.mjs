@@ -2,9 +2,13 @@ import { Browser } from './.agents/skills/design-taste-frontend/scripts/lib/cdp.
 import path from 'node:path';
 
 const outDir = '/Users/mecha/.gemini/antigravity/brain/a63efe2c-bada-4b46-891a-18b87bf51fc1/screenshots';
-const devCookie = 'gd2Swn-K6O2NiLAzOmHeX73Q3qX1N9ElEYJ_aASPR7I';
+const devCookie = process.env.REPOPAY_CAPTURE_SESSION_COOKIE;
 
 async function main() {
+  if (!devCookie) {
+    throw new Error('Set REPOPAY_CAPTURE_SESSION_COOKIE to capture authenticated pages.');
+  }
+
   const browser = await Browser.launch();
   try {
     const page = await browser.newPage({ width: 1440, height: 960 });

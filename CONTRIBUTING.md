@@ -2,6 +2,8 @@
 
 # Contributing to Repopay
 
+After building, `pnpm smoke:reviews` exercises the Render SDK registration protocol locally without model calls. `pnpm ops:reviews status` inspects sanitized dispatch state. Read [isolated review execution](docs/review-execution.md) before enabling a backend. Use `.env.reviews.example` for executor-only configuration; never load the application environment into a task. The optional `render-workflows.yaml` requires separate deployment/spending approval.
+
 Repopay has completed Phases 0 and 1; Phases 2–3 are implemented locally with outstanding live gates. Phases 4–5 were authorized on October 29, 2026; consult their evidence for local coverage and remaining browser/Copilot acceptance. Read [README.md](README.md), [AGENTS.md](AGENTS.md) and the relevant phase of [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) and its [numbered phase file](docs/phases/README.md) before starting implementation. Later phases require explicit scope authorization and prerequisite gates.
 
 ## Workflow

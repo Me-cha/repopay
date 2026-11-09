@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "@github/copilot-sdk": "1.0.28",
+    "@renderinc/sdk": "1.7.0",
     "drizzle-orm": "0.45.4",
     "express": "5.3.0",
     "pg": "8.23.1",

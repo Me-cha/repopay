@@ -6,6 +6,8 @@
 
 # Repopay MVP — phase plan
 
+Render execution follow-up: durable dispatch, bounded admission, authenticated broker, dedicated/Render executors and independent Check publication are locally implemented, default off. Hosted smoke and cost/latency adoption remain pending. See [runbook](../review-execution.md) and [evidence](../evidence/render-workflows-implementation.md). Historical phase gates are unchanged.
+
 **Latest local work (October 31):** [ADR 0019](../decisions/0019-review-evidence-and-pr-retry.md) adds immutable contribution context, PR-native retry/status and issue-native unfunded cancellation. The v4 evaluation failed; the v5 correction above now needs separate live evaluation and acceptance. Historical v3 acceptance does not authorize new prompt versions.
 
 **Status (October 30, 2026):** Phases 0, 1 and 4 have recorded completion evidence. Phase 2 retains a deferred live revocation check; Phase 3 has a real capture with receipt/recovery gates open. Phase 5 Auto v2 passed its 18/18 live evaluation; the October 31 funded competing-PR case passed; same-revision failed-review recovery also passed; remaining Phase 5 gates stay open (ADR 0007). Phase 6 has local policy, award selection, payout reconciliation and delayed claims; automatic selection is enabled only for the existing $50 isolated sandbox demo under ADR 0008, with remaining Phase 5 checks deferred and the first Phase 6 sandbox payout successful and delayed-claim/two-author live acceptance outstanding. See [review findings](../evidence/00-05-review.md) and [Phase 6 evidence](../evidence/06-summary.md).

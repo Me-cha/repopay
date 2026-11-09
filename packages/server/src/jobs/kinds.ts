@@ -7,6 +7,7 @@ export const workSchema = z.discriminatedUnion('kind', [
  z.object({ kind: z.literal('refresh_installation'), installationId: id, removedRepoIds: z.array(id).max(1000) }),
  z.object({ kind: z.literal('reconcile_bounty'), bountyId:id }),
  z.object({ kind:z.literal('sync_submission'),submissionId:id }),
+ z.object({ kind:z.literal('publish_verification'),verificationId:id }),
  z.object({ kind: z.literal('sync_bounty'), bountyId: id }),
  z.object({ kind: z.literal('reconcile_funding'), attemptId: id }),
  z.object({ kind: z.literal('retry_claims'), ghId:id, connectionVersion:z.number().int().positive() }),

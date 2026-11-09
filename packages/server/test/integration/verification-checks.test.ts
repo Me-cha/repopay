@@ -1,9 +1,9 @@
 import { afterEach,describe,expect,it,vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { githubFixture,testEnv } from '../helpers/github.js';
-import { bounties,installations,submissions,submissionEvidence,bountyActivity,verifications,jobs,copilotSponsors } from '../../src/db/schema.js';
-import { runOnce } from '../../src/jobs/runner.js';
-import { enqueue } from '../../src/jobs/queue.js';
+import { bounties,installations,submissions,submissionEvidence,bountyActivity,verifications,verificationPublications,jobs,copilotSponsors } from '../../src/db/schema.js';
+import { handleJob,runOnce } from '../../src/jobs/runner.js';
+import { claimJob,enqueue,finishJob } from '../../src/jobs/queue.js';
 import { required } from '../helpers/auth.js';
 import { intentFixture } from '../helpers/funding.js';
 import { linkPr } from '../../src/actions/link.js';
@@ -35,7 +35,7 @@ describe('verification job recovery',()=>{
   expect(fixture.api.createCheckRun).not.toHaveBeenCalled();
  });
 
- it('publishes a neutral advisory check, deduplicates completed evidence, and retries as a new attempt',async()=>{
+ it.each(['none','publication','persistence'] as const)('persists reviews independently of Check publication (failure: %s)',async failure=>{
   const funding=await intentFixture();
   try {
    const [storedBounty]=await funding.database.orm.update(bounties).set({status:'FUNDED',fundedTerms:funding.terms}).where(eq(bounties.id,funding.bounty.id)).returning();
@@ -50,7 +50,38 @@ describe('verification job recovery',()=>{
    const verifier=vi.fn(()=>Promise.resolve({value:{verdict:'RESOLVES' as const,coverage:1,confidence:0.95,reasoning:'Adds the required input guard.',unmet_requirements:[],splits:[{gh_id:'8',share:1,why:'PR author'}]},usage:{totalNanoAiu:500,totalPremiumRequestCost:0.1,totalApiDurationMs:42,totalUserRequests:1,inputTokens:10,outputTokens:12,cacheReadTokens:0,cacheWriteTokens:0},provider:'copilot' as const,requestedModel:'auto',model:'test-model',sdkVersion:'1.0.28',billingOwnerId:'4',elapsedMs:42,promptHash:'f'.repeat(64),promptVersion:'repopay-verifier-v1'}));
    const service=createPhase5(funding.database,funding.api,{...funding.env,VERIFIER_MAX_ATTEMPTS_PER_SHA:2},funding.auth,verifier);
 
+   if(failure==='publication')vi.mocked(funding.api.updateCheckRun).mockRejectedValue(new Error('GitHub unavailable'));
+   if(failure==='persistence'){
+    // Fail the outbox write after the verdict UPDATE, inside the same transaction.
+    await funding.database.pool.query('ALTER TABLE verification_publications ADD CONSTRAINT test_failure CHECK (false)');
+    await expect(service.verifySubmission(linked.submission.id,pr.head.sha)).rejects.toThrow();
+    expect(verifier).toHaveBeenCalledTimes(1);
+    expect((await funding.database.orm.select().from(verifications))[0]).toMatchObject({status:'PENDING',result:null,completedAt:null});
+    expect(await funding.database.orm.select().from(verificationPublications)).toHaveLength(0);
+    expect(await funding.database.orm.select().from(jobs)).toHaveLength(0);
+    expect(funding.api.updateCheckRun).not.toHaveBeenCalled();
+    return;
+   }
+
    await service.verifySubmission(linked.submission.id,pr.head.sha);
+   const [saved]=await funding.database.orm.select().from(verifications);
+   expect(saved?.status).toBe('DONE');expect(saved?.result).toMatchObject({verdict:'RESOLVES'});
+   expect(funding.api.updateCheckRun).not.toHaveBeenCalled();
+   const publicationJob=required(await claimJob(funding.database,'publisher',120));
+   expect(publicationJob.kind).toBe('publish_verification');
+   expect(publicationJob.payload).toEqual({verificationId:saved?.id});
+   if(failure==='publication'){
+    await expect(handleJob(funding.database,funding.api,funding.env,publicationJob)).rejects.toThrow('GitHub unavailable');
+    expect((await funding.database.orm.select().from(verifications))[0]).toMatchObject({status:'DONE',model:'test-model',result:{verdict:'RESOLVES'}});
+    expect((await funding.database.orm.select().from(verificationPublications))[0]?.publishedAt).toBeNull();
+    vi.mocked(funding.api.updateCheckRun).mockResolvedValue(undefined);
+   }
+   await handleJob(funding.database,funding.api,funding.env,publicationJob);
+   expect((await funding.database.orm.select().from(verificationPublications))[0]?.publishedAt).toBeInstanceOf(Date);
+   const publicationCalls=vi.mocked(funding.api.updateCheckRun).mock.calls.length;
+   await handleJob(funding.database,funding.api,funding.env,publicationJob);
+   expect(funding.api.updateCheckRun).toHaveBeenCalledTimes(publicationCalls);
+   await finishJob(funding.database,publicationJob);
    await service.verifySubmission(linked.submission.id,pr.head.sha);
    expect(verifier).toHaveBeenCalledTimes(1);
    const snapshots=await funding.database.orm.select().from(submissionEvidence);expect(snapshots[0]?.diffText).toContain('repopay-contribution-evidence-v1');
@@ -70,7 +101,7 @@ describe('verification job recovery',()=>{
   } finally { await funding.close(); }
  });
 
- async function creatorScenario(attentionReason:string,changeDuring?:'collection'|'publication'|'lost') {
+ async function creatorScenario(attentionReason:string,changeDuring?:'collection'|'publication'|'lost',publish=true) {
   const funding=await intentFixture();
   const [storedBounty]=await funding.database.orm.update(bounties).set({status:'FUNDED',fundedTerms:funding.terms,needsAttention:true,attentionReason}).where(eq(bounties.id,funding.bounty.id)).returning();
   const bounty=required(storedBounty);
@@ -102,6 +133,7 @@ describe('verification job recovery',()=>{
    return {funding,bounty,verifier};
   }
   await createPhase5(funding.database,funding.api,funding.env,funding.auth,verifier).verifySubmission(linked.submission.id,pr.head.sha);
+  if(publish)await runOnce(funding.database,funding.api,funding.env,'publisher');
   return {funding,bounty,verifier};
  }
 
@@ -148,6 +180,42 @@ describe('verification job recovery',()=>{
    expect(summary).toContain('created this bounty');expect(summary).not.toContain('authorship is ambiguous');
    const [row]=await funding.database.orm.select().from(verifications);expect(row?.errorCode).toBe('INSUFFICIENT_EVIDENCE');
   } finally { await funding.close(); }
+ });
+
+ it('retries an accepted Check update after lease loss without changing the saved review',async()=>{
+  const {funding,verifier}=await creatorScenario('',undefined,false);
+  try{
+   const original=required((await funding.database.orm.select().from(verifications))[0]);
+   const old=required(await claimJob(funding.database,'old-publisher',120));
+   expect(old.kind).toBe('publish_verification');
+   vi.mocked(funding.api.updateCheckRun).mockImplementationOnce(async()=>{
+    await funding.database.orm.update(jobs).set({lockedUntil:new Date(0)}).where(eq(jobs.id,old.id));
+   });
+   await expect(handleJob(funding.database,funding.api,funding.env,old)).rejects.toThrow('Job lease lost');
+   expect((await funding.database.orm.select().from(verificationPublications))[0]?.publishedAt).toBeNull();
+   const fresh=required(await claimJob(funding.database,'new-publisher',120));
+   expect(fresh.id).toBe(old.id);
+   await expect(handleJob(funding.database,funding.api,funding.env,old)).rejects.toThrow('Job lease lost');
+   await handleJob(funding.database,funding.api,funding.env,fresh);
+   expect(funding.api.updateCheckRun).toHaveBeenCalledTimes(2);
+   expect(vi.mocked(funding.api.updateCheckRun).mock.calls.map(call=>call[2])).toEqual([original.checkRunId,original.checkRunId]);
+   expect((await funding.database.orm.select().from(verificationPublications))[0]?.publishedAt).toBeInstanceOf(Date);
+   expect((await funding.database.orm.select().from(verifications))[0]).toEqual(original);
+   expect(verifier).not.toHaveBeenCalled();
+  }finally{await funding.close();}
+ });
+
+ it('blocks publication when installation access is revoked and preserves the outcome',async()=>{
+  const {funding}=await creatorScenario('',undefined,false);
+  try{
+   const original=required((await funding.database.orm.select().from(verifications))[0]);
+   const job=required(await claimJob(funding.database,'publisher',120));
+   funding.state.installation=null;
+   await expect(handleJob(funding.database,funding.api,funding.env,job)).rejects.toThrow();
+   expect(funding.api.updateCheckRun).not.toHaveBeenCalled();
+   expect((await funding.database.orm.select().from(verificationPublications))[0]?.publishedAt).toBeNull();
+   expect((await funding.database.orm.select().from(verifications))[0]).toEqual(original);
+  }finally{await funding.close();}
  });
 
  it('a completed review clears a stale review-unavailable warning but keeps funding attention',async()=>{

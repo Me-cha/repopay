@@ -1,4 +1,5 @@
 import { mountOnboarding } from './onboarding.js';
+import { mountReviewExecutor,type ReviewExecutorDependencies } from './review-executor.js';
 import { mountDashboard } from './dashboard.js';
 import { mountStream } from './sse.js';
 import { mountCancellation } from './cancellation.js';
@@ -18,11 +19,12 @@ import { mountVerificationRetry } from './retry.js';
 import type { FundingEnv } from '../env.js';
 import { mountApi } from './api.js';
 import { listCopilotModels } from '../models/copilot.js';
-export interface AppDependencies { database: Pick<Database, 'health'>; version: string; recoveryMode?:'normal'|'hold'; webhook?: {maxBytes:number; ingest:(body:Buffer,headers:GitHubHeaders)=>Promise<unknown>}; authentication?:AuthenticationDependencies; funding?:{env:FundingEnv;ingest?:(body:Buffer,headers:PayPalHeaders)=>Promise<void>;listCopilotModels?:typeof listCopilotModels} }
+export interface AppDependencies { database: Pick<Database, 'health'>; version: string; reviewExecutor?:ReviewExecutorDependencies; recoveryMode?:'normal'|'hold'; webhook?: {maxBytes:number; ingest:(body:Buffer,headers:GitHubHeaders)=>Promise<unknown>}; authentication?:AuthenticationDependencies; funding?:{env:FundingEnv;ingest?:(body:Buffer,headers:PayPalHeaders)=>Promise<void>;listCopilotModels?:typeof listCopilotModels} }
 export function buildApp(deps: AppDependencies): Express {
   const app = express();
   app.disable('x-powered-by');
   if((deps.recoveryMode??deps.authentication?.env.RECOVERY_MODE)==='hold')app.use((req,res,next)=>{if(!['GET','HEAD','OPTIONS'].includes(req.method)){res.status(503).set('Retry-After','60').json({error:'Recovery hold: actions and webhook intake are disabled pending provider reconciliation.'});return;}next();});
+  if(deps.reviewExecutor)mountReviewExecutor(app,deps.reviewExecutor);
   if(deps.webhook) {
     const webhook=deps.webhook;
     app.post('/webhooks/github',express.raw({type:'application/json',limit:webhook.maxBytes,inflate:false}),async(request,response)=>{

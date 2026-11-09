@@ -40,6 +40,13 @@ it('deadline aborts the session and stops the runtime instead of merely stopping
  await expect(completeCopilot({...config(),COPILOT_TIMEOUT_MS:20},'evidence',schema,f.factory)).rejects.toThrow(/timed out/);
  expect(f.session.abort).toHaveBeenCalled();expect(f.client.forceStop).toHaveBeenCalledTimes(1);
 });
+it('lost review ownership aborts an active SDK request and cleans its subprocess',async()=>{
+ const f=fixture(),controller=new AbortController();
+ f.session.send.mockImplementation(()=>{controller.abort();return new Promise(()=>{});});
+ await expect(completeCopilot(config(),'evidence',schema,f.factory,controller.signal)).rejects.toThrow(/stopped/);
+ expect(f.session.abort).toHaveBeenCalled();expect(f.client.forceStop).toHaveBeenCalledTimes(1);
+ expect(existsSync(f.factory.mock.calls[0]?.[0].workingDirectory??'missing')).toBe(false);
+});
 it('listing is read-only and missing explicit sponsor cannot fall back to CLI credentials',async()=>{
  const f=fixture();expect(await listCopilotModels(config(),f.factory)).toEqual([{model:'test-model',listed:true}]);expect(f.client.createSession).not.toHaveBeenCalled();
  expect(()=>parseCopilotEnv({...input,COPILOT_GITHUB_TOKEN:''})).toThrow(/COPILOT_GITHUB_TOKEN/);

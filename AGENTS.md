@@ -16,25 +16,27 @@ repopay/
 ├── AGENTS.md, Agent.md             # Canonical instructions and pointer
 ├── ngrok.sh                        # Stable local HTTPS tunnel launcher
 ├── CONTRIBUTING.md, LICENSE
-├── .env.example, .gitignore, .gitattributes, .editorconfig
+├── .env.example, .env.reviews.example, .gitignore, .gitattributes, .editorconfig
 ├── .node-version, .npmrc           # Pinned Node/pnpm requirements
 ├── package.json, pnpm-workspace.yaml, pnpm-lock.yaml
 ├── tsconfig.base.json, tsconfig.json, eslint.config.js, vitest.config.ts
-├── docker-compose.yml, render.yaml, drizzle.config.ts
+├── docker-compose.yml, render.yaml, render-workflows.yaml, drizzle.config.ts
 ├── .github/{pull_request_template.md,workflows/ci.yml}
-├── docs/{setup.md,operations.md,deployment.md,demo.md,copilot-verifier-research.md}
+├── docs/{setup.md,operations.md,deployment.md,review-execution.md,demo.md,copilot-verifier-research.md}
 ├── docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md,0003-nemotron-only-and-preflight-scope.md,0004-funding-recovery.md,0005-copilot-verifier.md,0006-fixed-lightweight-copilot-and-sponsorship.md,0007-copilot-auto-model.md,0008-scoped-phase6-sandbox-acceptance.md,0009-maintainer-review-records.md,0010-cancellation-refund-boundaries.md,0011-scoped-dashboard.md,0012-recovery-checkpoints.md,0013-deployment-and-restore-hold.md,0014-exact-revision-test-context.md,0015-premerge-pr-feedback.md,0016-source-context-review.md,0017-confirmed-contributor-attribution.md,0018-github-contributor-commands.md,0019-review-evidence-and-pr-retry.md,0020-verifier-semantic-counterexamples.md,0021-foundation-mvp-scope.md}
+├── docs/decisions/0022-review-publication-and-execution.md
 ├── docs/phases/{README.md,review-todo.md,live-walkthroughs.md,copilot-migration.md,00.md … 12.md}
 ├── docs/evidence/                 # Phase 00–12 summaries, walkthroughs and acceptance records
 ├── packages/server/
 │   ├── README.md, package.json, tsconfig.json, tsconfig.build.json
-│   ├── src/{main.ts,worker.ts,env.ts,log.ts}
+│   ├── src/{main.ts,worker.ts,review-worker.ts,review-workflow.ts,env.ts,log.ts}
 │   ├── src/domain/{types.ts,funded-terms.ts}
 │   ├── src/db/{client.ts,transaction.ts,schema.ts,migrate.ts,compatibility.ts,migrations/}
 │   ├── src/github/{app.ts,handlers.ts,commands.ts,permissions.ts,comments.ts,oauth.ts,linking.ts,ci.ts,reconciliation.ts}
 │   ├── src/jobs/{queue.ts,runner.ts,kinds.ts,scheduler.ts}
+│   ├── src/reviews/{config.ts,store.ts,service.ts,auth.ts,contracts.ts,executor.ts,dispatcher.ts,render.ts}
 │   ├── src/actions/{create.ts,status.ts,cancel.ts,guards.ts,tokens.ts,fund.ts,connect.ts,link.ts,approve.ts,reject.ts,attribution.ts,retry.ts,onboarding.ts}
-│   ├── src/http/{routes.ts,auth.ts,session.ts,confirm.ts,api.ts,fund.ts,sponsor.ts,connect.ts,retry.ts,review.ts,cancellation.ts,dashboard.ts,sse.ts,attribution.ts,onboarding.ts}
+│   ├── src/http/{routes.ts,auth.ts,session.ts,confirm.ts,api.ts,fund.ts,sponsor.ts,connect.ts,retry.ts,review.ts,cancellation.ts,dashboard.ts,sse.ts,attribution.ts,onboarding.ts,review-executor.ts}
 │   ├── src/operations/attention.ts # Safe retry classification and preserved failed-job identity
 │   ├── src/read-models/{contracts.ts,bounties.ts,payouts.ts}
 │   ├── src/util/crypto.ts
@@ -42,10 +44,10 @@ repopay/
 │   ├── src/settlement/{funding.ts,claims.ts,candidates.ts,settle.ts,payout.ts,service.ts,profile.ts,award.ts,refund.ts} # Funding, awards and delivery
 │   ├── src/cancellation/{authorization.ts,evidence.ts,service.ts,runtime.ts}
 │   ├── src/policy/{decide.ts,allocate.ts} # Pure eligibility policy and exact-cent allocation
-│   ├── src/verifier/                # Bounded PR evidence, CI, structured verdicts, evaluate.ts live harness and reports
+│   ├── src/verifier/                # Bounded evidence, CI, verdicts, publication.ts durable Check updates, evaluation
 │   ├── src/preflight/{run.ts,http.ts,state.ts}
 │   ├── src/models/copilot.ts       # Isolated sponsored Copilot SDK requests
-│   ├── scripts/{migrate.ts,preflight.ts,eval-verifier.ts,retry-job.ts,check-migrations.ts,demo-seed.ts}
+│   ├── scripts/{migrate.ts,preflight.ts,eval-verifier.ts,retry-job.ts,check-migrations.ts,demo-seed.ts,reviews.ts,smoke-review-runtime.ts}
 │   └── test/{fixtures/verifier/,helpers/,unit/,integration/,e2e/}
 ├── packages/web/{README.md,package.json,index.html,tsconfig.json,vite.config.ts,vitest.config.ts}
 │   ├── src/{main.tsx,App.tsx,Detail.tsx,api.ts,styles.css,grid/Bounties.tsx,router/,context/,hooks/useDashboardTour.ts,components/{onboarding/,layout/,common/,pr/,charts/},pages/}
@@ -61,6 +63,8 @@ The current map describes tracked source and configuration; ignored local data/b
 `ngrok.sh` reads only `PORT`, `PUBLIC_URL` and `NGROK_DOMAIN` from `.env`, verifies local health and ngrok authentication, and opens a tunnel to the stable assigned domain. Keep the ngrok authtoken in ngrok's user-level config, outside this repository.
 
 ## Keep instructions and documentation current
+
+Render execution improvements follow [the reviewed plan](docs/evidence/render-workflows-plan.md), [ADR 0022](docs/decisions/0022-review-publication-and-execution.md) and [runbook](docs/review-execution.md). Migrations 0021–0022 own immutable Check publication, durable dispatch and backend generation. `reviews/` owns admission, the one-time inference boundary and restricted executor protocol; `http/review-executor.ts` is the trusted broker. Executors have no database/payment credentials. `review-worker.ts` and `review-workflow.ts` share the isolated adapter; `verifier/publication.ts` retries saved Checks without model calls. Render execution defaults off; local tests and SDK registration do not establish hosted runtime, performance or cost acceptance. `render-workflows.yaml` is an optional workflow-only deployment template.
 
 As part of **every** change that adds, moves, renames or removes a directory or important entrypoint:
 

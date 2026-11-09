@@ -41,10 +41,12 @@ const runtimeFactory: RuntimeFactory = options => {
   },
  };
 };
+export class CopilotCleanupError extends Error {}
 async function withRuntime<T>(env: CopilotEnv, factory: RuntimeFactory, operation: (scope: {
  client: CopilotRuntime; step: <V>(promise: Promise<V>) => Promise<V>;
  setSession: (session: RuntimeSession) => void; fail: (message: string) => void; directory: string;
-}) => Promise<T>): Promise<T> {
+}) => Promise<T>, signal?:AbortSignal): Promise<T> {
+ signal?.throwIfAborted();
  const directory = await mkdtemp(join(tmpdir(), 'repopay-copilot-'));
  let client: CopilotRuntime | undefined, session: RuntimeSession | undefined, ended = false;
  let rejectDeadline: (error: Error) => void = () => {};
@@ -52,6 +54,9 @@ async function withRuntime<T>(env: CopilotEnv, factory: RuntimeFactory, operatio
  // Observe rejection even when it arrives between SDK awaits.
  void deadline.catch(() => {});
  const fail = (message: string) => { ended = true; rejectDeadline(new ProbeError(message)); };
+ const abort=()=> { fail('Copilot request stopped'); };
+ signal?.addEventListener('abort',abort,{once:true});
+ if(signal?.aborted)abort();
  const timer = setTimeout(() => { fail('Copilot request timed out'); }, env.COPILOT_TIMEOUT_MS);
  const step = async <V>(promise: Promise<V>): Promise<V> => {
   const value = await Promise.race([promise, deadline]);
@@ -69,14 +74,14 @@ async function withRuntime<T>(env: CopilotEnv, factory: RuntimeFactory, operatio
   outcome = {value:await operation({client:active,step,setSession:value => { session = value; },fail,directory})};
  } catch (error) {
   outcome = {error:error instanceof ProbeError ? error : new ProbeError('Copilot request failed')};
- } finally { ended = true; clearTimeout(timer); }
+ } finally { ended = true; clearTimeout(timer); signal?.removeEventListener('abort',abort); }
  if (session) void session.abort().catch(() => {});
  let shutdownTimer: ReturnType<typeof setTimeout> | undefined;
  try {
   if (client) await Promise.race([client.forceStop(),new Promise<never>((_,reject) => {
    shutdownTimer=setTimeout(() => { reject(new Error('shutdown')); },env.COPILOT_SHUTDOWN_TIMEOUT_MS);
   })]);
- } catch { throw new ProbeError('Copilot runtime shutdown failed'); }
+ } catch { throw new CopilotCleanupError('Copilot runtime shutdown failed'); }
  finally { if (shutdownTimer) clearTimeout(shutdownTimer); await rm(directory,{recursive:true,force:true}); }
  if ('error' in outcome) throw outcome.error;
  return outcome.value;
@@ -103,7 +108,7 @@ export async function listCopilotModels(env: CopilotEnv, factory: RuntimeFactory
   return env.COPILOT_MODEL ? [{model:env.COPILOT_MODEL,listed:models.some(item=>item.id===env.COPILOT_MODEL)}] : models.map(item=>({model:item.id,listed:true}));
  });
 }
-export async function completeCopilot<T>(env: CopilotEnv, prompt: string, output: z.ZodType<T>, factory: RuntimeFactory = runtimeFactory) {
+export async function completeCopilot<T>(env: CopilotEnv, prompt: string, output: z.ZodType<T>, factory: RuntimeFactory = runtimeFactory, signal?:AbortSignal) {
  if (!env.COPILOT_MODEL) throw new ProbeError('Copilot requires an explicit model or auto');
  if (Buffer.byteLength(prompt)>env.COPILOT_MAX_INPUT_BYTES) throw new ProbeError('Copilot input exceeds limit');
  // Auto has no listable model (Copilot Free returns an empty catalog) and the
@@ -146,7 +151,7 @@ export async function completeCopilot<T>(env: CopilotEnv, prompt: string, output
   const usage=usageReport(await step(session.getUsage()));
   return {value:value.data,provider:'copilot' as const,requestedModel:env.COPILOT_MODEL,model:auto?actual[0]??'':env.COPILOT_MODEL,sdkVersion:COPILOT_SDK_VERSION,
    billingOwnerId:env.COPILOT_BILLING_OWNER_ID,elapsedMs:Date.now()-started,usage};
- });
+ },signal);
 }
 export async function probeCopilotModels(env: CopilotEnv) {
  try {

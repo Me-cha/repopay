@@ -11,6 +11,7 @@ import type { Database } from '../db/client.js';
 import type { GitHubRuntimeEnv } from '../env.js';
 import type { GitHub } from '../github/app.js';
 import { createLogger } from '../log.js';
+import { publishVerification } from '../verifier/publication.js';
 import { GitHubError } from '../github/app.js';
 import { AuthError } from '../github/oauth.js';
 import { currentAccess } from '../github/permissions.js';
@@ -31,6 +32,7 @@ export interface Phase5Jobs {
 }
 export async function handleJob(db:Database,github:GitHub,env:GitHubRuntimeEnv,job:LeasedJob,funding?:FundingService,phase5?:Phase5Jobs,phase6?:Phase6):Promise<void> {
  const work=workFor(job);
+ if(work.kind==='publish_verification'){await publishVerification(db,github,job,work.verificationId,env.GH_APP_ID);return;}
  if(work.kind==='reconcile_bounty'){await reconcileBounty(db,github,env,job,work.bountyId);return;}
  if(work.kind==='retry_claims'){await retryClaims(work.ghId,work.connectionVersion);await phase6?.retryClaims(work.ghId,work.connectionVersion);return;}
  if(work.kind==='sync_pull_request'){if(!phase5)throw new Error('Submission worker unavailable');await phase5.syncPullRequest(work.installationId,work.repoId,work.prNumber);return;}
@@ -137,6 +139,8 @@ export async function handleJob(db:Database,github:GitHub,env:GitHubRuntimeEnv,j
 }
 async function markAttention(db:Database,job:LeasedJob) {
  const work=workFor(job);
+ // Publication exhaustion stays visible on its job; it never invalidates a review.
+ if(work.kind==='publish_verification')return;
  if(work.kind==='reconcile_funding'||work.kind==='retry_claims'||work.kind==='sync_pull_request'||work.kind==='refresh_verification_sha'||work.kind==='sync_submission')return;
  await db.withTransaction(async tx=>{
   await assertLease(tx,job);
@@ -155,7 +159,7 @@ async function markAttention(db:Database,job:LeasedJob) {
  });
 }
 export async function runOnce(db:Database,github:GitHub,env:GitHubRuntimeEnv,owner:string,funding?:FundingService,phase5?:Phase5Jobs,phase6?:Phase6):Promise<boolean> {
- const job=await claimJob(db,owner,env.JOB_LEASE_SEC);if(!job)return false;
+ const job=await claimJob(db,owner,env.JOB_LEASE_SEC,env.REVIEW_BACKEND==='shared'?{}:{exclude:'verify_submission'});if(!job)return false;
  const timer=setInterval(()=>{void heartbeat(db,job,env.JOB_LEASE_SEC).catch(()=>false);},Math.max(100,Math.floor(env.JOB_LEASE_SEC*1000/3)));
  try{await handleJob(db,github,env,job,funding,phase5,phase6);await finishJob(db,job);}
  catch(error){createLogger(env).warn({event:'job_failed',jobId:job.id,kind:job.kind,attempt:job.attempts,maxAttempts:job.maxAttempts,failureClass:error instanceof GitHubError?'GITHUB_ACCESS_OR_PROVIDER':error instanceof AuthError?'AUTHORIZATION':'OPERATION_UNAVAILABLE',...((error instanceof GitHubError||error instanceof AuthError)?{httpStatus:error.status}:{})});await markAttention(db,job).catch(()=>undefined);await finishJob(db,job,true);}

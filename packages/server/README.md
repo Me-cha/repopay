@@ -1,5 +1,7 @@
 # Repopay server
 
+Render execution follow-up: durable dispatch, bounded admission, authenticated broker, dedicated/Render executors and independent Check publication are locally implemented, default off. Hosted smoke and cost/latency adoption remain pending. See [runbook](../../docs/review-execution.md) and [evidence](../../docs/evidence/render-workflows-implementation.md). Historical phase gates are unchanged.
+
 `@repopay/server` provides the Phase 0 foundation, Phase 1 draft workflow, Phase 2 authenticated cancellation, Phase 3 sandbox funding, Phase 4 encrypted contributor connections and the local Phase 5 submission/verifier pipeline. [Setup](../../docs/setup.md) covers installation, local Postgres, configuration and provider probes. Phase 4/5 evidence distinguishes automated local checks from missing browser/provider acceptance.
 
 - `src/env.ts` validates explicit configuration; `src/log.ts` redacts secrets.

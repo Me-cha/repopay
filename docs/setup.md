@@ -1,5 +1,7 @@
 # Local setup and provider feasibility
 
+Review execution (November 9): apply migrations 0021–0022 with `pnpm db:migrate` before starting this artifact. They add publication and durable dispatch; `REVIEW_BACKEND=shared` preserves the default. See the [executor setup and recovery runbook](review-execution.md) before enabling dedicated or Render execution. Isolated executor configuration must never include the application database/payment secrets.
+
 The local application includes GitHub workflows, sandbox funding and payouts, reviewed cancellation, and a read-only dashboard. Provider/hosted acceptance is incomplete; use the [acceptance matrix](evidence/12-acceptance.md) for verified behavior and blockers. For a credential-free clean install, follow the verification commands in [README](../README.md#start-here).
 
 ## Install and run locally

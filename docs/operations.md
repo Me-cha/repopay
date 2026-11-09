@@ -51,6 +51,12 @@ For read-only financial triage, run `pnpm ops:retry-job <bounty-id> --inspect-bo
 
 For a failed read/projection job, restore App access/credentials first, then run `pnpm ops:retry-job <job-id>`. It preserves the failed record and dedupes a new child against that ID. The CLI refuses actor commands, model requests and financial recovery jobs. Do not reset attempts, erase errors, unlock claims or replace sender/request IDs through SQL. A failed recovery child can be investigated separately and explicitly retried by its own ID. PR/installation refresh may trigger ordinary downstream reviews; respect sponsor allowances.
 
+### Saved review publication
+
+`publish_verification` is a safe projection retry. Its payload references the exact verification ID; `verification_publications.published_at IS NULL` means publication has not been acknowledged. Inspect the job status/error for queued, retrying or exhausted delivery. Restore App access and retry the failed job with `pnpm ops:retry-job <job-id>`. This repeats the saved attempt's neutral Check update and never requests a new review. A provider response lost after a successful PATCH can safely repeat the same output on the same Check. Do not use `/bounty retry` to repair a publication outage: that command deliberately requests a fresh sponsored review.
+
+Review status and usage survive publication failure. Isolated execution creates its Check from the saved outbox and reconciles unknown creates by App-owned marker; the default shared path retains its existing initial Check. A pending review is not fixed by a publication retry. See [ADR 0022](decisions/0022-review-publication-and-execution.md) and the [dispatch pause/drain/recovery runbook](review-execution.md). `pnpm ops:reviews status` shows held execution reservations; heartbeat expiry alone must not release them.
+
 | Cause | Responsible actor / next action |
 | --- | --- |
 | GitHub access removed or rate limited | Repository owner restores access; operator retries safe discovery/projection. Preserve claims; no new refund authorization. |

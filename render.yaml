@@ -1,3 +1,4 @@
+# Optional review-only addition is in render-workflows.yaml; see docs/review-execution.md.
 # Prepared only; deploying provisions paid resources. See docs/deployment.md.
 previews:
   generation: "off"

@@ -2,6 +2,8 @@
 
 # Hosted sandbox deployment
 
+The optional [isolated review execution runbook](review-execution.md) and root `render-workflows.yaml` add a workflow to the existing service. The workflow template does not replace this full-stack template. Default review execution stays shared until authorized hosted runtime and cost/latency acceptance.
+
 Phase 11 includes a prepared Render Blueprint and local release safeguards. The user manually deployed https://repopay.onrender.com/ with Free web service and Free Postgres (1 GB), choosing fresh demo issues rather than importing local financial history. Health, GitHub sign-in/intake, unfunded cancellation and the user-observed dashboard are verified; full hosted acceptance remains pending. See [hosted evidence](evidence/11-hosted.md).
 
 ## Current manually configured demo
