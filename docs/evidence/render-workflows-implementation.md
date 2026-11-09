@@ -1,5 +1,17 @@
 # Render Workflows implementation and verification
 
+## Hosted user journey — November 9 follow-up
+
+The authorized hosted walkthrough uses contributor `Mecha-Test-Account` and maintainer `Me-cha` on `deepakA18/gitpay-demo-http`: issue #14, PR #15, bounty 3, $1 PayPal sandbox only. Funding completed with order `32D22623C20785305` and capture `6TD59709CP4666807`. Both real Demo CI checks passed. Existing funded terms have CI enforcement disabled; passing CI alone does not change that policy.
+
+Workflow `wfl-dboqnubl550s73ak1a7g` was deployed in the GitPay project with version `1fef39b`; the web service used Render backend generation 2. Capture automatically created dispatch `544b807c-d532-4873-aab3-52242e925317` and run `trn-0bd4gdbor2s9jo0lc73cudh6g`. The run returned `ignored`, while its first execution had already claimed the dispatch. Reconciliation safely marked `FAILED_BEFORE_INFERENCE`; no verification, award or payout was created.
+
+Root cause: SDK 1.7.0 schedules automatic startup during task registration, while `review-workflow.ts` also called `startTaskServer()`. Two executions raced; the duplicate's early completion stopped the owning execution. The entrypoint now disables automatic startup before registration and retains one explicit start. `review-runtime.test.ts` launches the real SDK/entrypoint against local daemon/broker stand-ins with the automatic-start environment variable absent. Before the fix both registration and run tests observed two requests/callbacks; afterward both observe exactly one. The compiled registration smoke no longer masks this defect by setting the environment variable in its harness.
+
+Hosted recovery and end-to-end payout are still pending at this checkpoint. Local regression tests do not substitute for retrying PR #15 through the hosted user flow.
+
+## Earlier implementation record
+
 November 9, 2026. Initial local implementation was based on `20832101f884760cc2dce58035bc862860d093c7`. The user subsequently committed and deployed `b57deaeb0bdec7717745b823ef38899d72c77eed`. The follow-up hosted checks below supersede the earlier deployment/configuration observations; no live model call or payment was performed during these checks.
 
 ## Implemented
