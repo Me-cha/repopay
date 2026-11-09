@@ -19,11 +19,12 @@ export function parseReviewSettings(input:Record<string,string|undefined>):Revie
  return value;
 }
 export function parseExecutorSettings(input:Record<string,string|undefined>){
+ if(input.REVIEW_BROKER_URL)throw new Error('Invalid isolated review executor configuration: use PUBLIC_URL');
  for(const name of ['DATABASE_URL','TEST_DATABASE_URL','PP_SECRET','PP_CLIENT_SECRET','TOKEN_ENC_KEY','PAYMENT_DATA_ENC_KEY','GH_PRIVATE_KEY','GH_PRIVATE_KEY_PATH','RENDER_API_KEY','COPILOT_GITHUB_TOKEN']){
   if(input[name])throw new Error('Broad application credentials are forbidden in the isolated executor');
  }
  const result=z.object({
-  REVIEW_BROKER_URL:z.url().refine(value=>{const u=new URL(value);return !u.username&&!u.password&&!u.search&&!u.hash&&u.pathname==='/'&&(u.protocol==='https:'||(u.protocol==='http:'&&['localhost','127.0.0.1'].includes(u.hostname)));}),
+  PUBLIC_URL:z.url().refine(value=>{const u=new URL(value);return !u.username&&!u.password&&!u.search&&!u.hash&&u.pathname==='/'&&(u.protocol==='https:'||(u.protocol==='http:'&&['localhost','127.0.0.1'].includes(u.hostname)));}),
   REVIEW_EXECUTOR_KEY:key,
   REVIEW_GENERATION:z.coerce.number().int().positive(),
   REVIEW_BACKEND:z.enum(['dedicated','render']),

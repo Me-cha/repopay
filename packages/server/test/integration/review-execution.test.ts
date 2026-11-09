@@ -47,10 +47,10 @@ describe('isolated review lifecycle',()=>{
   await f.database.orm.update(reviewDispatches).set({ownerToken:null,runId:null,status:'ADMITTED'}).where(eq(reviewDispatches.id,f.dispatch.id));
   const app=buildApp({database:f.database,version:'test',reviewExecutor:{database:f.database,key,service:f.service}}),server=app.listen(0,'127.0.0.1');
   await new Promise<void>(resolve=>server.once('listening',resolve));const address=server.address();if(!address||typeof address==='string')throw new Error('Test server unavailable');
-  const env=parseExecutorSettings({REVIEW_BACKEND:'dedicated',REVIEW_GENERATION:'1',REVIEW_EXECUTOR_KEY:key,REVIEW_BROKER_URL:`http://127.0.0.1:${String(address.port)}`});
+  const env=parseExecutorSettings({REVIEW_BACKEND:'dedicated',REVIEW_GENERATION:'1',REVIEW_EXECUTOR_KEY:key,PUBLIC_URL:`http://127.0.0.1:${String(address.port)}`});
   try{
    const path=`/internal/reviews/${f.dispatch.id}/claim`;
-   expect((await fetch(new URL(path,env.REVIEW_BROKER_URL),{method:'POST',headers:{'content-type':'application/json'},body:'{}'})).status).toBe(401);
+   expect((await fetch(new URL(path,env.PUBLIC_URL),{method:'POST',headers:{'content-type':'application/json'},body:'{}'})).status).toBe(401);
    const call=brokerClient(env);await expect(call(f.dispatch.id,'enqueue',{kind:'payout'})).rejects.toThrow();
    const model=vi.fn((input:VerifyInput)=>Promise.resolve(reviewOutput.parse(output(input))));
    const result=await executeReview(f.dispatch.id,randomUUID(),env,{model});

@@ -1,6 +1,6 @@
 # Render Workflows implementation and verification
 
-November 9, 2026. Local uncommitted work based on `20832101f884760cc2dce58035bc862860d093c7`; unrelated user edits retained. No hosted resource, production database migration, live model call or payment was performed in this implementation session.
+November 9, 2026. Initial local implementation was based on `20832101f884760cc2dce58035bc862860d093c7`. The user subsequently committed and deployed `b57deaeb0bdec7717745b823ef38899d72c77eed`. The follow-up hosted checks below supersede the earlier deployment/configuration observations; no live model call or payment was performed during these checks.
 
 ## Implemented
 
@@ -35,14 +35,43 @@ Coverage includes concurrent claims and admission, sponsor fairness, expired hea
 | Workflow Blueprint | Validated against Render's official JSON schema |
 | Documentation paths / diff whitespace | Checked locally |
 
-## Render browser inspection
+## Earlier Render browser inspection (historical)
 
 Signed-in Brave confirmed the existing `repo-pay` service, `Me-cha/repopay` on `main`, Singapore, and deployed base `20832101f884760cc2dce58035bc862860d093c7`. It currently uses Free compute and starts with hosted migrations/checks. The `repopay-reviews` workflow form is prepared with source, region, build and start commands; it was not submitted. The account settings page confirmed no provisioned API keys or CLI tokens. No key was generated or secret copied. Local configuration has no Render API key or executor key, and backend remains shared.
 
+## Hosted HTTP and API checks
+
+November 9, 2026, after the user's deployment. All application requests targeted **https://repo-pay.onrender.com**. No local application server or local product test suite was run. No computer use was used; Render inspection used the authenticated REST API. Secrets, OAuth state and cookie values were omitted from reports.
+
+Render reports deployment `dep-dboq0fjm5ojs7389f0e0` live at commit `b57deaeb0bdec7717745b823ef38899d72c77eed`, finished at `2026-11-09T10:30:52.493709Z`. The service remains Singapore / Free / inline worker / normal recovery mode. Hosted `PUBLIC_URL` is correct. The hosted Render API key is present and matches the local key; its API requests succeeded.
+
+| Hosted check | Observed result |
+| --- | --- |
+| Health | 200, `ready`; deployed health handler checks database connectivity and migration compatibility |
+| Public application shell and referenced JS/CSS | All three requests 200; shell contains React root. Rendering/interactions were not browser-tested |
+| Login initiation | 303 to GitHub authorization; callback is `https://repo-pay.onrender.com/oauth/github/callback`, state present; binding cookie Secure, HttpOnly, SameSite=Lax |
+| Dashboard, connect, funding and review pages without a session | Four requests redirect to hosted sign-in |
+| Callback without code/state/binding | Redirects to sign-in; no session created |
+| Private APIs: me, bounties, payouts, connect, onboarding, stream | All six return 401 without a session |
+| Connect and onboarding POST without a session | Both return 401 |
+| Unsigned GitHub / PayPal webhook POST | 401 / 400 respectively; rejected |
+| Executor claim POST with random nonexistent dispatch UUID | **404**, rather than authenticated broker's 401: broker is not mounted |
+| Render workflow/task/version inventories | Each list endpoint returned HTTP 200 with JSON `null`; no resources were returned |
+
+**Result: 20 hosted HTTP smoke checks passed; one executor availability check is blocked by missing configuration.** `REVIEW_EXECUTOR_KEY`, `RENDER_REVIEW_TASK`, `REVIEW_BACKEND` and `REVIEW_GENERATION` are unset on the web service, which therefore uses shared reviews / generation 1. An API key alone does not activate Render review execution. No task was launched and no provider configuration was changed.
+
+These tests do not establish successful OAuth completion, authenticated user/operator journeys, valid provider webhook delivery, Copilot inference, financial settlement, or Render subprocess/recovery behavior. No authenticated user session was available to this HTTP test session. Raw sanitized reports are local ignored artifacts under `.local/hosted-*.json`; the observations above are the durable evidence.
+
+Configuration follow-up: the isolated executor now reuses the existing `PUBLIC_URL` as its broker origin. The redundant `REVIEW_BROKER_URL` setting was removed from the runtime contract, workflow Blueprint and executor example. A workflow release registers a versioned `verifySubmission` task; task runs receive new run IDs without changing the dispatcher's pinned task slug.
+
+After the user's environment update, the Render API reported desired web-service settings `REVIEW_BACKEND=render`, `REVIEW_GENERATION=2`, correct hosted `PUBLIC_URL`, and an executor key. `RENDER_REVIEW_TASK` remained unset; workflow, workflow-version and task inventories were empty. Deployments `dep-dboq923bc2fs73ctcg50` and `dep-dboqbr0u01pc7383kfeg` both reached `update_failed`, while the prior successful deployment remained live. This matches the startup guard: Render mode requires an exact versioned task and cannot be activated by environment settings before the workflow is released.
+
+The `PUBLIC_URL` refactor passed 19 focused executor/broker tests, all 433 server tests and 8 web tests. Typecheck, ESLint and build also passed; the build retained the existing non-failing React Joyride module-directive warning. No hosted task, Copilot inference or payment was initiated.
+
 ## Pending hosted gates
 
-1. Publish the reviewed source and perform a coordinated additive-migration deployment. These uncommitted changes are not on the hosted site.
-2. Authorize/create the dispatcher API credential, provision/configure the workflow and approve a finite test-compute allowance. No monthly spend ceiling has been approved.
+1. Source deployment and dispatcher API credential are now confirmed. Create the workflow and configure the separate shared executor secret on the web service and workflow; keep broad application credentials off the workflow. Record its deployed version in `RENDER_REVIEW_TASK` on the web service.
+2. Confirm a finite hosted test-compute allowance before task execution. Keep the web backend shared during initial smoke tests; use a nonexistent dispatch for a no-inference connectivity check once the broker is mounted. No monthly spend ceiling has been approved.
 3. Prove actual hosted task startup, broker connectivity, subprocess lifecycle, secrets isolation and revocation behavior. Real Copilot smoke needs its own request allowance.
 4. Collect the plan's local/dedicated/hosted latency, queue scheduling, connection headroom and cost comparison (50 controlled observations per backend, 20 hosted starts). No measured cost or latency advantage is claimed yet.
 5. Choose and activate the backend after those results. The current free web service's sleep behavior must be resolved before any always-on reliability claim.

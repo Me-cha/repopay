@@ -12,7 +12,7 @@ export function brokerClient(env:ExecutorSettings){
  return async(id:string,operation:string,payload:unknown):Promise<unknown>=>{
   const path=`/internal/reviews/${id}/${operation}`,body=JSON.stringify(payload),timestamp=String(Date.now());
   const timeout=['prepare','begin'].includes(operation)?45000:operation==='complete'?15000:10000;
-  const result=await requestJson({PROVIDER_TIMEOUT_MS:timeout,PROVIDER_RESPONSE_MAX_BYTES:1048576},new URL(path,env.REVIEW_BROKER_URL).href,{method:'POST',headers:{'content-type':'application/json','x-review-time':timestamp,'x-review-signature':executorSignature(env.REVIEW_EXECUTOR_KEY,path,timestamp,body)},body});
+  const result=await requestJson({PROVIDER_TIMEOUT_MS:timeout,PROVIDER_RESPONSE_MAX_BYTES:1048576},new URL(path,env.PUBLIC_URL).href,{method:'POST',headers:{'content-type':'application/json','x-review-time':timestamp,'x-review-signature':executorSignature(env.REVIEW_EXECUTOR_KEY,path,timestamp,body)},body});
   if(result.status!==200)throw new Error('Review broker request unavailable');
   return result.body;
  };

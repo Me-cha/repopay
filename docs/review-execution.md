@@ -9,9 +9,9 @@ The [design](decisions/0022-review-publication-and-execution.md) implements shar
 | `REVIEW_BACKEND` | `shared` default; `dedicated` or `render` to opt in | Matching isolated backend |
 | `REVIEW_GENERATION` | Positive integer; increase for a backend/artifact switch | Same generation |
 | `REVIEW_EXECUTOR_KEY` | Independent 32-byte base64 secret | Same secret |
+| `PUBLIC_URL` | Public application origin | Same application origin; used as the executor's broker base URL |
 | `RENDER_API_KEY` | Required only for Render dispatch | Forbidden |
 | `RENDER_REVIEW_TASK` | Exact `workflow/verifySubmission:version` | Not needed |
-| `REVIEW_BROKER_URL` | Not needed | HTTPS app origin; loopback HTTP locally |
 | Database, GitHub private key, PayPal and encryption keys | Existing service only | Forbidden |
 
 Generate a separate key with `openssl rand -base64 32` and store it privately in both configurations. Never put secrets in a task argument or broad runtime environment group attached to the workflow. The broker supplies one separately consented sponsor token at the durable inference boundary; no ambient operator credentials are used.
@@ -26,16 +26,20 @@ Generate a separate key with `openssl rand -base64 32` and store it privately in
 
 ## Render release
 
-Observed November 9: `Me-cha/repopay`, branch `main`; `repo-pay` web service (`srv-dbnff93l550s73f2no20`), Singapore, `https://repo-pay.onrender.com`, Free compute; deployed commit `20832101f884760cc2dce58035bc862860d093c7`. A sleeping free web service cannot provide continuously available dispatch. A brief awake demonstration is not always-on production evidence.
+Verified through Render's API November 9: `Me-cha/repopay`, branch `main`; `repo-pay` web service (`srv-dbnff93l550s73f2no20`), Singapore, `https://repo-pay.onrender.com`, Free compute; deployed commit `b57deaeb0bdec7717745b823ef38899d72c77eed`. The hosted API key is present. The initial check found shared generation 1. A later environment update selected Render generation 2 and added the executor key, but no pinned task exists and Render still lists no workflow, workflow version or task. Two resulting service updates failed; the earlier deployment remains live. See [hosted checks](evidence/render-workflows-implementation.md#hosted-http-and-api-checks).
 
-The Brave New Workflow form is prepared for `repopay-reviews`, the same repository and region:
+A sleeping free web service cannot provide continuously available dispatch. A brief awake demonstration is not always-on production evidence.
+
+Create `repopay-reviews` using the same repository and region with these commands (the earlier browser form was never submitted):
 
 ```text
 Build: corepack enable && corepack prepare pnpm@10.29.3 --activate && pnpm install --frozen-lockfile --prod=false && pnpm --filter @repopay/server build
 Start: pnpm start:reviews:render
 ```
 
-Equivalent settings are in `render-workflows.yaml`, separate from `render.yaml`. Neither has been applied. Source must be committed/pushed to the selected deployment branch before Render can build these entrypoints.
+Equivalent settings are in `render-workflows.yaml`, separate from `render.yaml`. The workflow Blueprint has not been applied. Its entrypoints are now committed and deployed on the web service, but deploying the web service does not create a workflow.
+
+`repopay-reviews` is one long-lived workflow service. It currently registers one task named `verifySubmission`. Each workflow release creates a new workflow version and registers that version's task definition; each invocation creates only a new task-run ID. Configure the dispatcher with the exact versioned task slug returned by Render, for example `repopay-reviews/verifySubmission:<version>`. That value remains unchanged across every run of that release. Update it deliberately only after releasing and accepting a newer workflow version. RepoPay requires the version suffix so a new release cannot silently change the code used for an already-dispatched review.
 
 After release and spending approval:
 

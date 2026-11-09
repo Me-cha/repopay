@@ -6,11 +6,12 @@ import { parseExecutorSettings,parseReviewSettings,artifactVersion } from '../..
 import { CopilotCleanupError } from '../../src/models/copilot.js';
 import type { verify } from '../../src/verifier/verify.js';
 
-const settings={REVIEW_BACKEND:'dedicated',REVIEW_GENERATION:'1',REVIEW_BROKER_URL:'http://127.0.0.1:3000',REVIEW_EXECUTOR_KEY:Buffer.alloc(32,3).toString('base64')};
+const settings={REVIEW_BACKEND:'dedicated',REVIEW_GENERATION:'1',PUBLIC_URL:'http://127.0.0.1:3000',REVIEW_EXECUTOR_KEY:Buffer.alloc(32,3).toString('base64')};
 const env=parseExecutorSettings(settings);
 it('rejects broad executor credentials and unversioned Render tasks',()=>{
  for(const name of ['DATABASE_URL','PP_SECRET','TOKEN_ENC_KEY','RENDER_API_KEY','COPILOT_GITHUB_TOKEN'])expect(()=>parseExecutorSettings({...settings,[name]:'sensitive'})).toThrow('forbidden');
- expect(()=>parseExecutorSettings({...settings,REVIEW_BROKER_URL:'https://user:password@host.test'})).toThrow();
+ expect(()=>parseExecutorSettings({...settings,PUBLIC_URL:'https://user:password@host.test'})).toThrow();
+ expect(()=>parseExecutorSettings({...settings,REVIEW_BROKER_URL:'https://host.test'})).toThrow('PUBLIC_URL');
  expect(()=>parseReviewSettings({REVIEW_BACKEND:'render',REVIEW_EXECUTOR_KEY:settings.REVIEW_EXECUTOR_KEY,RENDER_API_KEY:'r'.repeat(25),RENDER_REVIEW_TASK:'review/verifySubmission'})).toThrow();
  expect(identity(env,'run')).toMatchObject({artifactVersion});
 });

@@ -15,7 +15,7 @@ services:
         value: production
       - key: REVIEW_BACKEND
         value: render
-      - key: REVIEW_BROKER_URL
+      - key: PUBLIC_URL
         value: https://repo-pay.onrender.com
       - key: REVIEW_GENERATION
         sync: false
