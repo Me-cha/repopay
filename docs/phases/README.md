@@ -6,7 +6,7 @@
 
 # Repopay MVP — phase plan
 
-Render execution follow-up: durable dispatch, bounded admission, authenticated broker, dedicated/Render executors and independent Check publication are locally implemented, default off. Hosted smoke and cost/latency adoption remain pending. See [runbook](../review-execution.md) and [evidence](../evidence/render-workflows-implementation.md). Historical phase gates are unchanged.
+Render execution follow-up (November 9): the bounded hosted sandbox journey passed with real browser funding, Render/Copilot reviews, maintainer correction/merge and a receipt-confirmed $1 automatic payout. Runtime startup and settlement prompt-binding defects were fixed and deployed. Cost/latency comparisons and broader phase gates remain pending; this is not production or model-evaluation acceptance. See [runbook](../review-execution.md) and [evidence](../evidence/render-workflows-implementation.md). Historical phase gates are unchanged.
 
 **Latest local work (October 31):** [ADR 0019](../decisions/0019-review-evidence-and-pr-retry.md) adds immutable contribution context, PR-native retry/status and issue-native unfunded cancellation. The v4 evaluation failed; the v5 correction above now needs separate live evaluation and acceptance. Historical v3 acceptance does not authorize new prompt versions.
 

@@ -12,7 +12,33 @@ Fix `6345c3e` was deployed as workflow version `wfv-dbor6l9srm7s73cs5rsg` and we
 
 The post-merge run `trn-0bd4gdbor94n9o2pc73ecrir0` saved review 32 as PARTIAL: `Object.keys` omits non-enumerable own header names. No award/payout occurred. The maintainer rejected that exact submission via `/bounty reject`, preserving its evidence, and the user authorized two additional reviews for a correction PR. This demonstrates an inconsistent pre/post-merge model assessment, not guaranteed model correctness.
 
-The merge also exposed a second integration defect: settlement rebuilt the fresh prompt before JSONB normalization, while the isolated executor hashed the persisted JSONB representation. Identical evidence with reordered CI object keys failed the prompt binding. Settlement now reconstructs that same JSONB representation from **current** evidence while preserving original shared-mode hashes. No stored verdict or financial guard is bypassed. A real PostgreSQL regression failed for unchanged remote input before the fix; the fixed check accepts unchanged content and continues rejecting changed criteria, diff/context and CI. End-to-end payout remains pending at this checkpoint.
+The merge also exposed a second integration defect: settlement rebuilt the fresh prompt before JSONB normalization, while the isolated executor hashed the persisted JSONB representation. Identical evidence with reordered CI object keys failed the prompt binding. Settlement now reconstructs that same JSONB representation from **current** evidence while preserving original shared-mode hashes. No stored verdict or financial guard is bypassed. A real PostgreSQL regression failed for unchanged remote input before the fix; the fixed check accepts unchanged content and continues rejecting changed criteria, diff/context and CI. Fix `551c40c` went live in web deploy `dep-dborcjks728c73ai0hb0`; the Workflow remains pinned to `6345c3e` because its executor did not change.
+
+### Completed hosted result
+
+Correction [PR #16](https://github.com/deepakA18/gitpay-demo-http/pull/16) uses `Object.getOwnPropertyNames` and tests non-enumerable own properties, unchanged descriptors, reference identity and inherited-property exclusion. Its head is `74c4c339ca2f1dcb05b794fdfd10e47cebe46ea6`. Both real GitHub CI checks passed. Maintainer `Me-cha` merged it through the browser after its passing review. All actions used the hosted application; local tests only verified the discovered code fixes.
+
+| Stage | Observed evidence |
+| --- | --- |
+| Contributor and maintainer identities | Separate authenticated browsers: `Mecha-Test-Account` and `Me-cha` |
+| Repository sponsorship | `deepakA18`, Copilot Auto; stored access expiry advanced to November 9 19:37 UTC, token generation 2; no ambient operator token used |
+| Corrected pre-merge review | Review 34, RESOLVES, confidence 0.98, serving model `gpt-6-luna`; run `trn-0bd4gdbord2pjo0lc73cudh7g`; Check `129148917241` |
+| Corrected post-merge review | Review 35, RESOLVES, confidence 0.98; run `trn-0bd4gdbore21jo0lc73cudh80`; Check `129149823537` |
+| Award | Award 2 binds submission 4 / review 35; 100 cents allocated to GitHub ID `350676467` (`Mecha-Test-Account`) |
+| Payment | One payout item, ID 3, 100 cents, provider item `QLFG7SAWDSU6E`, SUCCESS; bounty 3 PAID, no attention or funding hold |
+| User-visible result | Contributor detail: `Disbursed to Contributor`, `Paid $1.00`; maintainer dashboard: Settled; PR bot: `Repopay award · PAID` |
+| Recipient receipt | User explicitly confirmed the new $1 receipt in the receiving PayPal Sandbox account |
+| Duplicate protection observed | One later dispatch ended ALREADY_REVIEWED without inference; subsequent polling still showed exactly one award and one payout item |
+
+Seven Render task runs occurred: four completed real model calls, two stopped before inference, and one duplicate suppression. The second pre-inference stop produced ERROR review 33 and a published unavailable Check; subsequent GitHub events led to successful review 34. Its precise stopping reason was not retained beyond EXECUTOR_STOPPED, so do not call that failure fully diagnosed. Total actual model use was four requests, within the user's extended allowance; no rerun was used to replace PARTIAL with a passing result for unchanged code. Local verification after the fixes: 439 server tests + 8 web tests, typecheck, lint and server build passed on Node 22.23.4; the compiled real-SDK registration smoke passed.
+
+### Limits and follow-ups
+
+- This proves the bounded hosted sandbox journey, not real-money production acceptance, a concurrency/load target, always-on uptime, or cost advantage. Free web sleep remains relevant; Render tasks use metered `flex` compute.
+- CI passed for the test revision, but the existing funded terms had CI enforcement disabled. A required-CI rejection journey was not exercised live here.
+- The first pre-inference failure had no verification record and did not publish a PR failure comment/Check. The dashboard showed the failure, but GitHub failure feedback should be improved. Later failures with a verification record did publish correctly.
+- Final dashboard status was checked after refresh; automatic SSE delivery latency was not independently established.
+- The pre/post-merge verdict change remains evidence of model variability. Full model evaluation, organization sponsorship and broader historical phase gates remain deferred, not passed.
 
 ## Earlier implementation record
 

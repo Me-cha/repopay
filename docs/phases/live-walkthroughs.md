@@ -11,7 +11,7 @@ User scope decision: validate the basics now; defer the broader matrix below. Au
 - [x] Maintainer feedback/rejection before merge: live PR #9 rejection retained; no merge needed to reject.
 - [x] Connect a recipient and deliver a sandbox award: historical $50 and $1 receipt-confirmed flows; reuse this evidence.
 - [x] Basic funding/connection/dashboard browser journeys: six local Chromium cases passed on October 31; providers mocked.
-- [ ] Deploy the foundation-scoped release and finish the current hosted qualifying-merge → automatic payout → recipient receipt/status flow. PR #12 remains open; local readiness is not hosted payout acceptance.
+- [x] Deploy the foundation-scoped release and finish a hosted qualifying-merge → automatic payout → recipient receipt/status flow. November 9: issue #14 / correction PR #16 on `deepakA18/gitpay-demo-http`, hosted bounty 3, four authorized Copilot calls through Render, one $1 payout SUCCESS, PAID in both account views/GitHub and user-confirmed recipient receipt. [Evidence and limitations](../evidence/render-workflows-implementation.md#hosted-user-journey--november-9-follow-up). Historical PR #12 was not reused.
 
 Do not run another full model-evaluation campaign for this foundation milestone. No further inference allowance is implied. Two-author edge cases, organizations, funded refunds, exhaustive recovery/restore and recording remain deferred; existing committed funds/claims must still be preserved.
 
