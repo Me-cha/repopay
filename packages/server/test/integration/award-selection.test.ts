@@ -1,9 +1,29 @@
 import { expect,it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { required } from '../helpers/auth.js';
-import { awards,bounties,copilotSponsors } from '../../src/db/schema.js';
+import { awards,bounties,copilotSponsors,verifications } from '../../src/db/schema.js';
+import { createHash } from 'node:crypto';
+import { buildVerifierPrompt,PROMPT_VERSION } from '../../src/verifier/prompt.js';
+import type { VerifyInput } from '../../src/verifier/collect.js';
 import { createSettlement } from '../../src/settlement/settle.js';
 import { awardFixture } from '../helpers/awards.js';
+it.each(['unchanged','criteria','diff','ci'] as const)('checks the actual JSONB-normalized remote prompt before settlement: %s',async change=>{
+ const f=await awardFixture();try{
+  const sub=await f.add('501','2026-10-30T01:00:00Z');
+  const scan=await f.scan(),fresh=required(scan.evidence.get(sub.id));
+  // The broker hashes this representation after persisting the dispatch input.
+  const saved=required((await f.database.pool.query<{input:VerifyInput}>('select $1::jsonb as input',[JSON.stringify(fresh)])).rows[0]).input;
+  const hash=(input:VerifyInput)=>createHash('sha256').update(PROMPT_VERSION+'\n'+buildVerifierPrompt(input)).digest('hex');
+  expect(hash(saved)).not.toBe(hash(fresh));
+  await f.database.orm.update(verifications).set({promptHash:hash(saved)}).where(eq(verifications.submissionId,sub.id));
+  if(change==='criteria')fresh.criteria+=' Added requirement';
+  if(change==='diff')fresh.diff+=' changed context';
+  if(change==='ci')fresh.ci={...fresh.ci,status:'fail'};
+  const result=await f.service.settleBounty(f.bounty.id);
+  expect(result?.kind).toBe(change==='unchanged'?'awarded':'held');
+  expect(await f.database.orm.select().from(awards)).toHaveLength(change==='unchanged'?1:0);
+ }finally{await f.close();}
+});
 it('reverse arrival order and concurrent settlement select one earliest immutable award',async()=>{
  const f=await awardFixture();try{
   await f.add('502','2026-10-30T02:00:00Z');const earliest=await f.add('501','2026-10-30T01:00:00Z');

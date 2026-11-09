@@ -26,18 +26,18 @@ Generate a separate key with `openssl rand -base64 32` and store it privately in
 
 ## Render release
 
-Verified through Render's API November 9: `Me-cha/repopay`, branch `main`; `repo-pay` web service (`srv-dbnff93l550s73f2no20`), Singapore, `https://repo-pay.onrender.com`, Free compute; deployed commit `b57deaeb0bdec7717745b823ef38899d72c77eed`. The hosted API key is present. The initial check found shared generation 1. A later environment update selected Render generation 2 and added the executor key, but no pinned task exists and Render still lists no workflow, workflow version or task. Two resulting service updates failed; the earlier deployment remains live. See [hosted checks](evidence/render-workflows-implementation.md#hosted-http-and-api-checks).
+Verified November 9: `Me-cha/repopay`, branch `main`; `repo-pay` web service (`srv-dbnff93l550s73f2no20`), Singapore, `https://repo-pay.onrender.com`, Free compute. Workflow `repopay-reviews` (`wfl-dboqnubl550s73ak1a7g`) belongs to the GitPay project's Production environment. Backend generation 2 pins `repopay-reviews/verifySubmission:6345c3e`; hosted review runs have saved real Copilot results and published GitHub feedback. The earlier missing-task/startup failures and current full-flow evidence are recorded in [hosted checks](evidence/render-workflows-implementation.md#hosted-user-journey--november-9-follow-up).
 
 A sleeping free web service cannot provide continuously available dispatch. A brief awake demonstration is not always-on production evidence.
 
-Create `repopay-reviews` using the same repository and region with these commands (the earlier browser form was never submitted):
+The existing `repopay-reviews` uses the same repository and region with these commands:
 
 ```text
 Build: corepack enable && corepack prepare pnpm@10.29.3 --activate && pnpm install --frozen-lockfile --prod=false && pnpm --filter @repopay/server build
 Start: pnpm start:reviews:render
 ```
 
-Equivalent settings are in `render-workflows.yaml`, separate from `render.yaml`. The workflow Blueprint has not been applied. Its entrypoints are now committed and deployed on the web service, but deploying the web service does not create a workflow.
+Equivalent settings are in `render-workflows.yaml`, separate from `render.yaml`. The workflow was created through the CLI/API; the Blueprint was not applied. Deploying the web service alone does not create or update a workflow version. The task entrypoint disables SDK automatic startup before registration and starts exactly once explicitly.
 
 `repopay-reviews` is one long-lived workflow service. It currently registers one task named `verifySubmission`. Each workflow release creates a new workflow version and registers that version's task definition; each invocation creates only a new task-run ID. Configure the dispatcher with the exact versioned task slug returned by Render, for example `repopay-reviews/verifySubmission:<version>`. That value remains unchanged across every run of that release. Update it deliberately only after releasing and accepting a newer workflow version. RepoPay requires the version suffix so a new release cannot silently change the code used for an already-dispatched review.
 

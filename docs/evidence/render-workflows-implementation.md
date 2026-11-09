@@ -8,7 +8,11 @@ Workflow `wfl-dboqnubl550s73ak1a7g` was deployed in the GitPay project with vers
 
 Root cause: SDK 1.7.0 schedules automatic startup during task registration, while `review-workflow.ts` also called `startTaskServer()`. Two executions raced; the duplicate's early completion stopped the owning execution. The entrypoint now disables automatic startup before registration and retains one explicit start. `review-runtime.test.ts` launches the real SDK/entrypoint against local daemon/broker stand-ins with the automatic-start environment variable absent. Before the fix both registration and run tests observed two requests/callbacks; afterward both observe exactly one. The compiled registration smoke no longer masks this defect by setting the environment variable in its harness.
 
-Hosted recovery and end-to-end payout are still pending at this checkpoint. Local regression tests do not substitute for retrying PR #15 through the hosted user flow.
+Fix `6345c3e` was deployed as workflow version `wfv-dbor6l9srm7s73cs5rsg` and web deploy `dep-dbor78bm5ojs738aj0ng`. Maintainer `/bounty retry #14` launched run `trn-0bd4gdbor8g11p6cs739irj80`, which completed in about 22 seconds with `result_saved`. Review 31 used Copilot Auto serving `gpt-6-luna`, returned RESOLVES (0.99 confidence), and published GitHub Check `129144632585` plus a PR summary. The maintainer then merged through GitHub's UI.
+
+The post-merge run `trn-0bd4gdbor94n9o2pc73ecrir0` saved review 32 as PARTIAL: `Object.keys` omits non-enumerable own header names. No award/payout occurred. The maintainer rejected that exact submission via `/bounty reject`, preserving its evidence, and the user authorized two additional reviews for a correction PR. This demonstrates an inconsistent pre/post-merge model assessment, not guaranteed model correctness.
+
+The merge also exposed a second integration defect: settlement rebuilt the fresh prompt before JSONB normalization, while the isolated executor hashed the persisted JSONB representation. Identical evidence with reordered CI object keys failed the prompt binding. Settlement now reconstructs that same JSONB representation from **current** evidence while preserving original shared-mode hashes. No stored verdict or financial guard is bypassed. A real PostgreSQL regression failed for unchanged remote input before the fix; the fixed check accepts unchanged content and continues rejecting changed criteria, diff/context and CI. End-to-end payout remains pending at this checkpoint.
 
 ## Earlier implementation record
 

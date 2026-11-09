@@ -1,7 +1,7 @@
 import {commitAward,orderedCandidates} from './award.js';
 import { createHash } from 'node:crypto';
 import { buildVerifierPrompt,PROMPT_VERSION } from '../verifier/prompt.js';
-import { desc,eq } from 'drizzle-orm';
+import { desc,eq,sql } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
 import { awards,bounties,copilotSponsors,submissions,submissionEvidence,verifications,type Bounty } from '../db/schema.js';
 import { lockBounty,assertInstallation } from '../actions/guards.js';
@@ -9,6 +9,7 @@ import { decide } from '../policy/decide.js';
 import { verdictSchema } from '../verifier/schema.js';
 import { isSponsoredTerms } from '../domain/funded-terms.js';
 import { candidateFingerprint,type CandidateScan } from './candidates.js';
+import type { VerifyInput } from '../verifier/collect.js';
 
 export interface SettlementDependencies {
  scan:(bountyId:string)=>Promise<CandidateScan>;
@@ -44,7 +45,17 @@ export function createSettlement(db:Database,deps:SettlementDependencies) {
    const fresh=scan.evidence.get(candidate.id);
    const [evidence]=await tx.select().from(submissionEvidence).where(eq(submissionEvidence.submissionId,candidate.id)).orderBy(desc(submissionEvidence.version)).limit(1);
    const [review]=await tx.select().from(verifications).where(eq(verifications.submissionId,candidate.id)).orderBy(desc(verifications.id)).limit(1);
-   if(!fresh||!candidate.mergeSha||!candidate.mergedAt||!evidence||!review||review.status!=='DONE'||review.evidenceId!==evidence.id||review.headSha!==candidate.headSha||evidence.version!==candidate.evidenceVersion||evidence.snapshotHash!==fresh.snapshotHash||review.sponsorGhId!==terms.sponsor.id||review.sdkVersion!==terms.policy.sdkVersion||review.promptHash!==createHash('sha256').update(PROMPT_VERSION+'\n'+buildVerifierPrompt(fresh)).digest('hex')||review.provider!=='copilot'||(terms.policy.model!=='auto'&&review.model!==terms.policy.model)||review.model==='auto')return hold('Earliest merged submission needs current verified evidence');
+   const hashPrompt=(input:VerifyInput)=>createHash('sha256').update(PROMPT_VERSION+'\n'+buildVerifierPrompt(input)).digest('hex');
+   let promptMatches=!!fresh&&!!review&&review.promptHash===hashPrompt(fresh);
+   if(fresh&&review&&!promptMatches){
+    // Isolated executors receive JSONB-normalized input. Reconstruct that exact
+    // representation from CURRENT evidence; never trust an old stored prompt.
+    // Keep the original representation valid for existing shared-mode reviews.
+    const normalized=await tx.execute<{input:VerifyInput}>(sql`select ${JSON.stringify(fresh)}::jsonb as input`);
+    const input=normalized.rows[0]?.input;
+    promptMatches=!!input&&review.promptHash===hashPrompt(input);
+   }
+   if(!fresh||!candidate.mergeSha||!candidate.mergedAt||!evidence||!review||review.status!=='DONE'||review.evidenceId!==evidence.id||review.headSha!==candidate.headSha||evidence.version!==candidate.evidenceVersion||evidence.snapshotHash!==fresh.snapshotHash||review.sponsorGhId!==terms.sponsor.id||review.sdkVersion!==terms.policy.sdkVersion||!promptMatches||review.provider!=='copilot'||(terms.policy.model!=='auto'&&review.model!==terms.policy.model)||review.model==='auto')return hold('Earliest merged submission needs current verified evidence');
    if(deps.acceptedServingModels&&!deps.acceptedServingModels.includes(review.model))return hold('Serving model has no accepted evaluation for this settlement scope');
    const verdict=verdictSchema.safeParse(review.result);if(!verdict.success)return hold('Earliest merged submission has invalid review output');
    const decision=decide({bountyCents:bounty.amountCents,verdict:verdict.data,ci:fresh.ci.status,eligible:new Map(fresh.eligibleAuthors.filter(a=>a.ghId!==bounty.createdByGhId).map(a=>[a.ghId,a.login])),evidence:{truncated:fresh.truncated,sufficient:fresh.sufficient,stale:fresh.headSha!==candidate.headSha||fresh.baseSha!==candidate.baseSha||fresh.ci.testedSha!==candidate.headSha},cfg:terms.policy});
