@@ -1,0 +1,39 @@
+{
+  "chain": {
+    "mint": "CXk2AMBfi3TwaEL2468s6zP8xq9NxTXjp9gjMgzeUynM",
+    "network": "solana-devnet",
+    "decimals": 6,
+    "treasury": "CC6eMUZhcBddPsC1oLwfQHCC2ipTVVtP3Vw1rzpTkVAb",
+    "refundWallet": "AM19gZaXJUvT7UsBFUn8XbXoE5Grga81C8xht6M4UmnM"
+  },
+  "title": "[Repopay PYUSD devnet test] Leading JSON BOM support",
+  "policy": {
+    "model": "auto",
+    "version": "repopay-v2-copilot",
+    "minShare": 0.05,
+    "provider": "copilot",
+    "ciContexts": [],
+    "ciRequired": false,
+    "sdkVersion": "1.0.28",
+    "noticeHours": 72,
+    "maxDiffChars": 160000,
+    "minConfidence": 0.75,
+    "selectionRule": "first-qualifying-merged:merged_at,pr_number,pr_id",
+    "maxCriteriaChars": 16000,
+    "fundedCancellationEnabled": false
+  },
+  "repoId": "1435468752",
+  "sponsor": {
+    "id": "96007304",
+    "kind": "user",
+    "login": "deepakA18"
+  },
+  "version": 6,
+  "criteria": "## Isolated Repopay PYUSD devnet walkthrough\n\nProposed reward: **1.00 test PYUSD on Solana devnet**, funded through the local Repopay app. These tokens have no monetary value. This detached demo repository does not affect PayPal upstream. Funding, reviews, merge and payout remain separate verified steps.\n\n## Task\n\nUpdate `Json.decode` in `lib/paypalhttp/serializer/json.js` so it accepts a JSON string beginning with exactly one Unicode BOM character (U+FEFF), by removing that leading character before parsing.\n\n## Acceptance criteria\n\n- A string with one leading U+FEFF followed by `{\"example\":123}` decodes to `{example:123}`.\n- Normal JSON objects, arrays and scalar values still decode as before.\n- A U+FEFF inside a JSON string value is preserved.\n- Invalid JSON still throws `SyntaxError`; do not swallow parsing errors or strip arbitrary characters.\n- Preserve existing tests. Add regression tests for these cases to `demo-test/serializers.test.cjs` and pass `node --test demo-test/serializers.test.cjs`.\n- Keep the change limited to the decoder and regression tests.\n\nOpen a contributor PR referencing this issue. Leave it unmerged until its exact-revision CI and Repopay review have been checked. Wallet ownership is confirmed in Repopay; never post private keys or seed phrases.\n\nThis is the active single 1-PYUSD devnet walkthrough. Earlier attempts on issues #18, #19 and #20 expired before a signed transaction reached the application; chain checks found no reference transactions. Those checkouts remain on hold with original history preserved. Do not fund them.\n",
+  "currency": "PYUSD",
+  "merchantId": "CC6eMUZhcBddPsC1oLwfQHCC2ipTVVtP3Vw1rzpTkVAb",
+  "amountCents": 100,
+  "creatorGhId": "96007304",
+  "issueNumber": 21,
+  "issueUpdatedAt": "2026-11-10T13:03:05Z"
+}

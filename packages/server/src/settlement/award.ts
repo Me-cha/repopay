@@ -1,3 +1,4 @@
+import { hasConfirmedFunding } from '../actions/guards.js';
 import { and,eq,sql } from 'drizzle-orm';
 import type { Transaction } from '../db/transaction.js';
 import { awards,bounties,bountyActivity,cancellationRequests,reviewDecisions,submissions,type Bounty,type Submission } from '../db/schema.js';
@@ -17,7 +18,7 @@ export async function commitAward(tx:Transaction,bounty:Bounty,scan:CandidateSca
  const rows=await tx.select().from(submissions).where(eq(submissions.bountyId,bounty.id));
  const [existing]=await tx.select().from(awards).where(eq(awards.bountyId,bounty.id));
  const first=(await orderedCandidates(tx,rows,scan))[0],fresh=scan.evidence.get(candidate.id);
- if(existing||bounty.fundingHold||!bounty.captureId||!bounty.fundedAt||!['FUNDED','NEEDS_REVIEW'].includes(bounty.status)||!scan.complete||scan.bountyVersion!==bounty.version||candidateFingerprint(rows)!==scan.hash||first?.id!==candidate.id||!candidate.mergeSha||!candidate.mergedAt||!fresh)throw new AuthError(409,'Award state changed. Refresh the review.');
+ if(existing||bounty.fundingHold||!hasConfirmedFunding(bounty)||!['FUNDED','NEEDS_REVIEW'].includes(bounty.status)||!scan.complete||scan.bountyVersion!==bounty.version||candidateFingerprint(rows)!==scan.hash||first?.id!==candidate.id||!candidate.mergeSha||!candidate.mergedAt||!fresh)throw new AuthError(409,'Award state changed. Refresh the review.');
  const eligible=new Set(fresh.eligibleAuthors.filter(a=>a.ghId!==bounty.createdByGhId).map(a=>a.ghId));
  if(!allocation.length||allocation.some(a=>!eligible.has(a.ghId)||!Number.isSafeInteger(a.cents)||a.cents<=0)||new Set(allocation.map(a=>a.ghId)).size!==allocation.length||allocation.reduce((n,a)=>n+a.cents,0)!==bounty.amountCents)throw new AuthError(409,'Invalid award recipients or amount.');
  const [award]=await tx.insert(awards).values({bountyId:bounty.id,submissionId:candidate.id,evidenceId,verificationId,headSha:candidate.headSha,baseSha:candidate.baseSha,mergeSha:candidate.mergeSha,mergedAt:candidate.mergedAt,scanHash:scan.hash,amountCents:bounty.amountCents,allocation}).returning();

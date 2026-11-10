@@ -204,3 +204,29 @@ October 31 update: the full Auto v3 evaluation completed and **failed (17/18)**.
 
 - [x] Prepare v5 correction for false semantic defect claims: language/flag-aware review guidance, explicit line-ending regression evidence, and a real multiline-bug negative case; preserve failed v4 results and fixtures. Local verification is separate from live effectiveness.
 - [ ] Run a separately approved v5 evaluation (ten cases × three runs = 30 requests), inspect all results, and obtain scoped acceptance before v5 awards. No new allowance is implied.
+
+November 10 crypto extension: optional sandbox funding passed local verification; actual crypto checkout and its end-to-end USD PayPal payout remain unverified. Hyperwallet and wallet payouts are excluded from scope. Track [crypto extension](../crypto-payments.md); do not mark these provider gates complete from mocked tests.
+
+## Direct PYUSD on Solana devnet — November 10
+
+Separate from the completed USD foundation and the optional PayPal crypto-to-USD test. [Implementation evidence](../evidence/pyusd-devnet.md) and [setup](../crypto-payments.md). No live chain/model allowance or hosted activation is implied.
+
+Latest verified result: **bounty 9 / issue 21 is PAID**. PR23 merged at `af57c33700a1497ea83bf12f7f47419c7d83872e`; exact-head v6 postmerge review returned RESOLVES / 100% confidence. Award 3 assigns all 1.00 devnet PYUSD to 0xdeepak18. One outgoing transfer finalized at slot 520807943; the recipient confirmed receipt. GitHub shows `bounty-paid`, and the winning PR has a PAID award comment. This is local self-controlled devnet evidence; mainnet, refunds and hosted chain acceptance remain outside this result.
+
+- [x] Local signed ownership, account/session/CSRF, cross-provider reservation, exact receipt, qualifying award, delayed claim, immutable split and refund/recovery checks with mocked providers.
+- [x] Save maintainer's actual devnet wallet through authenticated ownership proof (deepakA18; local database verified).
+- [x] Save contributor's actual devnet wallet through ownership proof: 0xdeepak18 (GitHub ID 354933167), Backpack selected in user screenshot; local wallet record verified.
+- [ ] Confirm contributor can revisit wallet settings without a new ownership prompt.
+- [x] Fund one fresh test bounty with devnet PYUSD; confirm exact finalized receipt (bounty 9 / issue 21, Solflare; [transaction](https://explorer.solana.com/tx/AcCHGo3eAPRWALFJNCUB8jojE9k2iAVu9p76hmGZqwWtjo6auvSGAYngm3j8BEaaC5na3HVc3MjL5Fbm2zqs2F5?cluster=devnet)).
+- [x] Exercise authorized qualifying merge and automatic PYUSD delivery; confirm recipient receipt (PR23, award 3, finalized 1 PYUSD to 0xdeepak18; user confirmed receipt).
+- [ ] Verify callback/response-loss recovery on devnet.
+- [ ] Separately authorized funded-refund walkthrough with original-wallet destination and existing notice/reviewer rules.
+- [ ] Protected-key hosted deployment and operational recovery review.
+
+Mainnet and automatic signed/uncertain-transaction replacement remain outside this local release. Unsigned expiry recovery follows ADR 0025; the signed exception is pinned to one explicitly approved historical transfer. Existing reservations/awards must never be deleted to make a test pass.
+
+November 10 recovery follow-up: bounty 9 / issue 21 now has locally verified same-bounty unsigned-expiry recovery (ADR 0025). 478 server tests, 24 web tests and the mocked Chromium signing journey passed. Live Solflare signing/finalized funding subsequently passed as recorded above; no replacement GitHub issue or payout was created.
+
+November 10 PYUSD handoff: v6 accepted only for bounty 9 / issue 21; exact local settlement scope enabled after 514 tests and readiness checks. PR23 is still unmerged; postmerge review, outgoing payout and receipt remain unchecked. Model allowance used: 2/3. See [evidence](../evidence/pyusd-devnet.md#v6-accepted-and-exact-local-scope-enabled--november-10).
+
+November 10 completion: PR23 merged; postmerge review 41 passed RESOLVES; one automatic award and one finalized 1-PYUSD payout reached PAID, with recipient receipt confirmed. Approved model allowance is exhausted at 3/3. See [payout evidence](../evidence/pyusd-devnet.md#qualifying-merge-and-pyusd-payout--passed).

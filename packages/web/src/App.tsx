@@ -1,3 +1,4 @@
+import { WalletPage } from './pages/WalletPage.js';
 import { AppShell } from './components/layout/AppShell.js';
 import { AuthProvider } from './context/AuthContext.js';
 import { WorkspaceDataProvider } from './context/WorkspaceDataContext.js';
@@ -18,6 +19,7 @@ function DashboardOutlet() {
   const { path } = useRouter();
   const clean = normalizePath(path);
 
+  if (clean === '/dashboard/wallet') return <WalletPage />;
   if (clean === '/dashboard') {
     return <AnalyticsDashboardPage />;
   }

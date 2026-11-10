@@ -130,7 +130,7 @@ export function ContributionsPage() {
   }, [bounties, activeRepo, activeFilter, query, sortBy]);
 
   return (
-    <div className="c2-page">
+    <div className="c2-page"><p>Summary totals show USD only; individual bounties show their payment currency.</p>
       {/* Compact Header */}
       <header className="c2-page-head" data-tour={activeFilter === 'NEEDS_REVIEW' ? 'needs-review' : 'contributions'}>
         <div>
@@ -436,7 +436,7 @@ export function ContributionsPage() {
                                     <UserAvatar login={alloc.login} size={17} />
                                     <span>@{alloc.login}</span>
                                     <span className="c2-text-muted">
-                                      {money(alloc.cents)}
+                                      {money(alloc.cents,b.currency)}
                                     </span>
                                   </span>
                                 ))}
@@ -492,7 +492,7 @@ export function ContributionsPage() {
                                   isUnfundedCancelled ? 'is-struck' : ''
                                 }`}
                               >
-                                {money(b.amountCents)}
+                                {money(b.amountCents,b.currency)}
                               </span>
                               <span className="c2-amount-sub">
                                 {b.fundedAt

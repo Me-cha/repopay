@@ -77,3 +77,13 @@ PR interaction changes must preserve signed-comment actor identity, explicit cur
 PR retry changes must test signed intake, current write authorization, stale revisions, funding/award fences, concurrent coalescing and acknowledgement replay. Contribution context tests must preserve exact revision/actor identities, reject stale confirmations, and prove that bounds fail closed. No new configuration or migration is needed for ADR 0019; no live requests are included in `pnpm test`.
 
 Dashboard onboarding uses pinned React Joyride 3.2.0. Focused checks: `pnpm exec vitest run packages/server/test/integration/onboarding.test.ts`, `pnpm --filter @repopay/web test`, and `pnpm exec playwright test packages/web/test/onboarding.spec.ts` with the same isolated TEST_DATABASE_URL. The browser harness seeds existing actors as already introduced; dedicated tour actors exercise real account-once persistence without resetting production state.
+
+Optional crypto funding: `PP_CRYPTO_ENABLED` defaults to false and requires migration 0023 plus PayPal sandbox merchant onboarding. Bounties and contributor payouts remain in USD through the existing PayPal flow. See [crypto setup](docs/crypto-payments.md).
+
+## PYUSD devnet development
+
+The optional direct PYUSD route uses pinned `@solana/web3.js`, `@solana/spl-token` and `bs58` dependencies and migration 0024. Run `pnpm install --frozen-lockfile` after updating source. `pnpm pyusd:wallet` creates an ignored `.local/pyusd/treasury.json` test key with exclusive creation; it does not fund or broadcast. Configuration is `PYUSD_DEVNET_ENABLED=false`, `PYUSD_TREASURY_KEY_FILE=`, and `PYUSD_REFUNDS_ENABLED=false` by default. Keep private keys out of tracked files. Web and settlement worker must share the same database and treasury configuration.
+
+Follow [docs/crypto-payments.md](docs/crypto-payments.md) for setup and limitations. Unit/integration tests use mocked providers and isolated SQL schemas; no live chain acceptance is implied. Never enable mainnet, replace an ambiguous transaction, or run a paid model/financial walkthrough as part of routine tests.
+
+PYUSD devnet wallet signing uses the pinned Wallet Standard app/features packages. Use a current Phantom or Solflare extension exposing `solana:devnet`; no mainnet or network-unspecified transaction-signing fallback is offered. Expired preparations stop before the wallet prompt and retain their original transfer for reconciliation.

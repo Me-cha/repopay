@@ -42,7 +42,7 @@ export const api={
  connectStatus:(signal?:AbortSignal)=>get('/api/connect',connectStatusSchema,signal),
  updateConnect:(paypalEmail:string,csrf:string)=>postForm('/api/connect',{paypalEmail,csrf},connectStatusSchema),
 };
-export const money=(cents:number)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(cents/100);
+export const money=(cents:number,currency='USD')=>currency==='PYUSD'?`${(cents/100).toFixed(2)} PYUSD`:new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'}).format(cents/100);
 export const label=(value:string)=>value.replaceAll('_',' ').toLowerCase().replace(/^./,c=>c.toUpperCase());
 export const formatTimeIST=(date:Date|string|number=new Date())=>{
  const d=typeof date==='string'||typeof date==='number'?new Date(date):date;

@@ -1,6 +1,7 @@
+import { cryptoBuyerSchema,type CryptoBuyer } from '../domain/funding-payment.js';
 export interface CaptureSnapshot {id:string;status:string;amountCents:number;currency:string;finalCapture:boolean;feeCents?:number;netCents?:number}
 export interface OrderSnapshot {id:string;status:string;reference:string;customId:string;merchantId:string;amountCents:number;currency:string;approvalUrl:string|null;captures:CaptureSnapshot[]}
-export interface OrderInput {attemptId:string;termsHash:string;amountCents:number;merchantId:string;returnUrl:string;cancelUrl:string}
+export interface OrderInput {attemptId:string;termsHash:string;amountCents:number;merchantId:string;returnUrl:string;cancelUrl:string;cryptoBuyer?:CryptoBuyer}
 export interface Orders {
  createOrder:(input:OrderInput,key:string,deadline:Date)=>Promise<OrderSnapshot>;
  getOrder:(id:string)=>Promise<OrderSnapshot>;
@@ -44,7 +45,10 @@ export function createOrders(env:FundingEnv):Orders {
  }
  return {
   async createOrder(input,key,deadline) {
-   return normalizeOrder(await call('/v2/checkout/orders','POST',{intent:'CAPTURE',purchase_units:[{reference_id:`repopay:${input.attemptId}`,custom_id:input.termsHash,amount:{currency_code:'USD',value:`${String(Math.floor(input.amountCents/100))}.${String(input.amountCents%100).padStart(2,'0')}`},payee:{merchant_id:input.merchantId}}],payment_source:{paypal:{experience_context:{return_url:input.returnUrl,cancel_url:input.cancelUrl,shipping_preference:'NO_SHIPPING',user_action:'PAY_NOW'}}}},key,deadline));
+   const buyer=input.cryptoBuyer?cryptoBuyerSchema.parse(input.cryptoBuyer):null;
+   const experience={return_url:input.returnUrl,cancel_url:input.cancelUrl};
+   const paymentSource=buyer?{crypto:{country_code:buyer.countryCode,name:{given_name:buyer.givenName,surname:buyer.surname},experience_context:{...experience,locale:'en-US'}}}:{paypal:{experience_context:{...experience,shipping_preference:'NO_SHIPPING',user_action:'PAY_NOW'}}};
+   return normalizeOrder(await call('/v2/checkout/orders','POST',{...(buyer?{processing_instruction:'ORDER_COMPLETE_ON_PAYMENT_APPROVAL'}:{}),intent:'CAPTURE',purchase_units:[{reference_id:`repopay:${input.attemptId}`,custom_id:input.termsHash,amount:{currency_code:'USD',value:`${String(Math.floor(input.amountCents/100))}.${String(input.amountCents%100).padStart(2,'0')}`},payee:{merchant_id:input.merchantId}}],payment_source:paymentSource},key,deadline));
   },
   async getOrder(orderId){return normalizeOrder(await call('/v2/checkout/orders/'+id.parse(orderId)));},
   async captureOrder(orderId,key,deadline){return normalizeOrder(await call('/v2/checkout/orders/'+id.parse(orderId)+'/capture','POST',{},key,deadline));},

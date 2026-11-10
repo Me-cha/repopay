@@ -5,7 +5,7 @@ import { z } from 'zod';
 import type { Database } from '../db/client.js';
 import type { FundingEnv } from '../env.js';
 import { actionTokens,awards,bountyActivity,cancellationRequests as requests,cancellationEvidence as evidence,cancellationDecisions as decisions,submissions,type Bounty,type CancellationRequest,type CancellationBundle } from '../db/schema.js';
-import { assertInstallation,assertSession,findBounty,lockBounty } from '../actions/guards.js';
+import { assertInstallation,assertSession,findBounty,lockBounty,hasConfirmedFunding } from '../actions/guards.js';
 import { AuthError,type Session } from '../github/oauth.js';
 import type { Clock } from '../domain/types.js';
 import { sha256 } from '../util/crypto.js';
@@ -19,9 +19,9 @@ export type DecisionInput=z.infer<typeof decisionSchema>;
 export interface CancellationDeps {github:GitHub;collect:CollectEvidence;access:(actorId:string,bounty:Bounty,write:boolean)=>Promise<void>;clock?:Clock}
 export function createCancellation(db:Database,env:FundingEnv,deps:CancellationDeps){
  const clock=deps.clock??{now:()=>new Date()};
- function enabled(b:Bounty){if(!env.FUNDED_CANCELLATION_ENABLED||env.CANCELLATION_SANDBOX_REPO_ID!==b.repoId||!env.CANCELLATION_OPERATOR_GH_IDS.length||!b.fundedTerms?.policy.fundedCancellationEnabled)throw new AuthError(409,'Funded cancellation is unavailable for these terms or this deployment.');}
+ function enabled(b:Bounty){if((b.currency==='PYUSD'&&(!env.PYUSD_DEVNET_ENABLED||!env.PYUSD_REFUNDS_ENABLED))||!env.FUNDED_CANCELLATION_ENABLED||env.CANCELLATION_SANDBOX_REPO_ID!==b.repoId||!env.CANCELLATION_OPERATOR_GH_IDS.length||!b.fundedTerms?.policy.fundedCancellationEnabled)throw new AuthError(409,'Funded cancellation is unavailable for these terms or this deployment.');}
  async function load(id:string){if(!/^[1-9]\d*$/.test(id))throw new AuthError(404);const [r]=await db.orm.select().from(requests).where(eq(requests.id,id));if(!r)throw new AuthError(404,'Cancellation request not found.');return r;}
- async function eligible(tx:Parameters<Parameters<Database['withTransaction']>[0]>[0],b:Bounty){await assertInstallation(tx,b);const [a]=await tx.select().from(awards).where(eq(awards.bountyId,b.id));if(a||!['FUNDED','NEEDS_REVIEW'].includes(b.status)||!b.captureId||!b.fundedAt||b.fundingHold)throw new AuthError(409,'Funds are unavailable for cancellation.');}
+ async function eligible(tx:Parameters<Parameters<Database['withTransaction']>[0]>[0],b:Bounty){await assertInstallation(tx,b);const [a]=await tx.select().from(awards).where(eq(awards.bountyId,b.id));if(a||!['FUNDED','NEEDS_REVIEW'].includes(b.status)||!hasConfirmedFunding(b)||b.fundingHold)throw new AuthError(409,'Funds are unavailable for cancellation.');}
  async function operator(actor:string,b:Bounty,r:CancellationRequest){enabled(b);assertIndependent(actor,env.CANCELLATION_OPERATOR_GH_IDS,[b.createdByGhId,r.requesterId,r.funderId,...r.claimants]);await deps.access(actor,b,false);}
  async function previewRequest(session:Session,id:string){const b=await findBounty(db,id);enabled(b);await deps.access(session.ghId,b,true);await db.withTransaction(async tx=>{await assertSession(tx,session,clock.now());const fresh=await lockBounty(tx,id);if(!fresh)throw new AuthError(404);await eligible(tx,fresh);});return b;}
  async function request(session:Session,bountyId:string,input:{reasonCategory:string;reason:string;links:string[]}){

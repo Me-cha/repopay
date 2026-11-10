@@ -1,5 +1,7 @@
 **Active scope:** the user narrowed the current milestone to the basic sandbox journey, retaining automatic payout after a qualifying merge. Use the [foundation checklist](live-walkthroughs.md#active-foundation-mvp-checklist). Full phase-exit, model-evaluation and advanced live acceptance below remain historical/backlog scope, not current foundation blockers. See [ADR 0021](../decisions/0021-foundation-mvp-scope.md).
 
+**November 10 PYUSD extension:** Phases 3/6/8 have local devnet funding, wallet delivery and guarded original-wallet refund support. Defaults remain off; real Solflare 1-PYUSD funding passed locally for bounty 9 / issue 21. Wallet payout/refund and hosted acceptance remain unchecked. [Local evidence](../evidence/pyusd-devnet.md), [ADR 0024](../decisions/0024-pyusd-devnet-route.md).
+
 **Latest local correction:** verifier v5 adds language/flag checks, explicit line-ending regressions and a genuine multiline-bug case. Ten-case live evaluation (30 requests) remains unrun; settlement stays gated. See [ADR 0020](../decisions/0020-verifier-semantic-counterexamples.md).
 
 **Latest hosted validation (November 2):** PR #12 passed the current foundation-profile review after merge; the hosted worker automatically allocated one $1 award, delivered $0.50 to each confirmed contributor and published PAID / `bounty-paid`. Both receipts confirmed. [Evidence](../evidence/11-hosted.md#hosted-payout-and-both-receipts--passed-november-2). The historical v4 evaluation failed (24/27); full model/production acceptance remains deferred under ADR 0021.
@@ -237,3 +239,5 @@ October 31 latest: the corrected complete-context Auto v3 evaluation passed 18/1
 October 31 GitHub-first interaction update: ADR 0018 PR contribution commands and actionable issue/PR projections pass 375 server + 4 web tests, typecheck, lint and build. Hosted acceptance remains pending; no additional model or financial operation was run.
 
 November 7 dashboard addition: account-once onboarding follows existing UI/authentication boundaries; see [implementation and test evidence](../evidence/dashboard-onboarding.md). This does not reopen or change previously accepted phase scope.
+
+November 10 crypto extension: optional sandbox funding passed local verification; actual crypto checkout and its end-to-end USD PayPal payout remain unverified. Hyperwallet and wallet payouts are excluded from scope. Track [crypto extension](../evidence/crypto-funding.md); do not mark these provider gates complete from mocked tests.

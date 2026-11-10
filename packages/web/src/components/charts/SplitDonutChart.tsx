@@ -14,6 +14,7 @@ export interface DonutSlice {
 const DEFAULT_PALETTE = ['#16A34A', '#18181B', '#D97706', '#71717A', '#A1A1AA'];
 
 interface SplitDonutChartProps {
+  currency?:string;
   totalCents: number;
   centerLabel?: string;
   centerValue?: string;
@@ -23,6 +24,7 @@ interface SplitDonutChartProps {
 }
 
 export function SplitDonutChart({
+  currency='USD',
   totalCents,
   centerLabel = 'Total',
   centerValue,
@@ -52,8 +54,8 @@ export function SplitDonutChart({
     : undefined;
 
   const displayVal = activeSlice
-    ? money(activeSlice.cents)
-    : (centerValue ?? money(totalCents));
+    ? money(activeSlice.cents,currency)
+    : (centerValue ?? money(totalCents,currency));
   const displaySub = activeSlice ? activeSlice.label : centerLabel;
 
   return (
@@ -64,7 +66,7 @@ export function SplitDonutChart({
           height={svgSize}
           viewBox={`0 0 ${String(svgSize)} ${String(svgSize)}`}
           role="img"
-          aria-label={`${centerLabel}: ${centerValue ?? money(totalCents)}`}
+          aria-label={`${centerLabel}: ${centerValue ?? money(totalCents,currency)}`}
         >
           <circle
             cx={center}
@@ -167,7 +169,7 @@ export function SplitDonutChart({
                     <span className="c2-legend-count">{slice.count}</span>
                   )}
                   <span className="c2-legend-pct">{pct}%</span>
-                  <span className="c2-legend-money">{money(slice.cents)}</span>
+                  <span className="c2-legend-money">{money(slice.cents,currency)}</span>
                 </div>
               </div>
             );

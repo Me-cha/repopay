@@ -54,8 +54,8 @@ export function AnalyticsDashboardPage() {
   const scopedBounties = useMemo(
     () =>
       repoScope === 'ALL'
-        ? bounties
-        : bounties.filter((b) => b.repoFullName === repoScope),
+        ? bounties.filter(b=>b.currency==='USD')
+        : bounties.filter((b) => b.currency==='USD'&&b.repoFullName === repoScope),
     [bounties, repoScope],
   );
 
@@ -102,7 +102,7 @@ export function AnalyticsDashboardPage() {
     }
 
     if (repoScope === 'ALL') {
-      const delivered = payouts.reduce((acc, p) => acc + p.paidCents, 0);
+      const delivered = payouts.filter(p=>p.currency!=='PYUSD').reduce((acc, p) => acc + p.paidCents, 0);
       if (delivered > paidCents) paidCents = delivered;
     }
 
@@ -301,7 +301,7 @@ export function AnalyticsDashboardPage() {
   }, [activeSeries, scopedMetrics]);
 
   return (
-    <div className="c2-page">
+    <div className="c2-page"><p>Financial charts show USD only. <a href="/dashboard/contributions">View all currencies by bounty</a>.</p>
       {/* Compact Shadcn-style Page Header */}
       <header className="c2-page-head" data-tour="overview">
         <div>

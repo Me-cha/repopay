@@ -32,10 +32,11 @@ export const bounties = pgTable('bounties', {
  amountCents:integer('amount_cents').notNull(),currency:text('currency').notNull().default('USD'),status:text('status').notNull().default('OPEN'),version:integer('version').notNull().default(0),
  createdByGhId:stringBigint('created_by_gh_id').notNull(),createdVia:text('created_via').notNull(),statusCommentId:stringBigint('status_comment_id'),
  needsAttention:boolean('needs_attention').notNull().default(false),attentionReason:text('attention_reason'),
+ chainFundingId:text('chain_funding_id'),chainFundingSignature:text('chain_funding_signature'),
  captureRequestKey:text('capture_request_key'),captureId:text('capture_id'),fundedAt:timestamp('funded_at',{withTimezone:true}),
  currentFundingAttemptId:stringBigint('current_funding_attempt_id'),fundedTerms:jsonb('funded_terms').$type<FundedTerms>(),fundingActorGhId:stringBigint('funding_actor_gh_id'),fundingHold:boolean('funding_hold').notNull().default(false),
  createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),updatedAt:timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
-},t=>[uniqueIndex('one_active_bounty_per_issue').on(t.repoId,t.issueNumber).where(sql`${t.status}<>'CANCELLED'`),check('bounty_amount_check',sql`${t.amountCents}>0 and ${t.currency}='USD'`),check('bounty_status_check',sql`${t.status} in ('OPEN','CANCELLED','CAPTURING','FUNDED','NEEDS_REVIEW','AWAITING_CLAIM','PAYING','PAID','REFUNDING')`),check('bounty_source_check',sql`${t.createdVia} in ('label','command')`)]);
+},t=>[uniqueIndex('one_active_bounty_per_issue').on(t.repoId,t.issueNumber).where(sql`${t.status}<>'CANCELLED'`),check('bounty_amount_check',sql`${t.amountCents}>0 and ${t.currency} in ('USD','PYUSD')`),check('bounty_status_check',sql`${t.status} in ('OPEN','CANCELLED','CAPTURING','FUNDED','NEEDS_REVIEW','AWAITING_CLAIM','PAYING','PAID','REFUNDING')`),check('bounty_source_check',sql`${t.createdVia} in ('label','command')`)]);
 export const bountyActivity = pgTable('bounty_activity', {
  id:stringSerial('id').primaryKey(),bountyId:stringBigint('bounty_id').notNull().references(()=>bounties.id),actorGhId:stringBigint('actor_gh_id'),source:text('source').notNull(),action:text('action').notNull(),metadata:jsonb('metadata').$type<Record<string,unknown>>().notNull().default({}),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
 });
@@ -120,13 +121,14 @@ export const actionTokens = pgTable('action_tokens', {
 },t=>[check('action_kind_check',sql`${t.action} in ('cancel_draft','fund','approve','cancellation_review')`)]);
 
 export const fundingAttempts=pgTable('funding_attempts',{
+ paymentMethod:text('payment_method').$type<'paypal'|'crypto'>().notNull().default('paypal'),buyerNameEnc:text('buyer_name_enc'),
  id:stringSerial('id').primaryKey(),bountyId:stringBigint('bounty_id').notNull().references(()=>bounties.id),attemptNumber:integer('attempt_number').notNull(),actorGhId:stringBigint('actor_gh_id').notNull(),
  checkoutOrigin:text('checkout_origin').notNull(),terms:jsonb('terms').$type<FundedTerms>().notNull(),termsHash:text('terms_hash').notNull(),amountCents:integer('amount_cents').notNull(),currency:text('currency').notNull().default('USD'),
  orderRequestKey:text('order_request_key').notNull().unique(),captureRequestKey:text('capture_request_key').notNull().unique(),orderId:text('order_id').unique(),captureId:text('capture_id').unique(),approvalUrl:text('approval_url'),
  orderSubmissionBoundaryAt:timestamp('order_submission_boundary_at',{withTimezone:true}),captureSubmissionBoundaryAt:timestamp('capture_submission_boundary_at',{withTimezone:true}),orderSafeRetryUntil:timestamp('order_safe_retry_until',{withTimezone:true}),captureSafeRetryUntil:timestamp('capture_safe_retry_until',{withTimezone:true}),
  observationVersion:integer('observation_version').notNull().default(0),status:text('status').notNull().default('NEW'),active:boolean('active').notNull().default(true),attention:text('attention'),
  nextReconcileAt:timestamp('next_reconcile_at',{withTimezone:true}).notNull().defaultNow(),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),updatedAt:timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
-},t=>[uniqueIndex('one_active_funding_attempt').on(t.bountyId).where(sql`${t.active}`),uniqueIndex('funding_attempt_number').on(t.bountyId,t.attemptNumber),check('funding_amount_check',sql`${t.amountCents}>0 and ${t.currency}='USD'`),check('funding_status_check',sql`${t.status} in ('NEW','CREATED','APPROVED','CAPTURING','PENDING','COMPLETED','VOIDED','DECLINED','HOLD')`)]);
+},t=>[check('funding_method_check',sql`(${t.paymentMethod}='paypal' and ${t.buyerNameEnc} is null) or (${t.paymentMethod}='crypto' and ${t.buyerNameEnc} is not null and ${t.terms}->'policy'->>'fundedCancellationEnabled'='false')`),uniqueIndex('one_active_funding_attempt').on(t.bountyId).where(sql`${t.active}`),uniqueIndex('funding_attempt_number').on(t.bountyId,t.attemptNumber),check('funding_amount_check',sql`${t.amountCents}>0 and ${t.currency}='USD'`),check('funding_status_check',sql`${t.status} in ('NEW','CREATED','APPROVED','CAPTURING','PENDING','COMPLETED','VOIDED','DECLINED','HOLD')`)]);
 export type FundingIntent=typeof fundingAttempts.$inferSelect;
 
 // Immutable entitlement. Delivery changes never update or delete this row.
@@ -175,3 +177,21 @@ export const reconciliationCheckpoints=pgTable('reconciliation_checkpoints',{
 export const userOnboarding = pgTable('user_onboarding', {
  ghId: text('gh_id').primaryKey(), dashboardTourSeenAt: timestamp('dashboard_tour_seen_at', {withTimezone:true}).notNull().defaultNow(),
 });
+
+// Devnet wallet proofs and immutable chain intents are separate from PayPal identities.
+export const chainWallets=pgTable('chain_wallets',{
+ ghId:stringBigint('gh_id').primaryKey(),address:text('address').notNull(),version:integer('version').notNull().default(1),updatedAt:timestamp('updated_at',{withTimezone:true}).notNull().defaultNow(),
+});
+export const chainChallenges=pgTable('chain_challenges',{
+ id:text('id').primaryKey(),sessionId:text('session_id').notNull().references(()=>sessions.id,{onDelete:'cascade'}),ghId:stringBigint('gh_id').notNull(),address:text('address').notNull(),message:text('message').notNull(),expiresAt:timestamp('expires_at',{withTimezone:true}).notNull(),usedAt:timestamp('used_at',{withTimezone:true}),
+});
+export const chainTransfers=pgTable('chain_transfers',{
+ id:text('id').primaryKey(),bountyId:stringBigint('bounty_id').notNull().references(()=>bounties.id),kind:text('kind',{enum:['funding','payout','refund']}).notNull(),
+ requestId:stringBigint('request_id').references(()=>cancellationRequests.id),evidenceVersion:integer('evidence_version'),bountyVersion:integer('bounty_version'),
+ awardId:stringBigint('award_id').references(()=>awards.id),ghId:stringBigint('gh_id').notNull(),walletVersion:integer('wallet_version').notNull(),
+ source:text('source').notNull(),destination:text('destination').notNull(),amount:integer('amount').notNull(),terms:jsonb('terms').$type<FundedTerms>().notNull(),
+ message:text('message'),wire:text('wire'),signature:text('signature').unique(),lastValidBlockHeight:integer('last_valid_block_height'),
+ supersedesId:text('supersedes_id').unique(),
+ status:text('status',{enum:['RESERVED','SIGNED','SUCCESS','HOLD','EXPIRED']}).notNull().default('RESERVED'),attention:text('attention'),nextCheckAt:timestamp('next_check_at',{withTimezone:true}).notNull().defaultNow(),createdAt:timestamp('created_at',{withTimezone:true}).notNull().defaultNow(),
+},t=>[uniqueIndex('chain_one_funding').on(t.bountyId).where(sql`${t.kind}='funding' AND ${t.status}<>'EXPIRED'`),uniqueIndex('chain_one_refund').on(t.requestId).where(sql`${t.kind}='refund'`),uniqueIndex('chain_one_payout').on(t.awardId,t.ghId).where(sql`${t.kind}='payout'`)]);
+export type ChainTransfer=typeof chainTransfers.$inferSelect;

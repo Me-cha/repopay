@@ -104,6 +104,8 @@ Record redacted request/batch/item IDs, HTTP statuses, actual duplicate response
 
 ## Configuration bounds
 
+Payout destinations are saved against the stable GitHub account ID in the current database. Payout settings show the masked saved address and reuse it; the edit form opens only when the user chooses to change it. A failed status lookup offers a retry rather than asking the user to reconnect. Local and hosted databases have separate destination records, even when the same GitHub identity signs in to both. Current delivery remains USD through PayPal; saving a crypto wallet is not supported by this payout adapter.
+
 `.env.example` contains explicit values; `src/env.ts` is the validation source of truth. Timeout, body/response size, job lease and reconciliation settings are bounded positive integers. `PROVIDER_RESPONSE_MAX_BYTES` bounds streamed probe responses; `PROVIDER_TIMEOUT_MS` bounds GitHub/PayPal requests; `COPILOT_TIMEOUT_MS` separately bounds the SDK request lifecycle. Money is bounded integer cents; keys decode to exactly 32 bytes; stable IDs remain strings. Cancellation operator IDs are required only when enabled, and the notice value is fixed at 72 hours.
 
 ## Provider references checked
@@ -288,3 +290,15 @@ After deploying this release, contributor declarations/maintainer confirmations,
 ### First-visit dashboard tour
 
 Install the locked dependencies and run the existing `pnpm db:migrate` before starting this release (migration 0020). No new environment variables are required. The tour is shown at most once per GitHub account across browsers. Existing accounts are eligible on their first dashboard visit after this release. Presentation is recorded before display, so a lost response or mid-tour refresh can suppress the tour permanently. There is no replay/reset control.
+
+Optional crypto funding: `PP_CRYPTO_ENABLED` defaults to false and requires migration 0023 plus PayPal sandbox merchant onboarding. Bounties and contributor payouts remain in USD through the existing PayPal flow. See [crypto setup](crypto-payments.md).
+
+## PYUSD devnet development
+
+The optional direct PYUSD route uses pinned `@solana/web3.js`, `@solana/spl-token` and `bs58` dependencies and migration 0024. Run `pnpm install --frozen-lockfile` after updating source. `pnpm pyusd:wallet` creates an ignored `.local/pyusd/treasury.json` test key with exclusive creation; it does not fund or broadcast. Configuration is `PYUSD_DEVNET_ENABLED=false`, `PYUSD_TREASURY_KEY_FILE=`, and `PYUSD_REFUNDS_ENABLED=false` by default. Keep private keys out of tracked files. Web and settlement worker must share the same database and treasury configuration.
+
+Follow [crypto-payments.md](crypto-payments.md) for setup and limitations. Unit/integration tests use mocked providers and isolated SQL schemas; no live chain acceptance is implied. Never enable mainnet, replace an ambiguous transaction, or run a paid model/financial walkthrough as part of routine tests.
+
+PYUSD devnet wallet signing uses the pinned Wallet Standard app/features packages. Use a current Phantom or Solflare extension exposing `solana:devnet`; no mainnet or network-unspecified transaction-signing fallback is offered. Expired preparations stop before the wallet prompt and retain their original transfer for reconciliation.
+
+PYUSD checkout recovery requires migration 0025 through the existing migration command before restarting the local server. It adds immutable expired-attempt history; it does not clear holds or alter signed transfers. See [recovery design](decisions/0025-expired-pyusd-funding-recovery.md).

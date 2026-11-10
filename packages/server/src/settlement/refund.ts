@@ -9,11 +9,11 @@ import type { CancellationService } from '../cancellation/service.js';
 import type { Orders } from '../paypal/orders.js';
 import type { Refunds,RefundSnapshot } from '../paypal/refunds.js';
 import { enqueue } from '../jobs/queue.js';
-export function createRefundSettlement(db:Database,env:FundingEnv,cancel:CancellationService,orders:Orders,provider:Refunds){
+export function createRefundSettlement(db:Database,env:FundingEnv,cancel:CancellationService,orders:Orders,provider:Refunds,chain?:{reserveRefund:(id:string)=>Promise<unknown>;tick:()=>Promise<void>}){
  const now=()=>cancel.clock.now(),next=()=>new Date(now().getTime()+env.RECONCILIATION_INTERVAL_SEC*1000);
  async function capture(id:string,cents:number){const c=await orders.getCapture(id);if(c.id!==id||c.status!=='COMPLETED'||c.amountCents!==cents||c.currency!=='USD'||!c.finalCapture)throw new AuthError(409,'Full captured principal could not be verified.');}
  async function authorizeRefund(requestId:string){
-  const v=await cancel.refresh(requestId),r=v.request,b=v.bounty;cancel.enabled(b);if(!r.reviewerId||r.status!=='APPROVED'||!v.bundle.complete||!r.noticeEndsAt||r.noticeEndsAt>now()||!b.captureId)throw new AuthError(409,'Current independent approval required.');await cancel.operator(r.reviewerId,b,r);await capture(b.captureId,b.amountCents);
+  const v=await cancel.refresh(requestId),r=v.request,b=v.bounty;if(b.currency!=='USD')throw new AuthError(409,'Use the PYUSD refund adapter');cancel.enabled(b);if(!r.reviewerId||r.status!=='APPROVED'||!v.bundle.complete||!r.noticeEndsAt||r.noticeEndsAt>now()||!b.captureId)throw new AuthError(409,'Current independent approval required.');await cancel.operator(r.reviewerId,b,r);await capture(b.captureId,b.amountCents);
   return db.withTransaction(async tx=>{const current=await lockBounty(tx,b.id);if(!current)throw new AuthError(404);await cancel.eligible(tx,current);const [fresh]=await tx.select().from(requests).where(eq(requests.id,r.id)).for('update');
    if(!fresh||fresh.status!=='APPROVED'||fresh.evidenceVersion!==r.evidenceVersion||fresh.reviewerId!==r.reviewerId||current.version!==b.version)throw new AuthError(409,'Cancellation approval changed.');
    const [funding]=await tx.select().from(fundingAttempts).where(and(eq(fundingAttempts.bountyId,b.id),eq(fundingAttempts.captureId,b.captureId??''),eq(fundingAttempts.status,'COMPLETED')));if(!funding||funding.amountCents!==b.amountCents||funding.actorGhId!==r.funderId)throw new AuthError(409,'Original funding record required.');
@@ -46,9 +46,9 @@ export function createRefundSettlement(db:Database,env:FundingEnv,cancel:Cancell
   finally{await connection.query('SELECT pg_advisory_unlock(hashtextextended(current_schema()||$1,0))',[key]).catch(()=>{broken=true;});connection.off('error',onError);connection.release(broken);}
  }
  let lastTick=0;
- async function tick(){if(now().getTime()-lastTick<60000/env.RECONCILIATION_RATE_PER_MIN)return;lastTick=now().getTime();const [i]=await db.orm.select().from(refundIntents).where(and(inArray(refundIntents.status,['RESERVED','MAY_HAVE_SUBMITTED','IN_FLIGHT','SETTLED_FAIL']),lte(refundIntents.nextReconcileAt,now()))).orderBy(refundIntents.nextReconcileAt).limit(1);if(i)await submitRefund(i.id);
+ async function tick(){if(now().getTime()-lastTick<60000/env.RECONCILIATION_RATE_PER_MIN)return;lastTick=now().getTime();await chain?.tick();const [i]=await db.orm.select().from(refundIntents).where(and(inArray(refundIntents.status,['RESERVED','MAY_HAVE_SUBMITTED','IN_FLIGHT','SETTLED_FAIL']),lte(refundIntents.nextReconcileAt,now()))).orderBy(refundIntents.nextReconcileAt).limit(1);if(i)await submitRefund(i.id);
   if(!env.FUNDED_CANCELLATION_ENABLED)return;
-  const [r]=await db.orm.select().from(requests).where(and(inArray(requests.status,['NOTICE','REVIEW','APPROVED']),lte(requests.nextReconcileAt,now()))).orderBy(requests.nextReconcileAt).limit(1);if(r){await db.orm.update(requests).set({nextReconcileAt:next()}).where(eq(requests.id,r.id));if(!r.noticePublishedAt)await cancel.publish(r.id);else{const v=await cancel.refresh(r.id);if(v.request.status==='APPROVED')try{await authorizeRefund(r.id);}catch{/* no refund authorization on failed evidence */}}}
+  const [r]=await db.orm.select().from(requests).where(and(inArray(requests.status,['NOTICE','REVIEW','APPROVED']),lte(requests.nextReconcileAt,now()))).orderBy(requests.nextReconcileAt).limit(1);if(r){await db.orm.update(requests).set({nextReconcileAt:next()}).where(eq(requests.id,r.id));if(!r.noticePublishedAt)await cancel.publish(r.id);else{const v=await cancel.refresh(r.id);if(v.request.status==='APPROVED')try{if(v.bounty.currency==='PYUSD'){await chain?.reserveRefund(r.id);}else await authorizeRefund(r.id);}catch{/* no refund authorization on failed evidence */}}}
  }
  return {authorizeRefund,submitRefund,reconcileRefund:submitRefund,tick};
 }

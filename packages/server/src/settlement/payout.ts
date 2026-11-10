@@ -14,7 +14,7 @@ export function createPayoutService(db:Database,env:FundingEnv,provider:Payouts,
  async function reserve(awardId:string){
   return db.withTransaction(async tx=>{
    const [award]=await tx.select().from(awards).where(eq(awards.id,awardId));if(!award)return;
-   const bounty=await lockBounty(tx,award.bountyId);if(!bounty||bounty.fundingHold)return;
+   const bounty=await lockBounty(tx,award.bountyId);if(!bounty||bounty.currency!=='USD'||bounty.fundingHold)return;
    const [existing]=await tx.select().from(payoutBatches).where(eq(payoutBatches.awardId,awardId));if(existing)return existing;
    const destinations=[];
    for(const part of [...award.allocation].sort((a,b)=>a.ghId<b.ghId?-1:1)){

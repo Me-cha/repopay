@@ -162,6 +162,34 @@
       "when": 1794221000000,
       "tag": "0022_review_dispatches",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794300000000,
+      "tag": "0023_crypto_funding",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794300000001,
+      "tag": "0024_pyusd_devnet",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1794300000002,
+      "tag": "0025_pyusd_funding_recovery",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794300000003,
+      "tag": "0026_scoped_devnet_expiry",
+      "breakpoints": true
     }
   ]
 }

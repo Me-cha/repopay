@@ -1,3 +1,4 @@
+import { hasConfirmedFunding } from '../actions/guards.js';
 import {commitAward,orderedCandidates} from './award.js';
 import { createHash } from 'node:crypto';
 import { buildVerifierPrompt,PROMPT_VERSION } from '../verifier/prompt.js';
@@ -36,7 +37,7 @@ export function createSettlement(db:Database,deps:SettlementDependencies) {
    const merged=await orderedCandidates(tx,rows,scan);
    const existing=savedAward;
    if(existing){const winner=merged[0];if(winner&&winner.id!==existing.submissionId&&((winner.mergedAt?.getTime()??Infinity)<existing.mergedAt.getTime()||((winner.mergedAt?.getTime()??Infinity)===existing.mergedAt.getTime()&&BigInt(winner.prId)<BigInt(rows.find(r=>r.id===existing.submissionId)?.prId??winner.prId))))await hold('Earlier merged candidate discovered after award; independent investigation required');return {kind:'awarded' as const,award:existing};}
-   if(!['FUNDED','NEEDS_REVIEW'].includes(bounty.status)||!bounty.captureId||!bounty.fundedAt)return hold('Confirmed captured funding required');
+   if(!['FUNDED','NEEDS_REVIEW'].includes(bounty.status)||!hasConfirmedFunding(bounty))return hold('Confirmed captured funding required');
    const terms=bounty.fundedTerms;if(!terms||!isSponsoredTerms(terms))return hold('Unsupported funded verifier profile');
    if(!accepted||bounty.version!==before.version)return hold('Accepted sandbox profile and exact bounty scope required before automatic award');
    const [sponsor]=await tx.select().from(copilotSponsors).where(eq(copilotSponsors.repoId,bounty.repoId)).for('share');

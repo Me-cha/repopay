@@ -8,12 +8,17 @@ import { fundingAttempts } from '../db/schema.js';
 import { makeTerms,termsSchema,termsHash,type FundedTerms,type SponsorSnapshot } from '../domain/funded-terms.js';
 import { parseCopilotEnv,type FundingEnv } from '../env.js';
 import { AuthError } from '../github/oauth.js';
+import { cryptoBuyerSchema,cryptoFundingNotice } from '../domain/funding-payment.js';
 import { safeApprovalUrl } from '../paypal/orders.js';
 import { listCopilotModels } from '../models/copilot.js';
 import { checkCsrf,csrfFor,requireSession } from './session.js';
 import { dollars,escapeHtml,fact,fold,dialogCard,htmlPage,pageSession,safeError,type AuthenticationDependencies } from './auth.js';
 const confirmBody=z.object({csrf:z.string()}).strict();
-const prepareBody=confirmBody.extend({termsHash:z.string().regex(/^[a-f0-9]{64}$/)}).strict();
+const prepareBody=confirmBody.extend({termsHash:z.string().regex(/^[a-f0-9]{64}$/),paymentMethod:z.enum(['paypal','crypto']).default('paypal'),givenName:z.string().max(140).optional(),surname:z.string().max(140).optional(),countryCode:z.literal('US').optional()}).strict();
+function cryptoForm(csrf:string,path:string,hash:string) {
+ return `<form method="post" action="${escapeHtml(path)}"><input type="hidden" name="csrf" value="${csrf}"><input type="hidden" name="termsHash" value="${hash}"><input type="hidden" name="paymentMethod" value="crypto"><fieldset><legend>Pay with crypto (sandbox)</legend><p>${escapeHtml(cryptoFundingNotice)}</p><p>This integration currently supports US buyers. Enter your own sandbox buyer details.</p><label>First name <input name="givenName" autocomplete="given-name" maxlength="140" required></label><label>Last name <input name="surname" autocomplete="family-name" maxlength="140" required></label><label>Buyer country <select name="countryCode" required><option value="">Choose country</option><option value="US">United States</option></select></label><button type="submit">Continue with crypto</button></fieldset></form>`;
+}
+function paymentNotice(method:unknown) {return method==='crypto'?`<p class="notice-banner info">${escapeHtml(cryptoFundingNotice)}</p>`:'<p class="dlg-note">Payment method: PayPal sandbox · USD.</p>';}
 function termsHtml(t:FundedTerms) {
   const sponsored='sponsor' in t;
   const reviewer=sponsored?`Copilot ${t.policy.model==='auto'?'auto':escapeHtml(t.policy.model)} · @${escapeHtml(t.sponsor.login)}`:escapeHtml(t.policy.model);
@@ -22,7 +27,7 @@ function termsHtml(t:FundedTerms) {
   return `<div class="dlg-amount"><strong>${dollars(t.amountCents)}</strong><span>USD · issue #${String(t.issueNumber)}</span></div><p style="font-weight:600;margin:2px 0 10px">${escapeHtml(t.title)}</p><div class="facts">${fact('Winner','First qualifying merged PR')}${fact('Open to','Anyone · nothing reserves it')}${fact('Reviewer',reviewer)}</div>${fold('Acceptance criteria',`<div class="criteria-box">${escapeHtml(t.criteria)}</div><p class="dlg-note">Criteria freeze upon deposit.</p>`,'frozen on deposit')}${fold('Verification policy &amp; billing',`${sponsor}${policyGrid}<p class="dlg-note">${t.policy.fundedCancellationEnabled?'Exceptional cancellation requires independent review after a 72-hour published notice. Awards cannot be refunded.':'Funded cancellation is disabled in these terms.'} Receiving merchant: <code>${escapeHtml(t.merchantId)}</code>.</p>`)}`;
 }
 function form(csrf:string,path:string,label:string,hash?:string){return `<form method="post" action="${escapeHtml(path)}"><input type="hidden" name="csrf" value="${csrf}">${hash?`<input type="hidden" name="termsHash" value="${hash}">`:''}<button type="submit">${label}</button></form>`;}
-async function currentTerms(deps:AuthenticationDependencies&{env:FundingEnv;listCopilotModels?:typeof listCopilotModels},bounty:Awaited<ReturnType<typeof findBounty>>):Promise<FundedTerms> {
+export async function currentTerms(deps:AuthenticationDependencies&{env:FundingEnv;listCopilotModels?:typeof listCopilotModels},bounty:Awaited<ReturnType<typeof findBounty>>):Promise<FundedTerms> {
  const {auth,env,github}=deps;
  const sponsor=await auth.getCopilotSponsor(bounty.repoId);
  if(sponsor.installationId!==bounty.installationId)throw new AuthError(403,'The connected Copilot sponsor is not bound to this GitHub installation.');
@@ -40,13 +45,14 @@ export function mountFunding(app:Express,deps:AuthenticationDependencies&{env:Fu
   try {
    const session=await pageSession(deps,request,response);if(!session)return;
    const b=await findBounty(database,request.params.id);await authorizeAction(auth,github,session,b,'read');
+   if(b.chainFundingId){response.redirect(303,`/dashboard/wallet?funding=${b.id}`);return;}
    const [attempt]=await database.orm.select().from(fundingAttempts).where(eq(fundingAttempts.id,b.currentFundingAttemptId??'0'));
    if(attempt?.active){response.redirect(303,`/bounties/${b.id}/funding/${attempt.id}`);return;}
    await authorizeAction(auth,github,session,b,'fund');
    if(b.status!=='OPEN'||b.fundingHold)throw new AuthError(409,'This bounty cannot start checkout.');
    let terms:FundedTerms;
    try{terms=await currentTerms(deps,b);}catch(error){if(error instanceof AuthError&&error.status===409&&/sponsor|model/i.test(error.message)){response.status(error.status).type('html').send(htmlPage('Copilot sponsor required',dialogCard({title:'Copilot sponsor needed',subtitle:'Funding is blocked until a repository owner sponsors reviews.',closeHref:'/dashboard/contributions',body:`<p role="alert">${escapeHtml(error.message)}</p>`,foot:`<a class="btn btn-primary" href="/bounties/${encodeURIComponent(b.id)}/copilot-sponsor">Connect Copilot sponsor</a><a class="dlg-link" href="/dashboard/contributions">Back</a>`}),session.ghLogin));}else throw error;return;}
-   response.type('html').send(htmlPage('Review bounty funding',dialogCard({title:'Fund this bounty',subtitle:'Review the essentials, then continue to lock escrow.',closeHref:'/dashboard/contributions',body:termsHtml(terms),foot:form(csrfFor(session,request.path),request.path,'Continue',termsHash(terms))+`<a class="dlg-link" href="/dashboard/contributions">Not now</a><span class="grow"></span><a class="dlg-link" href="/bounties/${encodeURIComponent(b.id)}/copilot-sponsor">Sponsor</a><a class="dlg-link danger" href="/bounties/${encodeURIComponent(b.id)}/cancel">Cancel draft</a>`}),session.ghLogin));
+   response.type('html').send(htmlPage('Review bounty funding',dialogCard({title:'Fund this bounty',subtitle:'Review the essentials, then continue to lock escrow.',closeHref:'/dashboard/contributions',body:termsHtml(terms)+(env.PYUSD_DEVNET_ENABLED?`<p><a class="btn btn-outline" href="/dashboard/wallet?funding=${b.id}">Choose PYUSD on Solana devnet</a> · Funds and payouts stay in PYUSD.</p>`:'')+(env.PP_CRYPTO_ENABLED&&!terms.policy.fundedCancellationEnabled?cryptoForm(csrfFor(session,request.path),request.path,termsHash(terms)):''),foot:form(csrfFor(session,request.path),request.path,'Continue',termsHash(terms))+`<a class="dlg-link" href="/dashboard/contributions">Not now</a><span class="grow"></span><a class="dlg-link" href="/bounties/${encodeURIComponent(b.id)}/copilot-sponsor">Sponsor</a><a class="dlg-link danger" href="/bounties/${encodeURIComponent(b.id)}/cancel">Cancel draft</a>`}),session.ghLogin));
   }catch(error){safeError(response,error,request.path);}
  });
  app.post('/bounties/:id/fund',async(request,response)=>{
@@ -55,7 +61,10 @@ export function mountFunding(app:Express,deps:AuthenticationDependencies&{env:Fu
    const b=await findBounty(database,request.params.id),ctx=await authorizeAction(auth,github,session,b,'fund');
    const terms=await currentTerms(deps,b);
    if(termsHash(terms)!==body.data.termsHash)throw new AuthError(409,'Issue criteria or policy changed. Reload and review the current terms.');
-   const token=await prepareFunding(database,env,session,ctx,b,terms,()=>auth.clock.now());response.redirect(303,'/fund/a/'+token);
+   const buyer=body.data.paymentMethod==='crypto'?cryptoBuyerSchema.safeParse({givenName:body.data.givenName,surname:body.data.surname,countryCode:body.data.countryCode}):null;
+   if(buyer&&!buyer.success)throw new AuthError(400,'Enter valid buyer names and select United States for crypto checkout.');
+   if(!buyer&&(body.data.givenName||body.data.surname||body.data.countryCode))throw new AuthError(400,'Unexpected buyer details for PayPal checkout.');
+   const token=await prepareFunding(database,env,session,ctx,b,terms,()=>auth.clock.now(),buyer?.success?{method:'crypto',buyer:buyer.data}:{method:'paypal'});response.redirect(303,'/fund/a/'+token);
   }catch(error){safeError(response,error,request.path);}
  });
  app.get('/fund/a/:token',async(request,response)=>{
@@ -66,7 +75,7 @@ export function mountFunding(app:Express,deps:AuthenticationDependencies&{env:Fu
    if(token.usedAt||token.expiresAt<=auth.clock.now()||token.bountyVersion!==b.version) {
     response.status(409).type('html').send(htmlPage('Check funding status',dialogCard({title:'Confirmation unavailable',subtitle:'It was used, expired, or the bounty changed.',closeHref:'/dashboard/contributions',body:'<p>No money moved from this page.</p>',foot:`<a class="btn btn-primary" href="/bounties/${b.id}/fund">View funding status or prepare fresh terms</a>`}),session.ghLogin));return;
    }
-   response.type('html').send(htmlPage('Confirm funding',dialogCard({title:'Confirm escrow deposit',subtitle:'Step 2 of 2 · single-use, bound to these exact terms.',closeHref:'/dashboard/contributions',body:termsHtml(termsSchema.parse(token.params.terms))+'<p class="dlg-note">Funds are held in escrow until a qualifying PR is merged.</p>',foot:form(csrfFor(session,request.path),request.path,'Confirm and prepare checkout')+'<a class="dlg-link" href="/dashboard/contributions">Cancel</a>'}),session.ghLogin));
+   response.type('html').send(htmlPage('Confirm funding',dialogCard({title:'Confirm escrow deposit',subtitle:'Step 2 of 2 · single-use, bound to these exact terms.',closeHref:'/dashboard/contributions',body:paymentNotice(token.params.paymentMethod)+termsHtml(termsSchema.parse(token.params.terms))+'<p class="dlg-note">Funds are held in escrow until a qualifying PR is merged.</p>',foot:form(csrfFor(session,request.path),request.path,'Confirm and prepare checkout')+'<a class="dlg-link" href="/dashboard/contributions">Cancel</a>'}),session.ghLogin));
   }catch(error){safeError(response,error,request.path);}
  });
  app.post('/fund/a/:token',async(request,response)=>{
@@ -85,7 +94,7 @@ export function mountFunding(app:Express,deps:AuthenticationDependencies&{env:Fu
    if(suffix&&(!a.orderId||request.query.token!==a.orderId))throw new AuthError(400,'Return order does not match this funding attempt. Open funding status from the issue.');
    const current=b.currentFundingAttemptId===a.id&&a.active&&!b.fundingHold;
    const approval=current&&b.status==='OPEN'&&a.status==='CREATED'&&a.approvalUrl&&a.orderId?safeApprovalUrl(a.approvalUrl,a.orderId):null;
-   response.type('html').send(htmlPage('Funding status',dialogCard({title:'Escrow funding status',subtitle:`${b.repoFullName} #${String(b.issueNumber)}`,badge:`<span class="chip ${b.status==='FUNDED'?'chip-pass':''}">${escapeHtml(b.status)}</span>`,closeHref:'/dashboard',body:`<div class="facts">${fact('Bounty',escapeHtml(b.status))}${fact('Checkout',escapeHtml(a.status))}${fact('Amount',`${dollars(a.amountCents)} USD`)}</div><div class="notice-banner info">A browser return or cancel does not prove payment status; a completed capture marks the bounty funded.</div>${a.attention?'<p role="alert">Funding requires reconciliation. The existing payment identity is retained.</p>':''}${fold('Funded terms',termsHtml(a.terms))}`,foot:approval?`<a href="${escapeHtml(approval)}" class="btn btn-paypal">Continue to PayPal Sandbox →</a><a href="/bounties/${b.id}/funding/${a.id}" class="dlg-link">Refresh status</a>`:`<a href="/bounties/${b.id}/funding/${a.id}" class="btn btn-outline">Refresh funding status</a><a href="/dashboard" class="btn btn-primary">Open dashboard</a>`}),session.ghLogin));
+   response.type('html').send(htmlPage('Funding status',dialogCard({title:'Escrow funding status',subtitle:`${b.repoFullName} #${String(b.issueNumber)}`,badge:`<span class="chip ${b.status==='FUNDED'?'chip-pass':''}">${escapeHtml(b.status)}</span>`,closeHref:'/dashboard',body:`<div class="facts">${fact('Bounty',escapeHtml(b.status))}${fact('Checkout',escapeHtml(a.status))}${fact('Amount',`${dollars(a.amountCents)} USD`)}</div><div class="notice-banner info">A browser return or cancel does not prove payment status; a completed capture marks the bounty funded.</div>${a.attention?'<p role="alert">Funding requires reconciliation. The existing payment identity is retained.</p>':''}${paymentNotice(a.paymentMethod)}${fold('Funded terms',termsHtml(a.terms))}`,foot:approval?`<a href="${escapeHtml(approval)}" class="btn btn-paypal">Continue to PayPal ${a.paymentMethod==='crypto'?'Crypto ':''}Sandbox →</a><a href="/bounties/${b.id}/funding/${a.id}" class="dlg-link">Refresh status</a>`:`<a href="/bounties/${b.id}/funding/${a.id}" class="btn btn-outline">Refresh funding status</a><a href="/dashboard" class="btn btn-primary">Open dashboard</a>`}),session.ghLogin));
   }catch(error){safeError(response,error,request.path);}
  });
 }

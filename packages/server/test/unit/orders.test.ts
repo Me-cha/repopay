@@ -28,3 +28,14 @@ it('retains documented fees and net separately from the promised gross principal
  const order=normalizeOrder({...input,purchase_units:[{...input.purchase_units[0],payments:{captures:[{id:'CAPTURE',status:'COMPLETED',amount:{value:'50.00',currency_code:'USD'},final_capture:true,seller_receivable_breakdown:{gross_amount:{value:'50.00',currency_code:'USD'},paypal_fee:{value:'2.00',currency_code:'USD'},net_amount:{value:'48.00',currency_code:'USD'}}}]}}]});
  expect(order.captures[0]).toMatchObject({amountCents:5000,feeCents:200,netCents:4800});
 });
+it('crypto checkout requests provider auto-capture and never sends a PayPal-wallet payment source',async()=>{
+ const env={...fundingEnv(),PP_CRYPTO_ENABLED:true},api=createOrders(env);
+ nock(env.PP_BASE).post('/v1/oauth2/token').reply(200,{access_token:'access',token_type:'Bearer'});
+ let sent:unknown;
+ const scope=nock(env.PP_BASE).post('/v2/checkout/orders',value=>{sent=value;return true;}).reply(201,body());
+ const input={attemptId:'1',termsHash:'terms-hash',amountCents:5000,merchantId:env.PP_MERCHANT_ID,returnUrl:'https://repopay.test/return',cancelUrl:'https://repopay.test/cancel',cryptoBuyer:{givenName:'Test',surname:'Buyer',countryCode:'US' as const}};
+ await api.createOrder(input,'crypto-key',new Date(Date.now()+60000));
+ expect(scope.isDone()).toBe(true);
+ expect(sent).toMatchObject({processing_instruction:'ORDER_COMPLETE_ON_PAYMENT_APPROVAL',intent:'CAPTURE',payment_source:{crypto:{country_code:'US',name:{given_name:'Test',surname:'Buyer'}}}});
+ expect(sent).not.toHaveProperty('payment_source.paypal');
+});

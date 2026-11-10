@@ -11,7 +11,7 @@ export interface PayPalHeaders {transmissionId:string;transmissionTime:string;ce
 export type VerifyPayPal=(event:unknown,headers:PayPalHeaders,raw:Buffer)=>Promise<boolean>;
 export class PayPalWebhookError extends Error {constructor(readonly status:number){super('PayPal webhook not accepted');}}
 const headerSchema=z.object({transmissionId:z.string().min(1).max(256),transmissionTime:z.string().min(1).max(100),certUrl:z.url().max(2048),authAlgo:z.string().min(1).max(100),transmissionSig:z.string().min(1).max(4096)});
-const eventSchema=z.object({id:z.string().min(1).max(256),event_type:z.string().max(100),resource:z.object({id:z.string().max(256).optional(),supplementary_data:z.object({related_ids:z.object({order_id:z.string().max(256).optional(),capture_id:z.string().max(256).optional()}).optional()}).optional()}).optional()});
+const eventSchema=z.object({id:z.string().min(1).max(256),event_type:z.string().max(100),resource:z.object({links:z.array(z.object({rel:z.string(),href:z.string().max(2048)})).max(20).optional(),id:z.string().max(256).optional(),supplementary_data:z.object({related_ids:z.object({order_id:z.string().max(256).optional(),capture_id:z.string().max(256).optional()}).optional()}).optional()}).optional()});
 export function createPayPalVerifier(env:FundingEnv):VerifyPayPal {
  return async(_event,headers,raw)=>{
   if(!env.PP_WEBHOOK_ID)throw new PayPalWebhookError(503);
@@ -39,7 +39,11 @@ export function createPayPalIntake(db:Database,env:FundingEnv,verify:VerifyPayPa
   await db.withTransaction(async tx=>{
    const saved=await tx.insert(deliveries).values({source:'paypal',deliveryId:event.id}).onConflictDoNothing().returning();if(!saved.length||!fundingEvent(event.event_type))return;
    const related=event.resource?.supplementary_data?.related_ids;
-   const orderId=event.event_type.startsWith('CHECKOUT.')?event.resource?.id:related?.order_id;
+   const up=event.resource?.links?.filter(link=>link.rel==='up')??[];
+   // Crypto completion can supply only an order link. Extract an ID, never fetch this URL.
+   let linkedOrder:string|undefined;
+   if(up.length===1&&up[0]){try{const url=new URL(up[0].href);if(url.origin===env.PP_BASE&&!url.username&&!url.password&&!url.search&&!url.hash)linkedOrder=/^\/v2\/checkout\/orders\/([A-Za-z0-9]{1,64})$/.exec(url.pathname)?.[1];}catch{/* A malformed hint cannot authorize a payment. */}}
+   const orderId=event.event_type.startsWith('CHECKOUT.')?event.resource?.id:related?.order_id??linkedOrder;
    const captureId=related?.capture_id??event.resource?.id;
    const attempts=await tx.select({id:fundingAttempts.id}).from(fundingAttempts).where(or(eq(fundingAttempts.orderId,orderId??''),eq(fundingAttempts.captureId,captureId??'')));
    for(const a of attempts)await enqueue(tx,{kind:'reconcile_funding',payload:{attemptId:a.id},dedupeKey:`paypal:${event.id}:${a.id}`,maxAttempts:env.RECONCILIATION_MAX_ATTEMPTS});

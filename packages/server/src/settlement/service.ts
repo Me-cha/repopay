@@ -1,3 +1,5 @@
+import { chainService } from '../solana/service.js';
+import { createChainProvider } from '../solana/provider.js';
 import {createCommentReview} from '../actions/reject.js';
 import { and,desc,eq,isNull } from 'drizzle-orm';
 import type { Database } from '../db/client.js';
@@ -14,6 +16,7 @@ import { candidateScanner } from './candidates.js';
 import { acceptsDemoProfile } from './profile.js';
 
 export function createPhase6(db:Database,github:GitHub,env:FundingEnv,provider:Payouts=createPayouts(env),auth:AuthService=createAuth(db,env)) {
+ const chainProvider=createChainProvider(env),chain=chainService(db,env,chainProvider);
  const payouts=createPayoutService(db,env,provider);
  const collect=candidateScanner(db,github,env);
  const settlement=createSettlement(db,{
@@ -30,6 +33,7 @@ export function createPhase6(db:Database,github:GitHub,env:FundingEnv,provider:P
   async profileAccepted(bounty){
    if(!acceptsDemoProfile(env,bounty)||!bounty.fundedTerms||!isSponsoredTerms(bounty.fundedTerms))return false;
    try{
+    if(bounty.fundedTerms.version===6&&bounty.fundedTerms.chain.treasury!==await chainProvider.treasury())return false;
     const sponsor=await auth.getCopilotSponsor(bounty.repoId);
     if(sponsor.sponsorGhId!==bounty.fundedTerms.sponsor.id||sponsor.installationId!==bounty.installationId||sponsor.modelId!=='auto')return false;
     const owner=await auth.provider.identity(sponsor.accessToken),access=await auth.provider.repository(sponsor.accessToken,bounty.repoId);
@@ -41,7 +45,8 @@ export function createPhase6(db:Database,github:GitHub,env:FundingEnv,provider:P
  return {rejectComment:createCommentReview(db,github,env).rejectComment,retryClaims:payouts.retryClaims,settleBounty:(id:string)=>settlement.settleBounty(id),async tick(){
   const now=Date.now();if(now-lastTick<60000/env.RECONCILIATION_RATE_PER_MIN)return;lastTick=now;
   await payouts.tick();
-  const [claim]=await db.orm.select({id:awards.id,bountyId:awards.bountyId}).from(awards).leftJoin(payoutBatches,eq(payoutBatches.awardId,awards.id)).innerJoin(bounties,eq(bounties.id,awards.bountyId)).where(and(isNull(payoutBatches.id),eq(bounties.fundingHold,false))).orderBy(bounties.updatedAt,awards.id).limit(1);
+  await chain.tick();
+  const [claim]=await db.orm.select({id:awards.id,bountyId:awards.bountyId}).from(awards).leftJoin(payoutBatches,eq(payoutBatches.awardId,awards.id)).innerJoin(bounties,eq(bounties.id,awards.bountyId)).where(and(eq(bounties.currency,'USD'),isNull(payoutBatches.id),eq(bounties.fundingHold,false))).orderBy(bounties.updatedAt,awards.id).limit(1);
   if(claim){await payouts.reserve(claim.id);await db.orm.update(bounties).set({updatedAt:new Date()}).where(eq(bounties.id,claim.bountyId));}
   const scope=env.SETTLEMENT_DEMO_SCOPE;
   if(scope&&now-lastSettlementTick>=env.RECONCILIATION_INTERVAL_SEC*1000){

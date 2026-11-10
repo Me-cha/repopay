@@ -2,7 +2,7 @@ import { and,desc,eq,gt,lt } from 'drizzle-orm';
 import type { AuthenticationDependencies } from '../http/auth.js';
 import { AuthError,type Session } from '../github/oauth.js';
 import { findBounty,authorizeAction } from '../actions/guards.js';
-import { awards,bounties,bountyActivity,cancellationRequests,cancellationDecisions,payoutItems,refundIntents,reviewDecisions,submissions,verifications,type Bounty } from '../db/schema.js';
+import { awards,bounties,bountyActivity,chainTransfers,cancellationRequests,cancellationDecisions,payoutItems,refundIntents,reviewDecisions,submissions,verifications,type Bounty } from '../db/schema.js';
 import { verdictSchema } from '../verifier/schema.js';
 import type { BountyDto,DetailDto,ReviewDto } from './contracts.js';
 import { payoutRows } from './payouts.js';
@@ -16,11 +16,11 @@ export function nextAction(b:Bounty):BountyDto['nextAction']{
  case 'CAPTURING':return {actor:'Payment service',label:'Check saved checkout; capture is not yet confirmed',href:`/bounties/${b.id}/fund`};
  case 'FUNDED':return {actor:'Contributors',label:'Submit a solution in GitHub',href:issue};
  case 'NEEDS_REVIEW':return {actor:'Maintainer',label:'Review the merged solution',href:`/bounties/${b.id}/review`};
- case 'AWAITING_CLAIM':return {actor:'Awarded contributors',label:'Connect payout details; award is reserved',href:'/connect'};
+ case 'AWAITING_CLAIM':return {actor:'Awarded contributors',label:'Connect payout details; award is reserved',href:b.currency==='PYUSD'?'/dashboard/wallet':'/connect'};
  case 'PAYING':return {actor:'Payment service / operator',label:'Reconcile the existing payout; do not send a replacement',href:issue};
  case 'PAID':return {actor:'Contributors',label:'View delivered award in GitHub',href:issue};
  case 'REFUNDING':return {actor:'Operator',label:'Reconcile reserved refund; completion is not yet confirmed',href:issue};
- case 'CANCELLED':return {actor:'Maintainer',label:b.captureId?'Refund completed; view retained history':'Draft cancelled; no money moved',href:issue};
+ case 'CANCELLED':return {actor:'Maintainer',label:(b.captureId||b.chainFundingSignature)?'Refund completed; view retained history':'Draft cancelled; no money moved',href:issue};
  default:return {actor:'Operator',label:'Inspect current status',href:issue};
  }
 }
@@ -41,8 +41,9 @@ export function readModels(deps:AuthenticationDependencies){
   const [award]=await db.orm.select().from(awards).where(eq(awards.bountyId,b.id));const items=award?await db.orm.select({cents:payoutItems.amountCents,status:payoutItems.status}).from(payoutItems).where(eq(payoutItems.awardId,award.id)):[];
   const [cancel]=await db.orm.select().from(cancellationRequests).where(eq(cancellationRequests.bountyId,b.id)).orderBy(desc(cancellationRequests.id)).limit(1);
   const [latest]=await db.orm.select({v:verifications}).from(verifications).innerJoin(submissions,eq(verifications.submissionId,submissions.id)).where(eq(submissions.bountyId,b.id)).orderBy(desc(verifications.id)).limit(1);
-  const paidCents=items.filter(i=>i.status==='SUCCESS').reduce((n,i)=>n+i.cents,0);
-  return {id:b.id,repoId:b.repoId,repoFullName:b.repoFullName,issueNumber:b.issueNumber,title:b.fundedTerms?.title??`Issue #${String(b.issueNumber)}`,amountCents:b.amountCents,currency:'USD',status:b.status,version:b.version,needsAttention:b.needsAttention,attentionReason:b.attentionReason,fundedAt:b.fundedAt?.toISOString()??null,githubUrl:`https://github.com/${b.repoFullName}/issues/${String(b.issueNumber)}`,createdByGhId:b.createdByGhId,nextAction:nextAction(b),cancellation:cancel?{id:cancel.id,stage:cancel.status,noticeEndsAt:cancel.noticeEndsAt?.toISOString()??null,nextUpdateAt:cancel.nextUpdateAt?.toISOString()??null}:null,award:award?{id:award.id,amountCents:award.amountCents,allocation:award.allocation,paidCents,unpaidCents:award.amountCents-paidCents}:null,latestReview:latest?reviewDto(latest.v):null};
+  const chainItems=award&&b.currency==='PYUSD'?await db.orm.select({cents:chainTransfers.amount,status:chainTransfers.status}).from(chainTransfers).where(eq(chainTransfers.awardId,award.id)):[];
+  const paidCents=[...items,...chainItems].filter(i=>i.status==='SUCCESS').reduce((n,i)=>n+i.cents,0);
+  return {id:b.id,repoId:b.repoId,repoFullName:b.repoFullName,issueNumber:b.issueNumber,title:b.fundedTerms?.title??`Issue #${String(b.issueNumber)}`,amountCents:b.amountCents,currency:b.currency==='PYUSD'?'PYUSD':'USD',status:b.status,version:b.version,needsAttention:b.needsAttention,attentionReason:b.attentionReason,fundedAt:b.fundedAt?.toISOString()??null,githubUrl:`https://github.com/${b.repoFullName}/issues/${String(b.issueNumber)}`,createdByGhId:b.createdByGhId,nextAction:nextAction(b),cancellation:cancel?{id:cancel.id,stage:cancel.status,noticeEndsAt:cancel.noticeEndsAt?.toISOString()??null,nextUpdateAt:cancel.nextUpdateAt?.toISOString()??null}:null,award:award?{id:award.id,amountCents:award.amountCents,allocation:award.allocation,paidCents,unpaidCents:award.amountCents-paidCents}:null,latestReview:latest?reviewDto(latest.v):null};
  }
  async function list(session:Session,after:string){const page=await candidates(session,after);return {items:await Promise.all(page.rows.map(summary)),nextCursor:page.nextCursor};}
  async function detail(session:Session,id:string,before='9223372036854775807'):Promise<DetailDto>{
@@ -54,7 +55,8 @@ export function readModels(deps:AuthenticationDependencies){
   const reviews=await db.orm.select({id:reviewDecisions.id,kind:reviewDecisions.kind,actorGhId:reviewDecisions.actorGhId,reason:reviewDecisions.reason,createdAt:reviewDecisions.createdAt}).from(reviewDecisions).where(eq(reviewDecisions.bountyId,b.id)).orderBy(desc(reviewDecisions.id));
   const cancellations=await db.orm.select({id:cancellationDecisions.id,kind:cancellationDecisions.decision,actorGhId:cancellationDecisions.actorId,reason:cancellationDecisions.reason,createdAt:cancellationDecisions.createdAt}).from(cancellationDecisions).innerJoin(cancellationRequests,eq(cancellationRequests.id,cancellationDecisions.requestId)).where(eq(cancellationRequests.bountyId,b.id)).orderBy(desc(cancellationDecisions.id));
   const refunds=await db.orm.select({id:refundIntents.id,status:refundIntents.status,amountCents:refundIntents.amountCents,attention:refundIntents.attention}).from(refundIntents).where(eq(refundIntents.bountyId,b.id));
-  return {...dto,criteria:b.fundedTerms?.criteria??'Criteria are frozen when this draft is funded.',verifications:vs.map(({v})=>reviewDto(v)),reviews:reviews.map(r=>({...r,createdAt:r.createdAt.toISOString()})),cancellationDecisions:cancellations.map(r=>({...r,createdAt:r.createdAt.toISOString()})),refunds,payouts:await payoutRows(db,b),activity:activity.slice(0,100).map(r=>({...r,createdAt:r.createdAt.toISOString()})),historyNextCursor:activity.length>100?activity[99]?.id??null:null};
+  const chainRefunds=await db.orm.select({id:chainTransfers.id,status:chainTransfers.status,amountCents:chainTransfers.amount,attention:chainTransfers.attention}).from(chainTransfers).where(and(eq(chainTransfers.bountyId,b.id),eq(chainTransfers.kind,'refund')));
+  return {...dto,criteria:b.fundedTerms?.criteria??'Criteria are frozen when this draft is funded.',verifications:vs.map(({v})=>reviewDto(v)),reviews:reviews.map(r=>({...r,createdAt:r.createdAt.toISOString()})),cancellationDecisions:cancellations.map(r=>({...r,createdAt:r.createdAt.toISOString()})),refunds:[...refunds,...chainRefunds],payouts:await payoutRows(db,b),activity:activity.slice(0,100).map(r=>({...r,createdAt:r.createdAt.toISOString()})),historyNextCursor:activity.length>100?activity[99]?.id??null:null};
  }
  return {access,candidates,summary,list,detail};
 }

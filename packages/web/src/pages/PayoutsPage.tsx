@@ -41,12 +41,13 @@ export function PayoutsPage() {
   const isSettingsTab = normalizePath(path) === '/dashboard/payouts/settings';
 
   const [emailInput, setEmailInput] = useState('');
+  const [editingDestination, setEditingDestination] = useState(false);
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const deliveredCents = payouts.reduce((acc, p) => acc + p.paidCents, 0);
+  const deliveredCents = payouts.filter(p=>p.currency!=='PYUSD').reduce((acc, p) => acc + p.paidCents, 0);
 
   const payoutTelemetryPoints = useMemo<LivelinePoint[]>(() => {
     const nowSec = Math.floor(Date.now() / 1000);
@@ -55,7 +56,7 @@ export function PayoutsPage() {
       { time: startSec, value: 0, label: 'Init', sublabel: 'Baseline · $0.00' },
     ];
     let running = 0;
-    payouts.forEach((p, idx) => {
+    payouts.filter(p=>p.currency!=='PYUSD').forEach((p, idx) => {
       running += p.paidCents;
       pts.push({
         time: startSec + (idx + 1) * 60,
@@ -86,6 +87,7 @@ export function PayoutsPage() {
       const updated = await savePayoutEmail(emailInput.trim().toLowerCase());
       setConfirmOpen(false);
       setEmailInput('');
+      setEditingDestination(false);
       setFormSuccess(
         `PayPal destination saved (${updated.maskedEmail ?? 'encrypted'} · revision v${String(
           updated.connectionVersion ?? 1,
@@ -188,7 +190,7 @@ export function PayoutsPage() {
                   connectStatus?.connected ? 'c2-pill-mint' : 'c2-pill-peach'
                 }`}
               >
-                {connectStatus?.connected ? 'Connected' : 'Not Connected'}
+                {!connectStatus ? 'Status unavailable' : connectStatus.connected ? 'Connected' : 'Not Connected'}
               </span>
             </div>
 
@@ -216,7 +218,7 @@ export function PayoutsPage() {
                   <dd className="c2-tabular">
                     {connectStatus?.connected && connectStatus.maskedEmail
                       ? connectStatus.maskedEmail
-                      : 'Not configured'}
+                      : connectStatus ? 'Not configured' : 'Status unavailable'}
                   </dd>
                 </div>
                 <div className="c2-kv-row">
@@ -265,8 +267,8 @@ export function PayoutsPage() {
             <div className="c2-card-bar">
               <div className="c2-section-title-row">
                 <h2 className="c2-card-title">
-                  {connectStatus?.connected
-                    ? 'Update PayPal Destination'
+                  {!connectStatus ? 'Payout destination' : connectStatus.connected
+                    ? 'Saved PayPal Destination'
                     : 'Connect PayPal Destination'}
                 </h2>
                 <InfoTooltip text="Saving a destination automatically resumes any committed awards waiting in Awaiting Claim." />
@@ -276,7 +278,11 @@ export function PayoutsPage() {
 
             <div className="c2-card-body">
               <p className="c2-card-lead">
-                Enter the PayPal email that should receive automatic USD disbursements when your qualifying pull requests merge.
+                {connectStatus?.connected
+                  ? 'Your saved PayPal destination is reused for future USD payouts. You do not need to enter it again.'
+                  : connectStatus
+                    ? 'Save your PayPal email once to receive automatic USD payouts for qualifying work.'
+                    : 'We could not load your saved payout destination. Retry before entering or changing your details.'}
               </p>
 
               {formError && (
@@ -295,7 +301,11 @@ export function PayoutsPage() {
                 </div>
               )}
 
-              <form
+              {!connectStatus ? (
+                <button type="button" className="c2-btn c2-btn-secondary" onClick={refreshAll} disabled={refreshing}>Retry payout status</button>
+              ) : connectStatus.connected && !editingDestination ? (
+                <button type="button" className="c2-btn c2-btn-secondary" onClick={() => { setEditingDestination(true); setFormSuccess(''); }}>Change payout destination</button>
+              ) : <form
                 onSubmit={handlePrepareSave}
                 className="c2-settings-form"
                 noValidate
@@ -308,7 +318,7 @@ export function PayoutsPage() {
                   type="email"
                   className="c2-input"
                   placeholder={
-                    connectStatus?.maskedEmail
+                    connectStatus.maskedEmail
                       ? `Current: ${connectStatus.maskedEmail}`
                       : 'Enter PayPal email address'
                   }
@@ -331,18 +341,19 @@ export function PayoutsPage() {
                   >
                     {saving && <Spinner size={14} />}
                     <span>
-                      {connectStatus?.connected
+                      {connectStatus.connected
                         ? 'Update Destination'
                         : 'Connect Destination'}
                     </span>
                   </button>
+                  {connectStatus.connected && <button type="button" className="c2-btn c2-btn-secondary" disabled={saving} onClick={() => { setEditingDestination(false); setEmailInput(''); setFormError(''); }}>Cancel change</button>}
                 </div>
-              </form>
+              </form>}
             </div>
 
             <div className="c2-card-foot">
-              <span>CSRF-verified encrypted session mutation</span>
-              <span>POST /api/connect</span>
+              <span>Saved to your GitHub account</span>
+              <span>USD PayPal payouts · <a href="/dashboard/wallet">PYUSD wallet settings</a></span>
             </div>
           </section>
         </div>
@@ -576,7 +587,7 @@ export function PayoutsPage() {
 
                           <td className="is-right">
                             <span className="c2-amount-val c2-tabular">
-                              {money(p.paidCents)}
+                              {money(p.paidCents,p.currency)}
                             </span>
                           </td>
 

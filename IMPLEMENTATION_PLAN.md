@@ -319,14 +319,15 @@ Repopay/
 │  │  ├─ review-worker.ts, review-workflow.ts
 │  │  ├─ policy/{decide.ts,allocate.ts}
 │  │  ├─ settlement/{funding.ts,claims.ts,candidates.ts,settle.ts,payout.ts,service.ts,profile.ts,award.ts,refund.ts}
-│  │  ├─ http/{routes.ts,confirm.ts,fund.ts,connect.ts,retry.ts,sponsor.ts,auth.ts,session.ts,api.ts,review.ts,cancellation.ts,sse.ts,dashboard.ts}
+│  │  ├─ http/{routes.ts,confirm.ts,fund.ts,connect.ts,retry.ts,sponsor.ts,auth.ts,session.ts,api.ts,review.ts,cancellation.ts,sse.ts,dashboard.ts,pyusd.ts}
 │  │  ├─ domain/{types.ts,funded-terms.ts}
 │  │  ├─ cancellation/{evidence.ts,authorization.ts,service.ts,runtime.ts}
 │  │  ├─ read-models/{bounties.ts,payouts.ts}  operations/attention.ts
+│  │  ├─ solana/{config.ts,provider.ts,wallet.ts,service.ts} # ADR 0024, devnet only
 │  │  └─ util/{money.ts,crypto.ts,parse.ts}
 │  ├─ server/test/{helpers/,unit/,integration/,fixtures/,e2e/}
-│  ├─ server/scripts/{migrate.ts,preflight.ts,demo-seed.ts,eval-verifier.ts,retry-job.ts,check-migrations.ts}
-│  └─ web/src/{main.tsx,App.tsx,Detail.tsx,grid/,api.ts,styles.css}
+│  ├─ server/scripts/{migrate.ts,preflight.ts,demo-seed.ts,eval-verifier.ts,retry-job.ts,check-migrations.ts,pyusd-wallet.ts}
+│  └─ web/src/{main.tsx,App.tsx,Detail.tsx,grid/,pages/WalletPage.tsx,api.ts,styles.css}
 └─ packages/web/{README.md,package.json,index.html,tsconfig.json,vite.config.ts,vitest.config.ts,test/}; playwright.config.ts at root
 ```
 
@@ -1210,3 +1211,15 @@ October 31 refinement (ADR 0019): PR retry/status commands are primary; unfunded
 ### Dashboard first-visit onboarding
 
 `packages/web/src/components/onboarding/{DashboardTour.tsx,TourTooltip.tsx,dashboardTourSteps.ts}` and `hooks/useDashboardTour.ts` provide an account-once instructional overlay mounted by AppShell. The existing router navigates stable `data-tour` page targets. `packages/server/src/actions/onboarding.ts` and `http/onboarding.ts` store only presentation history through migration `0020_dashboard_onboarding.sql`. This UI preference is an exception to read-only dashboard storage, not a financial operation. No changes to money, permissions, provider integrations or jobs. See [design and verification](docs/evidence/dashboard-onboarding.md).
+
+## Optional crypto funding (November 10)
+
+[ADR 0023](docs/decisions/0023-paypal-crypto-funding.md) adds default-off sandbox crypto checkout. The crypto branch uses PayPal auto-capture, reserves before order creation, and still requires exact verified USD capture evidence. `packages/server/src/domain/funding-payment.ts` owns method validation and encrypted buyer details; migration 0023 adds immutable method fields. Existing manual-capture PayPal checkout remains available. Contributor payouts remain USD through the existing PayPal flow, as confirmed by the user; see [setup](docs/crypto-payments.md).
+
+## Direct PYUSD extension (November 10)
+
+[ADR 0024](docs/decisions/0024-pyusd-devnet-route.md) adds an independent custodial Solana devnet route under explicit user scope: PYUSD funding and PYUSD wallet delivery. `solana/{config,provider,wallet,service}.ts`, `http/pyusd.ts`, `pages/WalletPage.tsx`, migration 0024 and `scripts/pyusd-wallet.ts` are the additional layout entries. Existing award/cancellation policy remains authoritative; no smart-contract escrow or mainnet is implied. Version 6 terms freeze token/network/treasury/refund wallet; stored integer hundredths convert exactly to atomic units. Public wallet ownership requires signed, session-bound proof. USD routes and historical terms retain their original provider semantics. Setup, limits and local/live status are maintained in [crypto payments](docs/crypto-payments.md), the phase notes and evidence, not duplicated here.
+
+Unsigned PYUSD funding recovery follows [ADR 0025](docs/decisions/0025-expired-pyusd-funding-recovery.md): migration `packages/server/src/db/migrations/0025_pyusd_funding_recovery.sql` preserves expired attempt history and one active funding attempt; existing `solana/service.ts` and `provider.ts` own finalized absence checks and atomic replacement on the same bounty. Signed/held/uncertain transfers remain non-replaceable.
+
+November 10 scoped recovery: migration `0026_scoped_devnet_expiry.sql` authorizes no automatic replacements; it permits only the explicitly approved bounty-9 transfer/signature to become terminal EXPIRED with matching fresh operator audit proof. All other signed/held transfers remain blocked. `http/pyusd.ts` now calls `solana/service.ts` immediate reconciliation after durable funding-signature persistence. See ADR 0025 and devnet evidence.

@@ -23,7 +23,7 @@ export async function cancelCommentDraft(db:Database,github:GitHub,job:LeasedJob
   const bounty=await lockBounty(tx,bountyId);
   if(!bounty||bounty.repoId!==work.repoId||bounty.installationId!==work.installationId||bounty.issueNumber!==work.issueNumber)throw new AuthError(403,'Issue scope mismatch.');
   await assertInstallation(tx,bounty);
-  if(bounty.status==='CANCELLED'&&!bounty.captureId)return bounty;
+  if(bounty.status==='CANCELLED'&&!bounty.captureId&&!bounty.chainFundingId)return bounty;
   const updated=await cancelDraft(tx,{actorGhId:githubId(work.actorId),source:'github_comment',authorization:{repoId:githubId(work.repoId),action:'cancel_draft',role:'maintainer',checkedAt:new Date()}},bountyId,bounty.version);
   await tx.insert(bountyActivity).values({bountyId,actorGhId:work.actorId,source:'github_comment',action:marker});
   await enqueue(tx,{kind:'sync_bounty',payload:{bountyId},dedupeKey:`cancel-comment:${job.id}`,maxAttempts:3});

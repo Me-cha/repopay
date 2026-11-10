@@ -60,7 +60,7 @@ export function BountyDetailModal() {
   if (base) {
     if (base.award && base.award.allocation.length > 0) {
       donutTotal = base.award.amountCents;
-      donutCenterValue = money(base.award.amountCents);
+      donutCenterValue = money(base.award.amountCents,base.currency);
       donutCenterLabel = base.status === 'PAID' ? 'Settled' : 'Awarded';
       slices = base.award.allocation.map((a) => ({
         key: a.ghId,
@@ -74,7 +74,7 @@ export function BountyDetailModal() {
       base.status === 'PAYING'
     ) {
       donutTotal = base.amountCents;
-      donutCenterValue = money(base.amountCents);
+      donutCenterValue = money(base.amountCents,base.currency);
       donutCenterLabel = 'In Escrow';
       slices = [
         {
@@ -90,12 +90,12 @@ export function BountyDetailModal() {
       donutCenterLabel = 'Captured';
       donutEmptyMessage = base.fundedAt
         ? 'Bounty closed under cancellation workflow.'
-        : `Draft (${money(base.amountCents)} target) was cancelled before funding. No money moved.`;
+        : `Draft (${money(base.amountCents,base.currency)} target) was cancelled before funding. No money moved.`;
     } else {
       donutTotal = 0;
       donutCenterValue = '$0.00';
       donutCenterLabel = 'Captured';
-      donutEmptyMessage = `Unfunded draft (${money(base.amountCents)} target). Maintainer funding locks escrow.`;
+      donutEmptyMessage = `Unfunded draft (${money(base.amountCents,base.currency)} target). Maintainer funding locks escrow.`;
     }
   }
 
@@ -228,7 +228,7 @@ export function BountyDetailModal() {
                   <InfoTooltip text="Funds are held in integer cents and released automatically upon qualifying PR merge." />
                 </div>
                 <strong className="c2-pipeline-main">
-                  {money(base.amountCents)} · {escrowState.headline}
+                  {money(base.amountCents,base.currency)} · {escrowState.headline}
                 </strong>
                 <span className="c2-pipeline-sub">{escrowState.detail}</span>
               </div>
@@ -272,7 +272,7 @@ export function BountyDetailModal() {
                   </div>
                   <div className="c2-kv-row">
                     <dt>Target Amount</dt>
-                    <dd className="c2-tabular">{money(base.amountCents)} USD</dd>
+                    <dd className="c2-tabular">{money(base.amountCents,base.currency)}</dd>
                   </div>
                   <div className="c2-kv-row">
                     <dt>Funded Timestamp</dt>
@@ -313,12 +313,12 @@ export function BountyDetailModal() {
                     </div>
                     {base.award ? (
                       <span className="c2-pill c2-pill-mint">
-                        Paid {money(base.award.paidCents)}
+                        Paid {money(base.award.paidCents,base.currency)}
                       </span>
                     ) : null}
                   </div>
 
-                  <SplitDonutChart
+                  <SplitDonutChart currency={base.currency}
                     totalCents={donutTotal}
                     centerValue={donutCenterValue}
                     centerLabel={donutCenterLabel}

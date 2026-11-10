@@ -5,6 +5,7 @@ import { PayPalEvidenceError,type Orders,type OrderSnapshot } from '../paypal/or
 import type { Clock } from '../domain/types.js';
 import { bounties,bountyActivity,fundingAttempts,submissions,type FundingIntent } from '../db/schema.js';
 import type { Transaction } from '../db/transaction.js';
+import { openCryptoBuyer } from '../domain/funding-payment.js';
 import { enqueue } from '../jobs/queue.js';
 // Serialize provider operations without keeping a SQL transaction open. If this
 // connection is lost, observation fencing and persisted provider keys still apply.
@@ -75,7 +76,7 @@ export function createFunding(db:Database,env:FundingEnv,provider:Orders,clock:C
     await tx.update(bounties).set({status:'CAPTURING',captureRequestKey:a.captureRequestKey,needsAttention:capture.status!=='PENDING',attentionReason:capture.status==='PENDING'?null:'Capture requires reconciliation',fundingHold:!known||b.fundingHold,updatedAt:clock.now()}).where(eq(bounties.id,b.id));
    } else if(o.status==='VOIDED'&&!a.captureSubmissionBoundaryAt&&!b.captureId) {
     await tx.update(fundingAttempts).set({...common,status:'VOIDED',active:false,attention:null}).where(eq(fundingAttempts.id,a.id));
-    await tx.update(bounties).set({version:sql`${bounties.version}+1`,updatedAt:clock.now()}).where(eq(bounties.id,b.id));await projection(tx,a);
+    await tx.update(bounties).set({...(a.paymentMethod==='crypto'?{captureRequestKey:null}:{}),version:sql`${bounties.version}+1`,updatedAt:clock.now()}).where(eq(bounties.id,b.id));await projection(tx,a);
    } else {
     const known=['CREATED','SAVED','PAYER_ACTION_REQUIRED','APPROVED'].includes(o.status);
     await tx.update(fundingAttempts).set({...common,status:known?(o.status==='APPROVED'?'APPROVED':'CREATED'):'HOLD',attention:known?null:'Unknown or incomplete order state'}).where(eq(fundingAttempts.id,a.id));
@@ -86,12 +87,16 @@ export function createFunding(db:Database,env:FundingEnv,provider:Orders,clock:C
  async function reserve(a:FundingIntent,stage:'order'|'capture') {
   return db.withTransaction(async tx=>{
    const r=await rows(tx,a.id);if(!r||r.a.observationVersion!==a.observationVersion||r.b.status==='CANCELLED'||r.b.fundingHold)return;
-   if(stage==='capture'&&!['OPEN','CAPTURING'].includes(r.b.status))return;
+   if(stage==='capture'&&(r.a.paymentMethod==='crypto'||!['OPEN','CAPTURING'].includes(r.b.status)))return;
+   if(stage==='order'&&r.a.paymentMethod==='crypto'&&!r.a.orderSubmissionBoundaryAt&&!env.PP_CRYPTO_ENABLED)return;
    const boundary=stage==='order'?r.a.orderSubmissionBoundaryAt:r.a.captureSubmissionBoundaryAt;
    const priorDeadline=stage==='order'?r.a.orderSafeRetryUntil:r.a.captureSafeRetryUntil;
    const now=clock.now(),deadline=boundary?priorDeadline:new Date(now.getTime()+env.PP_SAFE_RETRY_SEC*1000);
    if(!deadline||now>=deadline)return;
    await tx.update(fundingAttempts).set(stage==='order'?{orderSubmissionBoundaryAt:boundary??now,orderSafeRetryUntil:deadline}:{captureSubmissionBoundaryAt:boundary??now,captureSafeRetryUntil:deadline,status:'CAPTURING'}).where(eq(fundingAttempts.id,a.id));
+   // Crypto order creation authorizes automatic capture: fence draft cancellation
+   // before the network call, including when its response is lost.
+   if(stage==='order'&&r.a.paymentMethod==='crypto')await tx.update(bounties).set({captureRequestKey:a.captureRequestKey,updatedAt:now}).where(eq(bounties.id,a.bountyId));
    if(stage==='capture')await tx.update(bounties).set({status:'CAPTURING',captureRequestKey:a.captureRequestKey,version:sql`${bounties.version}+1`,updatedAt:now}).where(eq(bounties.id,a.bountyId));
    return deadline;
   });
@@ -108,14 +113,15 @@ export function createFunding(db:Database,env:FundingEnv,provider:Orders,clock:C
     if(!a.orderId) {
      const deadline=await reserve(a,'order');if(!deadline){await attention(a,'Order outcome unknown after safe retry window; recover existing order ID');return;}
      const path=`/bounties/${a.bountyId}/funding/${a.id}`;
-     order=await provider.createOrder({attemptId:a.id,termsHash:a.termsHash,amountCents:a.amountCents,merchantId:a.terms.merchantId,returnUrl:new URL(path+'/return',a.checkoutOrigin).href,cancelUrl:new URL(path+'/cancel',a.checkoutOrigin).href},a.orderRequestKey,deadline);
+     const cryptoBuyer=a.paymentMethod==='crypto'?openCryptoBuyer(a.buyerNameEnc??'',env,a.orderRequestKey):undefined;
+     order=await provider.createOrder({...(cryptoBuyer?{cryptoBuyer}:{}),attemptId:a.id,termsHash:a.termsHash,amountCents:a.amountCents,merchantId:a.terms.merchantId,returnUrl:new URL(path+'/return',a.checkoutOrigin).href,cancelUrl:new URL(path+'/cancel',a.checkoutOrigin).href},a.orderRequestKey,deadline);
     } else {
      order=await provider.getOrder(a.orderId);
      // Capture resource reads detect refunds even if the order projection lags.
      if(a.captureId){const capture=await provider.getCapture(a.captureId);if(order.captures.length===1&&order.captures[0]?.id===capture.id)order={...order,captures:[capture]};else throw new PayPalEvidenceError();}
     }
     await observe(a,order);
-    if(order.status==='APPROVED'&&!order.captures.length) {
+    if(a.paymentMethod==='paypal'&&order.status==='APPROVED'&&!order.captures.length) {
      const deadline=await reserve(a,'capture');if(!deadline){await attention(a,'Capture held or retry window expired; reconcile existing order');return;}
      const result=await provider.captureOrder(order.id,a.captureRequestKey,deadline);
      await observe({...a,orderId:order.id},result);

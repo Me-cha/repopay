@@ -291,7 +291,7 @@ export function WorkspaceDataProvider({ children }: { children: ReactNode }) {
       }
     >();
 
-    for (const b of bounties) {
+    for (const b of bounties.filter(b=>b.currency==='USD')) {
       totalVolumeCents += b.amountCents;
       if (ESCROW_LOCKED_STATUSES.has(b.status)) {
         const unpaid = b.award ? b.award.unpaidCents : b.amountCents;
@@ -341,7 +341,7 @@ export function WorkspaceDataProvider({ children }: { children: ReactNode }) {
     }
 
     // Reconcile paidCents with payout rows if higher
-    const payoutDeliveredCents = payouts.reduce((acc, p) => acc + p.paidCents, 0);
+    const payoutDeliveredCents = payouts.filter(p=>p.currency!=='PYUSD').reduce((acc, p) => acc + p.paidCents, 0);
     if (payoutDeliveredCents > paidCents) {
       paidCents = payoutDeliveredCents;
     }
@@ -351,7 +351,7 @@ export function WorkspaceDataProvider({ children }: { children: ReactNode }) {
     );
 
     return {
-      totalCount: bounties.length,
+      totalCount: bounties.filter(b=>b.currency==='USD').length,
       totalVolumeCents,
       activeEscrowCents,
       fundedCount,

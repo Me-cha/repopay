@@ -1,3 +1,4 @@
+import { hasConfirmedFunding } from '../actions/guards.js';
 import type { LeasedJob } from '../jobs/kinds.js';
 import { desc,eq,sql } from 'drizzle-orm';
 import { z } from 'zod';
@@ -29,7 +30,7 @@ export function createReviewService(db:Database,env:FundingEnv,deps:ReviewDepend
   if(session)await assertSession(tx,session,new Date());const bounty=await lockBounty(tx,id);if(!bounty)throw new AuthError(404,'Bounty not found.');
   assertContext({...prepared.ctx,source:'confirmation'},bounty,'review');await assertInstallation(tx,bounty);
   const [award]=await tx.select().from(awards).where(eq(awards.bountyId,id));
-  if(award||!(rejectPrNumber?['FUNDED','NEEDS_REVIEW'].includes(bounty.status):bounty.status==='NEEDS_REVIEW')||bounty.fundingHold||!bounty.captureId||!bounty.fundedAt)throw new AuthError(409,'A funded bounty awaiting review with no award is required.');
+  if(award||!(rejectPrNumber?['FUNDED','NEEDS_REVIEW'].includes(bounty.status):bounty.status==='NEEDS_REVIEW')||bounty.fundingHold||!hasConfirmedFunding(bounty))throw new AuthError(409,'A funded bounty awaiting review with no award is required.');
   const rows=await tx.select().from(submissions).where(eq(submissions.bountyId,id));
   const scan=prepared.scan;
   if(!scan.complete||scan.bountyVersion!==bounty.version||candidateFingerprint(rows)!==scan.hash)throw new AuthError(409,'Candidate evidence changed or is incomplete. Refresh review.');

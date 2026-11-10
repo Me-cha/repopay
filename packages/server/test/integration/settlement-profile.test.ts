@@ -1,4 +1,5 @@
-import { expect,it } from 'vitest';
+import { expect,it,vi } from 'vitest';
+vi.mock('../../src/verifier/prompt.js',()=>({PROMPT_VERSION:'repopay-verifier-v5'}));
 import { acceptsDemoProfile } from '../../src/settlement/profile.js';
 import { termsHash,makeTerms } from '../../src/domain/funded-terms.js';
 import { intentFixture } from '../helpers/funding.js';

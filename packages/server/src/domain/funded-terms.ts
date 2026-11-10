@@ -1,3 +1,4 @@
+import { PYUSD_MINT } from '../solana/config.js';
 import { z } from 'zod';
 import type { FundingEnv } from '../env.js';
 import type { Bounty } from '../db/schema.js';
@@ -16,9 +17,10 @@ const sponsoredTermsSchema=copilotTermsSchema.extend({version:z.literal(3),spons
 // and each verification records the model Copilot reported (ADR 0007).
 const autoTermsSchema=sponsoredTermsSchema.extend({version:z.literal(4),policy:copilotTermsSchema.shape.policy.extend({model:z.literal('auto')})});
 const cancellationTermsSchema=autoTermsSchema.extend({version:z.literal(5),policy:autoTermsSchema.shape.policy.extend({fundedCancellationEnabled:z.literal(true)})});
-export const termsSchema=z.discriminatedUnion('version',[legacyTermsSchema,copilotTermsSchema,sponsoredTermsSchema,autoTermsSchema,cancellationTermsSchema]);
-export type SponsoredTerms=Extract<FundedTerms,{version:3|4|5}>;
-export const isSponsoredTerms=(terms:FundedTerms):terms is SponsoredTerms=>terms.version===3||terms.version===4||terms.version===5;
+const chainTermsSchema=autoTermsSchema.extend({version:z.literal(6),currency:z.literal('PYUSD'),policy:autoTermsSchema.shape.policy.extend({fundedCancellationEnabled:z.boolean()}),chain:z.object({network:z.literal('solana-devnet'),mint:z.literal(PYUSD_MINT),treasury:z.string().min(32).max(44),refundWallet:z.string().min(32).max(44),decimals:z.literal(6)}).strict()});
+export const termsSchema=z.discriminatedUnion('version',[legacyTermsSchema,copilotTermsSchema,sponsoredTermsSchema,autoTermsSchema,cancellationTermsSchema,chainTermsSchema]);
+export type SponsoredTerms=Extract<FundedTerms,{version:3|4|5|6}>;
+export const isSponsoredTerms=(terms:FundedTerms):terms is SponsoredTerms=>terms.version===3||terms.version===4||terms.version===5||terms.version===6;
 export type FundedTerms=z.infer<typeof termsSchema>;
 export interface IssueTerms {title:string;body:string;updatedAt:string}
 export interface SponsorSnapshot {sponsorGhId:string;sponsorLogin:string;modelId:string;revokedAt:Date|null}
@@ -35,3 +37,8 @@ export function makeTerms(env:FundingEnv,bounty:Bounty,issue:IssueTerms,sponsor?
  return termsSchema.parse({version:env.COPILOT_MODEL==='auto'?4:3,...base,sponsor:{kind:'user',id:sponsor.sponsorGhId,login:sponsor.sponsorLogin}});
 }
 export const termsHash=(terms:FundedTerms)=>sha256(JSON.stringify(termsSchema.parse(terms)));
+
+export function makeChainTerms(base:FundedTerms,treasury:string,refundWallet:string,refunds=false):FundedTerms {
+ if(!isSponsoredTerms(base)||base.policy.model!=='auto')throw new AuthError(409,'PYUSD requires a connected Auto sponsor.');
+ return termsSchema.parse({...base,version:6,currency:'PYUSD',merchantId:treasury,policy:{...base.policy,fundedCancellationEnabled:refunds&&base.policy.fundedCancellationEnabled},chain:{network:'solana-devnet',mint:PYUSD_MINT,treasury,refundWallet,decimals:6}});
+}

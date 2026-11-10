@@ -17,3 +17,5 @@ The exact-bounty sandbox profile now pins prompt v5 / SDK 1.0.28 on this narrowe
 No model requests, merge, new checkout, deployment or payment is authorized merely by editing this policy. The previously approved hosted $1 case remains the concrete completion walkthrough; any additional model allowance or release publication needs its applicable authorization.
 
 Local verification: 392 tests (388 server + 4 web), typecheck, lint and build passed; six focused Chromium journeys passed. Scope tests exercise the real current prompt, retain default-off and exact bounty/repository/amount/terms/merchant guards, and reject a future prompt. No `.env` scope was activated. Existing large Vite bundle warning remains.
+
+November 10 exception: the user explicitly accepted prompt v6 only for the existing bounty 9 / issue 21 / 1-PYUSD devnet case after its bounded passing review. [ADR 0026](0026-verifier-orchestration-boundary.md) documents the exact identity/hash restrictions. This does not grant general v6 acceptance.

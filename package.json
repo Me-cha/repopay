@@ -32,7 +32,8 @@
     "start:reviews:render": "node packages/server/dist/review-workflow.js",
     "start:reviews:dedicated": "node packages/server/dist/review-worker.js",
     "ops:reviews": "tsx --env-file-if-exists=.env packages/server/scripts/reviews.ts",
-    "smoke:reviews": "tsx packages/server/scripts/smoke-review-runtime.ts"
+    "smoke:reviews": "tsx packages/server/scripts/smoke-review-runtime.ts",
+    "pyusd:wallet": "tsx packages/server/scripts/pyusd-wallet.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

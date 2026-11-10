@@ -11,11 +11,12 @@ import { AuthError } from '../github/oauth.js';
 import { isSponsoredTerms,termsSchema,termsHash } from '../domain/funded-terms.js';
 import { randomToken,sha256 } from '../util/crypto.js';
 import { assertContext,assertInstallation,assertSession,lockBounty } from './guards.js';
+import { fundingPaymentSchema,assertPaymentEnabled,sealCryptoBuyer,openCryptoBuyer,type FundingPayment } from '../domain/funding-payment.js';
 import type { Transaction } from '../db/transaction.js';
 async function available(tx:Transaction,ctx:ActorContext,id:string,version:number) {
  const b=await lockBounty(tx,id);
  if(!b)throw new AuthError(404,'Bounty not found.');assertContext(ctx,b,'fund');await assertInstallation(tx,b);
- if(b.version!==version||b.status!=='OPEN'||b.captureRequestKey||b.captureId||b.fundingHold)throw new AuthError(409,'This bounty changed or funding is held.');
+ if(b.currency!=='USD'||b.chainFundingId||b.version!==version||b.status!=='OPEN'||b.captureRequestKey||b.captureId||b.fundingHold)throw new AuthError(409,'This bounty changed or funding is held.');
  const [active]=await tx.select().from(fundingAttempts).where(and(eq(fundingAttempts.bountyId,id),eq(fundingAttempts.active,true)));
  if(active)throw new AuthError(409,'Resolve the existing funding attempt before starting another.');return b;
 }
@@ -23,13 +24,14 @@ function boundTerms(b:Bounty,terms:FundedTerms) {
  if(!isSponsoredTerms(terms))throw new AuthError(409,'New funding requires a connected repository-owner Copilot sponsor.');
  if(terms.repoId!==b.repoId||terms.issueNumber!==b.issueNumber||terms.creatorGhId!==b.createdByGhId||terms.amountCents!==b.amountCents||terms.currency!==b.currency)throw new AuthError(409,'Funding terms changed.');
 }
-export async function prepareFunding(db:Database,env:FundingEnv,session:Session,ctx:ActorContext,bounty:Bounty,input:FundedTerms,clock=()=>new Date()):Promise<string> {
- const terms=termsSchema.parse(input),token=randomToken();
+export async function prepareFunding(db:Database,env:FundingEnv,session:Session,ctx:ActorContext,bounty:Bounty,input:FundedTerms,clock=()=>new Date(),paymentInput:FundingPayment={method:'paypal'}):Promise<string> {
+ const terms=termsSchema.parse(input),token=randomToken(),payment=fundingPaymentSchema.parse(paymentInput);
+ assertPaymentEnabled(env,terms,payment);
  await db.withTransaction(async tx=>{
   const stored=await assertSession(tx,session,clock());
   const b=await available(tx,ctx,bounty.id,bounty.version);boundTerms(b,terms);
   const now=clock();if(stored.expiresAt<=now)throw new AuthError();
-  await tx.insert(actionTokens).values({tokenHash:sha256(token),bountyId:b.id,action:'fund',params:{terms,hash:termsHash(terms)},bountyVersion:b.version,requestedByGhId:session.ghId,expiresAt:new Date(now.getTime()+env.ACTION_TOKEN_TTL_SEC*1000)});
+  await tx.insert(actionTokens).values({tokenHash:sha256(token),bountyId:b.id,action:'fund',params:{terms,hash:termsHash(terms),paymentMethod:payment.method,...(payment.method==='crypto'?{buyerNameEnc:sealCryptoBuyer(payment.buyer,env,sha256(token))}:{})},bountyVersion:b.version,requestedByGhId:session.ghId,expiresAt:new Date(now.getTime()+env.ACTION_TOKEN_TTL_SEC*1000)});
  });return token;
 }
 export async function confirmFunding(db:Database,env:FundingEnv,session:Session,ctx:ActorContext,token:string,clock=()=>new Date()):Promise<FundingIntent> {
@@ -41,8 +43,14 @@ export async function confirmFunding(db:Database,env:FundingEnv,session:Session,
   const b=await available(tx,ctx,stored.bountyId,stored.bountyVersion);
   const terms=termsSchema.parse(stored.params.terms);boundTerms(b,terms);
   if(termsHash(terms)!==stored.params.hash)throw new AuthError(409,'Funding terms changed.');
+  const method=stored.params.paymentMethod??'paypal';
+  if(method!=='paypal'&&method!=='crypto')throw new AuthError(409,'Invalid saved payment method.');
+  const buyer=method==='crypto'&&typeof stored.params.buyerNameEnc==='string'?openCryptoBuyer(stored.params.buyerNameEnc,env,stored.tokenHash):null;
+  if(method==='crypto'&&(!buyer||stored.requestedByGhId!==session.ghId))throw new AuthError(403,'The buyer must confirm their own crypto checkout.');
+  assertPaymentEnabled(env,terms,buyer?{method:'crypto',buyer}:{method:'paypal'});
+  const orderRequestKey=randomUUID();
   const [count]=await tx.select({next:sql<number>`coalesce(max(${fundingAttempts.attemptNumber}),0)+1`}).from(fundingAttempts).where(eq(fundingAttempts.bountyId,b.id));
-  const [attempt]=await tx.insert(fundingAttempts).values({checkoutOrigin:env.PUBLIC_URL,bountyId:b.id,attemptNumber:count?.next??1,actorGhId:ctx.actorGhId,terms,termsHash:termsHash(terms),amountCents:b.amountCents,currency:b.currency,orderRequestKey:randomUUID(),captureRequestKey:randomUUID()}).returning();
+  const [attempt]=await tx.insert(fundingAttempts).values({checkoutOrigin:env.PUBLIC_URL,bountyId:b.id,attemptNumber:count?.next??1,actorGhId:ctx.actorGhId,terms,termsHash:termsHash(terms),amountCents:b.amountCents,currency:b.currency,paymentMethod:method,buyerNameEnc:buyer?sealCryptoBuyer(buyer,env,orderRequestKey):null,orderRequestKey,captureRequestKey:randomUUID()}).returning();
   if(!attempt)throw new Error('Funding insert failed');
   const now=clock();if(storedSession.expiresAt<=now)throw new AuthError();if(stored.expiresAt<=now)throw new AuthError(409,'Confirmation expired.');
   await tx.update(actionTokens).set({usedAt:now,usedByGhId:session.ghId}).where(eq(actionTokens.tokenHash,stored.tokenHash));
