@@ -2,7 +2,7 @@
 
 **Latest local correction:** verifier v5 adds language/flag checks, explicit line-ending regressions and a genuine multiline-bug case. Ten-case live evaluation (30 requests) remains unrun; settlement stays gated. See [ADR 0020](../decisions/0020-verifier-semantic-counterexamples.md).
 
-**Latest v4 validation:** hosted PR #12 passed the corrected attribution review and PR-native retry. The nine-case evaluation failed (24/27 matched); full v4 acceptance and two-recipient payout remain pending. See [live checklist](live-walkthroughs.md).
+**Latest hosted validation (November 2):** PR #12 passed the current foundation-profile review after merge; the hosted worker automatically allocated one $1 award, delivered $0.50 to each confirmed contributor and published PAID / `bounty-paid`. Both receipts confirmed. [Evidence](../evidence/11-hosted.md#hosted-payout-and-both-receipts--passed-november-2). The historical v4 evaluation failed (24/27); full model/production acceptance remains deferred under ADR 0021.
 
 # Repopay MVP — phase plan
 

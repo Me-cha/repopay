@@ -2,6 +2,8 @@
 
 **Current MVP scope:** the basic GitHub → sandbox funding → Render/Copilot PR review → qualifying merge → automatic payout journey passed on `https://repo-pay.onrender.com` on November 9. Issue #14 / correction PR #16 reached a single $1 payout with provider SUCCESS and user-confirmed recipient receipt. Two integration bugs found during the real browser walkthrough were fixed and deployed. The v5 sandbox profile still requires an exact bounty scope and all payment guards; broader model-evaluation, organization, refund and recovery acceptance remains deferred. See [hosted evidence and limitations](docs/evidence/render-workflows-implementation.md#hosted-user-journey--november-9-follow-up), the [foundation checklist](docs/phases/live-walkthroughs.md#active-foundation-mvp-checklist) and [scope decision](docs/decisions/0021-foundation-mvp-scope.md).
 
+**Design proposal archive:** [Independent review execution with Render Workflows](docs/render-workflows-plan.md) preserves the local design and benchmark plan. Current implementation and acceptance are described in [the execution runbook](docs/review-execution.md) and the hosted evidence above.
+
 **October 31 verifier update:** prompt v3 now includes bounded exact-head source/test context. Local verification and the PR #9 live regression review passed. The first v3 evaluation failed 17/18; after correcting incomplete fixtures, the new evaluation passed 18/18 and the user accepted v3 for explicitly scoped sandbox demos. Settlement remains off without an exact approved bounty scope. Existing paid awards and delivery reconciliation remain intact. See [ADR 0016](docs/decisions/0016-source-context-review.md).
 
 **Fund an issue. Merge a qualifying solution. Pay the contributor.**

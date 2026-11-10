@@ -13,6 +13,17 @@ User scope decision: validate the basics now; defer the broader matrix below. Au
 - [x] Basic funding/connection/dashboard browser journeys: six local Chromium cases passed on October 31; providers mocked.
 - [x] Deploy the foundation-scoped release and finish a hosted qualifying-merge → automatic payout → recipient receipt/status flow. November 9: issue #14 / correction PR #16 on `deepakA18/gitpay-demo-http`, hosted bounty 3, four authorized Copilot calls through Render, one $1 payout SUCCESS, PAID in both account views/GitHub and user-confirmed recipient receipt. [Evidence and limitations](../evidence/render-workflows-implementation.md#hosted-user-journey--november-9-follow-up). Historical PR #12 was not reused.
 
+- [x] Hosted qualifying-merge → automatic payout → recipient receipt/status flow: PR #12 merged; one $1 award, one batch, two $0.50 SUCCESS items, hosted PAID, `bounty-paid`, both receipts confirmed November 2. See [evidence](../evidence/11-hosted.md#hosted-payout-and-both-receipts--passed-november-2).
+
+November 2 retest: the new Repopay frontend shell/assets and health respond successfully; signed-out API access is denied. The false funding hold was reconciled with provider evidence, and the scoped hosted worker has now created the automatic award. Authenticated visual UI inspection and independent deployed commit verification remain pending. See [current hosted retest evidence](../evidence/11-hosted.md#foundation-retest--november-2-2026).
+
+- [x] November 2: reconcile the rebrand-induced funding hold on hosted bounty 2 after exact PayPal order/capture verification and explicit user approval. Original $1 capture/terms preserved; audit 11, projection job 365 completed, bot hold removed, zero awards and no new financial POST.
+- [x] November 2: current-profile PR #12 review 28 returned RESOLVES with both confirmed contributors, sufficient evidence and passing exact-head CI; bot publication verified. One of two newly approved Auto requests consumed; one reserved for post-merge refresh. Normal hosted attempt limits unchanged.
+- [x] Resolve hosted recipient connections: subsequent database readback confirms saved connections for both reviewed GitHub identities, Me-cha and Mecha-Test-Account. PayPal ownership/delivery are not established by connection alone.
+- [x] Hosted PR #12 merge and post-merge review: merge identity verified; review 30 RESOLVES. Both approved Auto requests consumed; normal hosted caps unchanged.
+- [x] Hosted automatic award: exactly one award, 100 cents split 50/50 between the two verified contributors; one payout batch submitted by the hosted worker.
+- [x] Both hosted payout items reached provider SUCCESS; application PAID and GitHub `bounty-paid` verified; user confirmed both $0.50 receipts.
+
 Do not run another full model-evaluation campaign for this foundation milestone. No further inference allowance is implied. Two-author edge cases, organizations, funded refunds, exhaustive recovery/restore and recording remain deferred; existing committed funds/claims must still be preserved.
 
 
@@ -56,7 +67,8 @@ Already evidenced: merged PR #3 → one $50 award → one sandbox batch/item →
   - [x] Connect the recipient and verify the same award resumes with one payout intent. Mecha-Test-Account connection version 1; original award 2, batch 2, item 2, 100 cents.
   - [x] Confirm recorded provider SUCCESS and Repopay PAID; batch `XCKBDAE9R9JQJ`, item `GVHRMZVAW47BA`, same award 2, one batch/item.
   - [x] Confirm recipient sees the incoming $1 in their sandbox Personal-account Activity. User confirmed receipt October 31.
-- [ ] Two-author allocation: verify exact cents and both recipient outcomes, including waiting for missing connections. Revision-bound contributor declaration plus independent maintainer attestation is implemented locally (ADR 0017). Remaining: a real two-contributor PR, both confirmations at the final revision, accepted verifier profile, exact-cent award and both recipient receipts. Mocked payout tests do not prove live attribution.
+- [x] Two-author allocation with both recipients connected: real PR #12, GitHub-associated commits and exact-revision declarations/maintainer confirmation, current foundation profile, one 100-cent award split 50/50, both provider SUCCESS outcomes and receipts confirmed November 2. See [hosted evidence](../evidence/11-hosted.md#hosted-payout-and-both-receipts--passed-november-2).
+- [ ] Two-author mixed connection timing (one recipient awaiting claim while the other is connected): deferred. The separate single-author delayed-claim test and connected two-author test do not establish this combined case.
 - [ ] Reconcile broader [Phase 6](06.md) merge/squash/rebase, replay and provider-recovery expectations with recorded coverage; distinguish simulated faults from real provider observations.
 
 ## Phase 7 — maintainer decisions
@@ -145,7 +157,7 @@ October 31 update: the full Auto v3 evaluation completed and **failed (17/18)**.
 - [x] Implement authenticated additional-contributor declaration plus separate maintainer confirmation, head/base binding, stale-proof evidence integration and award fencing (ADR 0017).
 - [x] Run the approved 18-request v3 evaluation and preserve the failed 17/18 result.
 - [x] Diagnose v3 false PARTIAL, correct incomplete fixtures and obtain a passing 18/18 evaluation before user-authorized scoped v3 acceptance.
-- [ ] Perform the new two-confirmation flow with real accounts and verify two-recipient payout receipts.
+- [x] Perform the two-confirmation flow with real accounts and verify two-recipient payout receipts: hosted PR #12, November 2, $0.50 each received.
 
 - [x] Hosted web health and homepage: https://repopay.onrender.com/ returned Repopay; `/healthz` returned HTTP 200 / ready on October 31. Worker, hold and provider readiness remain unverified.
 

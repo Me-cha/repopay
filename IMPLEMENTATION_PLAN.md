@@ -161,6 +161,8 @@ Main prizes, Best Use of PayPal + AI, Most Impactful, Best Demo, AG Grid, APIMat
 
 Design rules:
 
+Proposed follow-up: [independent review execution](docs/render-workflows-plan.md) compares Render Workflows with a dedicated review worker, retaining this plan's financial and authorization boundaries. Its dispatcher/task layout is unimplemented; the current runtime layout below is not replaced by the proposal.
+
 - **AI proposes, deterministic policy or an authorized person decides, PayPal executes.** Maintainers approve awards; independent operators approve exceptional refunds. The two authorities are distinct.
 - Postgres is authoritative. GitHub comments and labels are projections written by `sync_bounty` after DB transitions.
 - Every state transition, activity entry and job enqueue for one action happen in **one SQL transaction**, guarded by `where status = $expected and version = $expectedVersion` and incrementing `version`.

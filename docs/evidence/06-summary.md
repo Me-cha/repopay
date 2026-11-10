@@ -1,5 +1,7 @@
 # Phase 06 — local implementation, live acceptance pending
 
+**November 2 update:** the scoped hosted two-author journey passed under ADR 0021. PR #12's post-merge verification 30 RESOLVES led the hosted worker to create award 1 (100 cents split 50/50), one PayPal batch and two SUCCESS items. Bounty 2 is PAID, issue #11 has `bounty-paid`, and the user confirmed both recipients received $0.50. [Full evidence](11-hosted.md#hosted-payout-and-both-receipts--passed-november-2). This supersedes historical two-author blockers below; mixed connection timing and broader phase checks remain deferred.
+
 October 30, 2026. Current implementation is an uncommitted worktree change over `9a7dcf7`, authorized by the user's request to move to Phase 6. Copilot remains Auto; organization sponsorship remains explicitly blocked. No live Copilot request or PayPal transfer was made during this implementation.
 
 ## Implemented locally

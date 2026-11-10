@@ -22,7 +22,7 @@ repopay/
 ├── tsconfig.base.json, tsconfig.json, eslint.config.js, vitest.config.ts
 ├── docker-compose.yml, render.yaml, render-workflows.yaml, drizzle.config.ts
 ├── .github/{pull_request_template.md,workflows/ci.yml}
-├── docs/{setup.md,operations.md,deployment.md,review-execution.md,demo.md,copilot-verifier-research.md}
+├── docs/{setup.md,operations.md,deployment.md,review-execution.md,demo.md,copilot-verifier-research.md,render-workflows-plan.md}
 ├── docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md,0003-nemotron-only-and-preflight-scope.md,0004-funding-recovery.md,0005-copilot-verifier.md,0006-fixed-lightweight-copilot-and-sponsorship.md,0007-copilot-auto-model.md,0008-scoped-phase6-sandbox-acceptance.md,0009-maintainer-review-records.md,0010-cancellation-refund-boundaries.md,0011-scoped-dashboard.md,0012-recovery-checkpoints.md,0013-deployment-and-restore-hold.md,0014-exact-revision-test-context.md,0015-premerge-pr-feedback.md,0016-source-context-review.md,0017-confirmed-contributor-attribution.md,0018-github-contributor-commands.md,0019-review-evidence-and-pr-retry.md,0020-verifier-semantic-counterexamples.md,0021-foundation-mvp-scope.md}
 ├── docs/decisions/0022-review-publication-and-execution.md
 ├── docs/phases/{README.md,review-todo.md,live-walkthroughs.md,copilot-migration.md,00.md … 12.md}
@@ -65,6 +65,8 @@ The current map describes tracked source and configuration; ignored local data/b
 ## Keep instructions and documentation current
 
 Render execution improvements follow [the reviewed plan](docs/evidence/render-workflows-plan.md), [ADR 0022](docs/decisions/0022-review-publication-and-execution.md) and [runbook](docs/review-execution.md). Migrations 0021–0022 own immutable Check publication, durable dispatch and backend generation. `reviews/` owns admission, the one-time inference boundary and restricted executor protocol; `http/review-executor.ts` is the trusted broker. Executors have no database/payment credentials. `review-worker.ts` and `review-workflow.ts` share the isolated adapter; `verifier/publication.ts` retries saved Checks without model calls. Render execution defaults off; local tests and SDK registration do not establish hosted runtime, performance or cost acceptance. `render-workflows.yaml` is an optional workflow-only deployment template.
+
+`docs/render-workflows-plan.md` preserves the local November 9 design proposal and benchmark contract. For the subsequently implemented execution architecture, use ADR 0022 and the runbook linked above. The proposal itself grants no provisioning or provider-usage authorization.
 
 As part of **every** change that adds, moves, renames or removes a directory or important entrypoint:
 
