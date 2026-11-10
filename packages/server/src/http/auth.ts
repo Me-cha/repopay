@@ -123,7 +123,15 @@ details.fold>.fold-body{padding:0 14px 14px}
 details.fold .criteria-box{margin:0}
 details.fold .kv-grid{margin:8px 0 0}
 .dlg-note{font-size:12px;color:var(--muted);margin:8px 0 0}
+.crypto-payment-choice{display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:14px;margin:14px 0;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.crypto-payment-choice h2{font-size:14px;margin:0}
+.crypto-payment-choice .dlg-note{margin-top:4px}
+.crypto-buyer-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.crypto-checkout label{text-transform:none;letter-spacing:0;font-size:12px}
+.crypto-checkout-action{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
+@media(max-width:480px){.crypto-buyer-fields{grid-template-columns:1fr;gap:0}.crypto-payment-choice .btn,.crypto-checkout .btn{width:100%;min-height:44px;text-align:center}.crypto-checkout input,.crypto-checkout select{min-height:44px}}
 @media(max-width:768px){.two-col{grid-template-columns:1fr}.header{padding:0 16px}.conduit-bar{grid-template-columns:1fr}.kv-grid{grid-template-columns:1fr}}
+@media(max-width:600px){.header{height:auto;min-height:58px;flex-wrap:wrap;gap:8px;padding:12px 16px}.nav-links{flex-wrap:wrap;gap:12px}.nav-links a{min-height:32px;display:inline-flex;align-items:center}.user-badge{overflow-wrap:anywhere}main.wrapper{margin:16px auto;padding:0 16px}.dlg-stage{padding-top:8px}.dlg{min-width:0}.dlg-head{padding:18px 16px 4px}.dlg-body{padding:14px 16px 6px}.dlg-foot{padding:16px;gap:12px}.dlg-foot .grow{display:none}.fact{align-items:flex-start}.fact .k{flex:none}.fold .hint{display:block}.criteria-box{overflow-wrap:anywhere}}
 </style><script src="/assets/actions.js" defer></script></head><body><header class="header"><div class="brand-group"><a href="/dashboard" class="brand"><svg width="20" height="20" viewBox="0 0 1024 1024" fill="none" aria-hidden="true" style="vertical-align:middle;border-radius:5px"><rect width="1024" height="1024" rx="200" fill="#14171A"/><path fill-rule="evenodd" clip-rule="evenodd" d="M 340 716 L 340 307 L 586 307 L 654 375 L 654 482 L 595 541 L 542 488 L 490 541 L 414 541 L 414 716 Z M 414 382 L 550 382 L 580 412 L 580 448 L 550 478 L 414 478 Z" fill="#FFFFFF"/><polygon points="542,490 681,716 590,716 490,551" fill="#4DFD9F"/></svg>Repopay</a><span class="chip">ESCROW DESK</span></div><nav class="nav-links"><a href="/dashboard">Dashboard</a><a href="/dashboard/contributions">Contributions</a><a href="/dashboard/payouts/settings">Payouts</a>${userLogin?`<div class="user-badge">@${escapeHtml(userLogin)}</div>`:''}</nav></header><main class="wrapper">${content}<noscript><p>JavaScript is required to submit confirmation and sign-out forms securely. Read-only pages remain available.</p></noscript></main></body></html>`;
 }
 export function sensitiveHeaders(response:Response) {

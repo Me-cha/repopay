@@ -15,3 +15,15 @@ test('operator cancellation review exposes evidence without promising a refund',
 test('server status hides private state when repository access is lost',async({page})=>{
  await page.goto('/_test/login/maintainer');await page.goto('/bounties/3');await page.request.post('/_test/revoke');await expect(page.getByText(/Unable to refresh/)).toBeVisible({timeout:15000});await expect(page.getByText('demo/repo',{exact:true})).toHaveCount(0);
 });
+
+for(const width of [390,1440])test('crypto checkout choices remain readable at '+String(width)+'px',async({page})=>{
+ await page.setViewportSize({width,height:1000});
+ await page.goto('/_test/login/maintainer');await page.goto('/bounties/1/fund');
+ await expect(page.getByRole('heading',{name:'Fund this bounty'})).toBeVisible();
+ await expect(page.getByRole('link',{name:'Choose PYUSD on Solana devnet'})).toHaveAttribute('href','/dashboard/wallet?funding=1');
+ await page.getByText('PayPal crypto checkout',{exact:false}).click();
+ await expect(page.getByLabel('First name')).toBeVisible();await expect(page.getByLabel('Buyer country')).toBeVisible();
+ await expect(page.getByRole('button',{name:'Continue with crypto'})).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);
+ await page.screenshot({path:'test-results/crypto-choice-'+String(width)+'.png',fullPage:true});
+});

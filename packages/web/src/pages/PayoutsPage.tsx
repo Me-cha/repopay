@@ -116,7 +116,7 @@ export function PayoutsPage() {
                 Payout <span className="c2-title-muted">settings</span>
               </h1>
               <p className="c2-page-sub">
-                Bind or rotate the encrypted PayPal destination tied to your GitHub account
+                Manage your PayPal destination and PYUSD receiving wallet.
               </p>
             </>
           ) : (
@@ -174,6 +174,7 @@ export function PayoutsPage() {
         <PayoutsSkeleton />
       ) : isSettingsTab ? (
         /* ================= PAYOUT SETTINGS SUB-VIEW ================= */
+        <div className="c2-stack">
         <div className="c2-grid-2">
           {/* Left Card: Current Destination Posture */}
           <section
@@ -353,7 +354,17 @@ export function PayoutsPage() {
 
             <div className="c2-card-foot">
               <span>Saved to your GitHub account</span>
-              <span>USD PayPal payouts · <a href="/dashboard/wallet">PYUSD wallet settings</a></span>
+              <span>USD PayPal payouts</span>
+            </div>
+          </section>
+        </div>
+          <section className="c2-card" aria-labelledby="pyusd-settings-title">
+            <div className="c2-card-body c2-pyusd-settings">
+              <div>
+                <h2 id="pyusd-settings-title" className="c2-card-title">PYUSD wallet</h2>
+                <p className="c2-page-sub">Connect or change the Solana wallet that receives your PYUSD rewards.</p>
+              </div>
+              <a className="c2-btn c2-btn-secondary" href="/dashboard/wallet">Manage PYUSD wallet</a>
             </div>
           </section>
         </div>

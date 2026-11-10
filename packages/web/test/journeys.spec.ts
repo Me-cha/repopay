@@ -39,3 +39,32 @@ for(const width of [375,768,1280])test('responsive dashboard at '+String(width)+
 test('partial review and a failed payout remain visible without cancelling the committed award',async({page})=>{
  await page.goto('/_test/login/contributor');await page.goto('/dashboard/contributions');await expect(page.getByRole('heading',{name:/Contribution management/i})).toBeVisible();await page.getByRole('button',{name:'Parser issue 4'}).click();await expect(page.getByText('Malformed input is rejected, but the empty-body regression is missing.')).toBeVisible();await expect(page.getByText('Add the empty-body regression test.')).toBeVisible();await page.keyboard.press('Escape');await page.goto('/dashboard/payouts');await expect(page.getByRole('heading',{name:/Payout disbursements/i})).toBeVisible();const ledger=page.getByRole('region',{name:'Disbursement ledger'});await expect(ledger.getByText('Attention Needed').first()).toBeVisible();await expect(ledger).toContainText('$0.00');await expect(ledger).not.toContainText('Cancelled');
 });
+
+for(const width of [390,768,1440])test('PYUSD settings and checkout fit '+String(width)+'px without losing terms or actions',async({page})=>{
+ await page.setViewportSize({width,height:1000});
+ const address='AM19gZaXJUvT7UsBFUn8XbXoE5Grga81C8xht6M4UmnM';
+ let connected=false,paid=false;
+ await page.route('**/api/pyusd',r=>r.fulfill({json:{login:'maintainer',address:connected?address:null,csrfChallenge:'fixture',csrfConfirm:'fixture'}}));
+ await page.route('**/api/pyusd/bounties/9',r=>r.fulfill({json:{status:paid?'PAID':'OPEN',...(paid?{signature:'fixture-signature',transferStatus:'SUCCESS'}:{hash:'fixture',csrfReserve:'fixture'}),amount:1,terms:{title:'Decode one leading JSON BOM',criteria:'## Acceptance criteria\nPreserve a BOM inside JSON string values.\n<script>window.injected=true</script>',policy:{fundedCancellationEnabled:false},chain:{treasury:'CC6eMUZhcBddPsC1oLwfQHCC2ipTVVtP3Vw1rzpTkVAb',refundWallet:address}}}}));
+ await page.goto('/_test/login/maintainer');await page.goto('/dashboard/wallet');
+ await expect(page.getByRole('button',{name:'Connect and save wallet'})).toBeVisible();
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);
+ await page.evaluate(()=>{window.scrollTo(0,0);});
+ await page.screenshot({path:'test-results/pyusd-empty-'+String(width)+'.png',fullPage:true});
+ connected=true;await page.goto('/dashboard/wallet?funding=9');
+ await expect(page.getByRole('button',{name:'Change saved wallet'})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Confirm terms and fund with wallet'})).toBeVisible();
+ await expect(page.getByText('Funded cancellation/refunds are unavailable in these terms.',{exact:false})).toBeVisible();
+ await page.getByText('Acceptance criteria',{exact:true}).click();
+ await expect(page.getByText('Preserve a BOM inside JSON string values.',{exact:false})).toBeVisible();
+ expect(await page.evaluate(()=>Reflect.has(window,'injected'))).toBe(false);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);
+ await page.evaluate(()=>{window.scrollTo(0,0);});
+ await page.screenshot({path:'test-results/pyusd-checkout-'+String(width)+'.png',fullPage:true});
+ paid=true;await page.getByRole('button',{name:'Refresh status',exact:true}).click();
+ await expect(page.getByText('Settled',{exact:true}).last()).toBeVisible();
+ await expect(page.getByRole('link',{name:'View devnet transaction'})).toHaveAttribute('href',/cluster=devnet$/);
+ await expect(page.getByRole('button',{name:'Confirm terms and fund with wallet'})).toHaveCount(0);
+ await page.evaluate(()=>{window.scrollTo(0,0);});
+ await page.screenshot({path:'test-results/pyusd-paid-'+String(width)+'.png',fullPage:true});
+});

@@ -1779,9 +1779,75 @@ pre {
   color: var(--c2-ink-secondary);
 }
 
+.c2-pyusd-settings { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
 .c2-settings-form {
   display: flex;
   flex-direction: column;
+}
+
+/* Wallet settings and checkout share the workspace's existing card/control kit. */
+.c2-wallet-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(0, 1.3fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.c2-wallet-body { gap: 16px; }
+.c2-wallet-body .c2-card-lead,
+.c2-wallet-body .c2-empty-inline,
+.c2-wallet-body .c2-field-hint { margin: 0; }
+.c2-wallet-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--c2-spine);
+  border-radius: var(--c2-radius-sm);
+  color: var(--c2-ink-secondary);
+  font-size: 13px;
+}
+.c2-wallet-notice p { margin: 0; }
+.c2-wallet-notice > svg { flex: none; }
+.c2-wallet-address {
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: var(--c2-radius-sm);
+  background: var(--c2-surface-subtle);
+}
+.c2-wallet-address code,
+.c2-wallet-destinations code {
+  font-family: var(--c2-font-code);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.c2-wallet-destinations .c2-kv-row dt { flex: 0 0 100px; }
+.c2-wallet-destinations .c2-kv-row dd { min-width: 0; }
+.c2-wallet-amount { display: flex; align-items: baseline; gap: 8px; }
+.c2-wallet-amount strong { font-size: 30px; line-height: 1.2; letter-spacing: -0.025em; }
+.c2-wallet-amount span { font-size: 14px; color: var(--c2-ink-secondary); }
+.c2-wallet-bounty-title { margin: 0; font-size: 16px; font-weight: 600; }
+.c2-wallet-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.c2-wallet-disclosure { border: 1px solid var(--c2-spine); border-radius: var(--c2-radius-sm); }
+.c2-wallet-disclosure summary { cursor: pointer; padding: 12px 14px; font-size: 13px; font-weight: 600; }
+.c2-wallet-disclosure pre {
+  margin: 0;
+  padding: 0 14px 14px;
+  font: 12px/1.7 var(--c2-font-code);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.c2-wallet-page .c2-alert-banner { overflow-wrap: anywhere; }
+@media (max-width: 900px) {
+  .c2-wallet-layout { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 480px) {
+  .c2-wallet-page .c2-btn { min-height: 44px; white-space: normal; text-align: center; }
+  .c2-wallet-actions > .c2-btn { width: 100%; }
+  .c2-wallet-destinations .c2-kv-row { flex-direction: column; gap: 4px; }
+  .c2-wallet-destinations .c2-kv-row dt { flex-basis: auto; }
+  .c2-wallet-destinations .c2-kv-row dd { text-align: left; }
 }
 
 .c2-field-label {

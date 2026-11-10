@@ -99,3 +99,11 @@ November 10 follow-up: approved devnet funding submissions reconcile immediately
 The wallet selector discovers capabilities through [Wallet Standard](https://github.com/anza-xyz/wallet-standard), without a wallet-name allowlist or a Phantom/Solflare injected-provider preference. It updates on registration/removal and applies the user's selected wallet to both ownership proof and funding. Ownership uses `solana:signMessage`; funding uses `solana:signTransaction` with `solana:devnet` and legacy transaction support. Wrong accounts/networks, altered messages and altered transaction bytes are rejected. Saved destinations remain reusable without reconnecting on page load.
 
 This supports compatible registered browser wallets; it does not promise every wallet/version, mobile deep links, hardware setup or unsupported signing mode. Solflare funding has real devnet evidence; other brands currently have simulated adapter coverage only. No new chain transfer is needed to install this UI change.
+
+## Wallet and checkout interface
+
+The PYUSD wallet lives under **Payouts → PYUSD Wallet** in the dashboard and uses the same cards, buttons, status badges and typography as payout settings. A saved address remains visible without requesting another signature. Funding shows the amount, network, funding wallet, treasury and cancellation terms beside the action; long acceptance criteria expand in place. Signing progress and errors stay beside checkout, and the confirmed transaction links to the devnet explorer.
+
+The funding dialog separates **PYUSD on Solana** (PYUSD rewards) from **PayPal crypto checkout** (USD rewards). Both retain the existing authenticated confirmations. Wallet-extension approval windows are rendered by the installed wallet; Repopay styles its own pages, not the extension's UI.
+
+November 10 UI verification: 514 server/web tests passed. Browser checks cover saved/empty wallet settings, expandable criteria, finalized display and exact-message signing/rejection with mocked wallets, plus crypto checkout choices at desktop and mobile sizes. No live provider request or transfer is required for these interface checks.

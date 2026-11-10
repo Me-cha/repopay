@@ -35,7 +35,7 @@ export function StatusBadge({ status }: { status: string }) {
   return <span className={`c2-pill c2-pill-${tone}`}>{label}</span>;
 }
 
-export function describeEscrowState(bounty: Pick<BountyDto, 'status' | 'fundedAt' | 'award'>): {
+export function describeEscrowState(bounty: Pick<BountyDto, 'status' | 'fundedAt' | 'award' | 'currency'>): {
   headline: string;
   detail: string;
   tone: StatusTone;
@@ -56,13 +56,13 @@ export function describeEscrowState(bounty: Pick<BountyDto, 'status' | 'fundedAt
     case 'AWAITING_CLAIM':
       return {
         headline: 'Award Committed',
-        detail: 'Reserved for awarded contributor to connect PayPal destination',
+        detail: bounty.currency === 'PYUSD' ? 'Reserved for awarded contributor to connect a Solana devnet wallet' : 'Reserved for awarded contributor to connect PayPal destination',
         tone: 'peach',
       };
     case 'PAYING':
       return {
         headline: 'Transfer In Flight',
-        detail: 'PayPal disbursement submitted and reconciling',
+        detail: bounty.currency === 'PYUSD' ? 'PYUSD transfer submitted and awaiting finalized confirmation' : 'PayPal disbursement submitted and reconciling',
         tone: 'mint',
       };
     case 'PAID':
@@ -74,7 +74,7 @@ export function describeEscrowState(bounty: Pick<BountyDto, 'status' | 'fundedAt
     case 'CAPTURING':
       return {
         headline: 'Capture Pending',
-        detail: 'PayPal order created; awaiting capture confirmation',
+        detail: bounty.currency === 'PYUSD' ? 'Devnet funding in progress; awaiting finalized confirmation' : 'PayPal order created; awaiting capture confirmation',
         tone: 'peach',
       };
     case 'REFUNDING':

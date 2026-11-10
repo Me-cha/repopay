@@ -35,7 +35,7 @@ export function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarProps) {
 
   const onDashboard = cleanPath === '/dashboard';
   const onContributions = cleanPath === '/dashboard/contributions';
-  const onPayoutsSection = cleanPath === '/dashboard/payouts' || cleanPath.startsWith('/dashboard/payouts/');
+  const onPayoutsSection = cleanPath === '/dashboard/payouts' || cleanPath.startsWith('/dashboard/payouts/') || cleanPath === '/dashboard/wallet';
   const onPayoutSettings = cleanPath === '/dashboard/payouts/settings';
 
   const [contribOpen, setContribOpen] = useState(true);
@@ -118,6 +118,13 @@ export function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarProps) {
   ];
 
   const payoutSubItems = [
+    {
+      key: 'wallet',
+      label: 'PYUSD Wallet',
+      to: '/dashboard/wallet',
+      active: cleanPath === '/dashboard/wallet',
+      badge: null,
+    },
     {
       key: 'disbursements',
       label: 'Disbursements',

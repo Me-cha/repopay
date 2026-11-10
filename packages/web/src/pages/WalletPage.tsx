@@ -1,6 +1,9 @@
 import { useEffect,useState,useRef } from 'react';
 import { ComputeBudgetInstruction,ComputeBudgetProgram,Transaction } from '@solana/web3.js';
 import bs58 from 'bs58';
+import { StatusBadge } from '../components/common/StatusBadge.js';
+import { Spinner, IconExternal, IconRefresh } from '../components/common/Icons.js';
+import { Skeleton } from '../components/common/Skeleton.js';
 import { z } from 'zod';
 import { getWallets } from '@wallet-standard/app';
 import type { StandardConnectFeature } from '@wallet-standard/features';
@@ -39,6 +42,7 @@ export function changedTransactionDetails(original:Transaction,result:Transactio
 }
 export function WalletPage(){
  const [wallet,setWallet]=useState<z.infer<typeof walletState>|null>(null),[funding,setFunding]=useState<z.infer<typeof fundingState>|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[progress,setProgress]=useState('');
+ const [refreshing,setRefreshing]=useState(false);
  const stage=useRef('Checkout');
  const [walletName,setWalletName]=useState('');
  const [discovered,setDiscovered]=useState(()=>registeredWallets.get());
@@ -57,7 +61,7 @@ export function WalletPage(){
  const bounty=new URLSearchParams(window.location.search).get('funding');
  async function refresh(){const w=walletState.parse(await request('/api/pyusd'));setWallet(w);if(bounty&&w.address)setFunding(fundingState.parse(await request('/api/pyusd/bounties/'+encodeURIComponent(bounty))));}
  useEffect(()=>{let active=true;void refresh().catch((e:unknown)=>{if(active)setError(e instanceof Error?e.message:'Unable to load wallet');});return()=>{active=false;};},[bounty]); // Account-scoped server session; never cached locally.
- async function run(action:()=>Promise<void>){setBusy(true);if(action!==refresh)setError('');step('Checkout','Checking checkout…');try{await action();await refresh();}catch(e){const detail=e instanceof Error?e.message:z.object({message:z.string()}).safeParse(e).data?.message;setError(`${stage.current}: ${detail?.slice(0,700)??'Operation unavailable. Refresh status before retrying.'}`);}finally{setBusy(false);setProgress('');}}
+ async function run(action:()=>Promise<void>){setBusy(true);setRefreshing(action===refresh);if(action!==refresh)setError('');step('Checkout','Checking checkout…');try{await action();await refresh();}catch(e){const detail=e instanceof Error?e.message:z.object({message:z.string()}).safeParse(e).data?.message;setError(`${stage.current}: ${detail?.slice(0,700)??'Operation unavailable. Refresh status before retrying.'}`);}finally{setBusy(false);setRefreshing(false);setProgress('');}}
  async function connect(){
   if(!wallet)return;const provider=selectedWallet(),features=provider.features as Features;
   const connector=features['standard:connect'],signer=features['solana:signMessage'];
@@ -112,14 +116,53 @@ export function WalletPage(){
   step('Signed transaction submission','Saving the signed transaction to Repopay…');
   await request(`/api/pyusd/transfers/${prepared.id}/sign`,{csrf:prepared.csrfSign,wire});
  }
- return <section className="card" style={{maxWidth:800,margin:'24px auto',padding:24}}><h1>PYUSD wallet · Solana devnet</h1><p>Test tokens only. PYUSD funding and rewards stay in PYUSD. PayPal USD payments remain separate.</p>{error&&!funding&&<p role="alert">{error}</p>}{wallet&&<><p>Signed in as <strong>{wallet.login}</strong></p><p>{wallet.address?<>Saved wallet: <code>{wallet.address}</code>. Reused for future rewards. Existing payout destinations stay fixed.</>:'Connect a wallet and sign the ownership message once.'}</p>{availableWallets.length>0&&<label>Signing wallet <select aria-label="Signing wallet" disabled={busy} value={walletName||availableWallets[0]?.name} onChange={e=>{setWalletName(e.target.value);}}>{availableWallets.map(w=><option key={w.name} value={w.name}>{w.name}</option>)}</select></label>}{availableWallets.length===0&&<p>No compatible wallet detected. Open a Solana Wallet Standard wallet with devnet enabled.</p>}<button disabled={busy} onClick={()=>{void run(connect);}}>{wallet.address?'Change saved wallet':'Connect and save wallet'}</button></>}
- {funding&&<div style={{marginTop:24}}><h2>{funding.terms.title}</h2><p><strong>{funding.amount.toFixed(2)} PYUSD</strong> · {funding.status}{funding.transferStatus?' / '+funding.transferStatus:''}</p><pre style={{whiteSpace:'pre-wrap'}}>{funding.terms.criteria}</pre><p>Funds are held by Repopay’s devnet treasury until a qualifying award. {funding.terms.policy.fundedCancellationEnabled?'Funded cancellation requires an independent review after a 72-hour public notice; refunds return only to the original funding wallet.':'Funded cancellation/refunds are unavailable in these terms.'} A rejected or closed PR does not refund funding.</p><p>Funding wallet: <code>{funding.terms.chain.refundWallet}</code></p><p>Treasury: <code>{funding.terms.chain.treasury}</code></p><p>Your wallet pays funding SOL fees and any token-account creation cost. New preparations include a maximum 0.00002 test SOL priority fee; review the total in your wallet. Repopay pays outgoing fees and account creation separately from the reward.</p>{funding.attention&&<p role="status">{funding.attention}</p>}
- {error&&<p role="alert">{error}</p>}
- {busy&&progress&&<p role="status">{progress}</p>}
- {!busy&&!funding.signature&&funding.id&&<p>The transaction has not been received by Repopay. Wallet connection or approval alone does not confirm funding.</p>}
- {funding.hash&&<button disabled={busy} onClick={()=>{void run(fund);}}>Confirm terms and fund with wallet</button>}
- {funding.id&&!funding.signature&&funding.csrfPrepare&&<button disabled={busy} onClick={()=>{void run(()=>sign());}}>Continue funding in wallet</button>}
-
- {funding.signature&&<p><a href={`https://explorer.solana.com/tx/${funding.signature}?cluster=devnet`} target="_blank" rel="noreferrer">View devnet transaction</a></p>}</div>}
- <p><button disabled={busy} onClick={()=>{void run(refresh);}}>Refresh status</button> · <a href="/dashboard/payouts/settings">PayPal payout settings</a></p></section>;
+ return <div className="c2-page c2-wallet-page">
+  <header className="c2-page-head">
+   <div><h1 className="c2-page-title">PYUSD wallet</h1>
+    <p className="c2-page-sub">Save your receiving wallet or fund a bounty with test PYUSD.</p></div>
+   <div className="c2-head-controls"><button type="button" className="c2-btn c2-btn-secondary" disabled={busy} aria-busy={refreshing} onClick={()=>{void run(refresh);}}>{refreshing?<Spinner size={14}/>:<IconRefresh size={14}/>}<span>{refreshing?'Refreshing…':'Refresh status'}</span></button></div>
+  </header>
+  <div className="c2-wallet-layout">
+   <section className="c2-card c2-card-divided" aria-labelledby="wallet-destination-title" aria-busy={busy}>
+    <div className="c2-card-bar"><h2 id="wallet-destination-title" className="c2-card-title">Receiving wallet</h2>
+     {wallet&&<span className={`c2-pill ${wallet.address?'c2-pill-mint':'c2-pill-neutral'}`}>{wallet.address?'Connected':'Not connected'}</span>}</div>
+    <div className="c2-card-body c2-wallet-body">
+     {!wallet&&!error&&<div role="status" aria-label="Loading wallet" className="c2-stack"><Skeleton width="50%"/><Skeleton height={48}/><span className="sr-only">Loading saved wallet…</span></div>}
+     {wallet&&<>
+      <p className="c2-card-lead">Signed in as <strong>@{wallet.login}</strong></p>
+      {wallet.address?<><div className="c2-wallet-address"><span className="c2-field-label">Saved wallet</span><code>{wallet.address}</code></div><p className="c2-card-lead">Reused for future rewards. Existing payout destinations stay fixed.</p></>:<p className="c2-card-lead">Connect a wallet and sign the ownership message once. This saves your receiving address without transferring tokens.</p>}
+      {availableWallets.length>0?<div className="c2-settings-form"><label className="c2-field-label" htmlFor="signing-wallet">Signing wallet</label><select id="signing-wallet" className="c2-input" disabled={busy} value={walletName||availableWallets[0]?.name} onChange={e=>{setWalletName(e.target.value);}}>{availableWallets.map(w=><option key={w.name} value={w.name}>{w.name}</option>)}</select><span className="c2-field-hint">Select your Solana wallet with devnet enabled.</span></div>:<p className="c2-empty-inline">No compatible wallet detected. Open a Solana Wallet Standard wallet with devnet enabled.</p>}
+      <div className="c2-wallet-actions"><button type="button" className={`c2-btn ${wallet.address?'c2-btn-secondary':'c2-btn-primary'}`} disabled={busy} onClick={()=>{void run(connect);}}>{wallet.address?'Change saved wallet':'Connect and save wallet'}</button></div>
+     </>}
+     {error&&!funding&&<div className="c2-alert-banner" role="alert">{error}</div>}
+     {busy&&progress&&!funding&&<div className="c2-wallet-notice" role="status"><Spinner size={16}/><p>{progress}</p></div>}
+    </div>
+    <div className="c2-card-foot"><span>Saved to your GitHub account</span></div>
+   </section>
+   {funding?<section className="c2-card c2-card-divided" aria-labelledby="pyusd-funding-title" aria-busy={busy}>
+    <div className="c2-card-bar"><h2 id="pyusd-funding-title" className="c2-card-title">Bounty funding</h2><StatusBadge status={funding.status}/></div>
+    <div className="c2-card-body c2-wallet-body">
+     <div className="c2-wallet-amount c2-tabular"><strong>{funding.amount.toFixed(2)}</strong><span>PYUSD</span></div>
+     <h3 className="c2-wallet-bounty-title">{funding.terms.title}</h3>
+     <p className="c2-card-lead">{funding.status}{funding.transferStatus?' / '+funding.transferStatus:''}</p>
+     <dl className="c2-kv-list c2-wallet-destinations"><div className="c2-kv-row"><dt>Funding wallet</dt><dd><code>{funding.terms.chain.refundWallet}</code></dd></div><div className="c2-kv-row"><dt>Treasury</dt><dd><code>{funding.terms.chain.treasury}</code></dd></div></dl>
+     <p className="c2-card-lead">Funds are held by Repopay’s devnet treasury until a qualifying award. {funding.terms.policy.fundedCancellationEnabled?'Funded cancellation requires an independent review after a 72-hour public notice; refunds return only to the original funding wallet.':'Funded cancellation/refunds are unavailable in these terms.'} A rejected or closed PR does not refund funding.</p>
+     <details className="c2-wallet-disclosure"><summary>Acceptance criteria</summary><pre>{funding.terms.criteria}</pre></details>
+     <p className="c2-field-hint">Your wallet pays funding SOL fees and any token-account creation cost. New preparations include a maximum 0.00002 test SOL priority fee; review the total in your wallet. Repopay pays outgoing fees and account creation separately from the reward.</p>
+     {funding.attention&&<div className="c2-alert-banner" role="status">{funding.attention}</div>}
+     {error&&<div className="c2-alert-banner" role="alert">{error}</div>}
+     {busy&&progress&&<div className="c2-wallet-notice" role="status"><Spinner size={16}/><p>{progress}</p></div>}
+     {!busy&&!funding.signature&&funding.id&&<p className="c2-empty-inline">The transaction has not been received by Repopay. Wallet connection or approval alone does not confirm funding.</p>}
+     <div className="c2-wallet-actions">
+      {funding.hash&&<button type="button" className="c2-btn c2-btn-primary" disabled={busy} onClick={()=>{void run(fund);}}>{busy&&<Spinner size={16}/>}Confirm terms and fund with wallet</button>}
+      {funding.id&&!funding.signature&&funding.csrfPrepare&&<button type="button" className="c2-btn c2-btn-primary" disabled={busy} onClick={()=>{void run(()=>sign());}}>{busy&&<Spinner size={16}/>}Continue funding in wallet</button>}
+      {funding.signature&&<a className="c2-btn c2-btn-secondary" href={`https://explorer.solana.com/tx/${funding.signature}?cluster=devnet`} target="_blank" rel="noreferrer">View devnet transaction <IconExternal size={14}/></a>}
+     </div>
+    </div><div className="c2-card-foot"><span>Solana devnet · PYUSD funding</span></div>
+   </section>:<section className="c2-card c2-card-divided" aria-labelledby="pyusd-rewards-title">
+    <div className="c2-card-bar"><h2 id="pyusd-rewards-title" className="c2-card-title">Receiving PYUSD rewards</h2></div>
+    <div className="c2-card-body c2-wallet-body"><p className="c2-card-lead">A qualifying merged PR can earn a PYUSD bounty. Repopay sends the committed reward to your saved wallet on Solana devnet.</p><dl className="c2-kv-list"><div className="c2-kv-row"><dt>Reward token</dt><dd>PYUSD</dd></div><div className="c2-kv-row"><dt>Network</dt><dd>Solana devnet</dd></div><div className="c2-kv-row"><dt>Payout fees</dt><dd>Paid by Repopay</dd></div></dl><p className="c2-field-hint">Connecting a wallet does not reserve a bounty or send a payout. Follow the bot’s funding link on the GitHub issue to fund a bounty.</p>{bounty&&wallet&&!wallet.address&&<p className="c2-empty-inline">Save a wallet to load this bounty’s funding terms.</p>}</div>
+   </section>}
+  </div>
+ </div>;
 }
