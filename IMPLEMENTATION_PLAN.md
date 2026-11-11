@@ -1131,7 +1131,7 @@ Restore safety: an older DB backup may omit an operation already sent to PayPal.
 | Payout status names                         | map `transaction_status` (`SUCCESS`, `ONHOLD`…), never webhook event names (`SUCCEEDED`, `HELD`…)                                |
 | Lost payout response                        | persisted `sender_batch_id`; behavior from Phase 0 probe; batch webhook reconciliation                                           |
 | GitHub webhook 10 s timeout                 | handlers only enqueue                                                                                                            |
-| Render free cold start / no free workers    | paid instance or keep-alive; `WORKER_MODE=inline`                                                                                |
+| Render free cold start / no free workers    | paid instance for no idle sleep; best-effort external `.github/workflows/hosted-health.yml` readiness checks for the demo; `WORKER_MODE=inline` |
 | PayPal cannot reach localhost               | `poll_order`/`poll_payout`/`poll_refund` fallbacks                                                                               |
 | Payout to non-PayPal email                  | UNCLAIMED; demo only with sandbox personal accounts                                                                              |
 | `closingIssuesReferences` empty after merge | links persisted at open/sync; `/bounty link` fallback                                                                            |

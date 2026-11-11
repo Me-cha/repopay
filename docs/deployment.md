@@ -14,6 +14,20 @@ GitHub callback/intake were moved to this origin for fresh issue #10. The PayPal
 
 ## Topology and cost review
 
+### Demo health monitoring and idle sleep
+
+The current demo origin is **https://repo-pay.onrender.com**; older origins in the historical deployment notes above are not the monitoring target.
+
+`.github/workflows/hosted-health.yml` requests `/healthz` every five minutes (UTC minutes 2, 7, 12, …, 57) from GitHub Actions. It also supports **Actions → Hosted health check → Run workflow**. It uses no checkout, application credentials or secrets, accepts only HTTP 200 with JSON `status: ready`, and rejects Render loading HTML. Each run allows three bounded requests (60 seconds each, 10 seconds between failures) within a five-minute job timeout. Logs omit response bodies. The existing endpoint checks the database; it does not prove worker, model or payment-provider readiness.
+
+Activation requires the workflow on the default branch and Actions enabled in `Me-cha/repopay`. Forks skip the job. Disable it through GitHub Actions when the demo no longer needs monitoring. No Render environment variable or redeployment is required. It makes read-only requests; warming the service can resume its already-configured inline worker.
+
+Render documents Free-service idle sleep after 15 minutes without inbound traffic and a typical wake-up of about one minute. External checks can reduce idle cold starts; an internal timer cannot wake a sleeping process. GitHub schedules may be delayed/dropped and public-repository schedules disable after 60 days without activity. This is best-effort demo monitoring, not always-on hosting. Active service hours and Actions usage count against their respective allowances. Paid Render compute avoids idle spin-down. Persistent five-to-ten-minute starts need inspection of Render events, migrations, database connectivity and restart logs, rather than a health-check bypass.
+
+Sources checked November 11, 2026: [Render Free limitations](https://render.com/docs/free), [Render FAQ](https://render.com/docs/faq), [GitHub scheduled workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule).
+
+### Prepared paid topology
+
 `render.yaml` defines a separate Node web service, separate worker and private PostgreSQL 16 database in Singapore. Web and worker use `1c-2g`; Postgres uses `0.5c-1g` with 5 GB storage. These are paid compute choices, not a free-worker promise. They are initial capacity assumptions, not load-tested sizing. The Blueprint disables automatic deploys and previews.
 
 Checked on 2026-10-30: Render documents separate workers, service/database plan identifiers, private database references and pre-deploy commands in its [Blueprint specification](https://render.com/docs/blueprint-spec) and [worker documentation](https://render.com/docs/background-workers). The [pricing page](https://render.com/pricing) was consulted, but the retrieved page did not expose a reliable complete monthly quote. Before creating resources, review the actual Dashboard estimate, workspace charges, storage/backup retention, bandwidth and region availability and obtain approval for that concrete configuration. Blueprint schema validation does not prove account availability or capacity.

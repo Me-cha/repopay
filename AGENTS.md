@@ -21,7 +21,7 @@ repopay/
 ├── package.json, pnpm-workspace.yaml, pnpm-lock.yaml
 ├── tsconfig.base.json, tsconfig.json, eslint.config.js, vitest.config.ts
 ├── docker-compose.yml, render.yaml, render-workflows.yaml, drizzle.config.ts
-├── .github/{pull_request_template.md,workflows/ci.yml}
+├── .github/{pull_request_template.md,workflows/ci.yml,workflows/hosted-health.yml}
 ├── docs/{setup.md,operations.md,deployment.md,review-execution.md,demo.md,copilot-verifier-research.md,render-workflows-plan.md,crypto-payments.md}
 ├── docs/decisions/{0001-open-participation-and-cancellation.md,0002-nvidia-runtime-models.md,0003-nemotron-only-and-preflight-scope.md,0004-funding-recovery.md,0005-copilot-verifier.md,0006-fixed-lightweight-copilot-and-sponsorship.md,0007-copilot-auto-model.md,0008-scoped-phase6-sandbox-acceptance.md,0009-maintainer-review-records.md,0010-cancellation-refund-boundaries.md,0011-scoped-dashboard.md,0012-recovery-checkpoints.md,0013-deployment-and-restore-hold.md,0014-exact-revision-test-context.md,0015-premerge-pr-feedback.md,0016-source-context-review.md,0017-confirmed-contributor-attribution.md,0018-github-contributor-commands.md,0019-review-evidence-and-pr-retry.md,0020-verifier-semantic-counterexamples.md,0021-foundation-mvp-scope.md}
 ├── docs/decisions/{0022-review-publication-and-execution.md,0023-paypal-crypto-funding.md,0024-pyusd-devnet-route.md}
@@ -64,6 +64,8 @@ The current map describes tracked source and configuration; ignored local data/b
 `ngrok.sh` reads only `PORT`, `PUBLIC_URL` and `NGROK_DOMAIN` from `.env`, verifies local health and ngrok authentication, and opens a tunnel to the stable assigned domain. Keep the ngrok authtoken in ngrok's user-level config, outside this repository.
 
 ## Keep instructions and documentation current
+
+`.github/workflows/hosted-health.yml` owns the best-effort five-minute external readiness check for the hosted demo. It validates `/healthz` JSON without credentials or application mutations; scheduling is not an uptime guarantee. See `docs/deployment.md` for activation and limitations.
 
 Render execution improvements follow [the reviewed plan](docs/evidence/render-workflows-plan.md), [ADR 0022](docs/decisions/0022-review-publication-and-execution.md) and [runbook](docs/review-execution.md). Migrations 0021–0022 own immutable Check publication, durable dispatch and backend generation. `reviews/` owns admission, the one-time inference boundary and restricted executor protocol; `http/review-executor.ts` is the trusted broker. Executors have no database/payment credentials. `review-worker.ts` and `review-workflow.ts` share the isolated adapter; `verifier/publication.ts` retries saved Checks without model calls. Render execution defaults off; local tests and SDK registration do not establish hosted runtime, performance or cost acceptance. `render-workflows.yaml` is an optional workflow-only deployment template.
 

@@ -1,0 +1,43 @@
+name: Hosted health check
+
+on:
+  schedule:
+    - cron: '2-57/5 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: hosted-health
+  cancel-in-progress: false
+
+jobs:
+  health:
+    if: github.repository == 'Me-cha/repopay'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check hosted application readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          body=$(mktemp)
+          trap 'rm -f "$body"' EXIT
+          for attempt in 1 2 3; do
+            code=000
+            if result=$(curl --silent --show-error --proto '=https' \
+              --connect-timeout 10 --max-time 60 --max-filesize 16384 \
+              --header 'Cache-Control: no-cache' \
+              --output "$body" --write-out '%{http_code}' \
+              https://repo-pay.onrender.com/healthz); then
+              code="$result"
+            fi
+            if [[ "$code" == 200 ]] && jq -e '.status == "ready"' "$body" >/dev/null 2>&1; then
+              echo "Hosted application ready (attempt $attempt)."
+              exit 0
+            fi
+            echo "Readiness not confirmed (attempt $attempt, HTTP $code)."
+            if [[ "$attempt" != 3 ]]; then sleep 10; fi
+          done
+          echo '::error::Hosted readiness failed. Check Render service events and startup/database logs.'
+          exit 1

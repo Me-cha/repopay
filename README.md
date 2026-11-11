@@ -104,6 +104,8 @@ Codex is the coding assistant; Copilot SDK is the selected runtime verifier prov
 
 ## Start here
 
+Hosted demo cold-start monitoring is defined in `.github/workflows/hosted-health.yml`. See [activation and limitations](docs/deployment.md#demo-health-monitoring-and-idle-sleep); polling does not guarantee always-on Free hosting.
+
 ```sh
 git clone https://github.com/Me-cha/repopay.git
 cd repopay
