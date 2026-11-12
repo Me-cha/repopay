@@ -22,6 +22,7 @@ coverage/
 test-results/
 playwright-report/
 *.log
+.playwright-cli/
 
 # Local data and scratch files.
 .data/
