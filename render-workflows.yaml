@@ -9,7 +9,7 @@ services:
     branch: main
     autoDeployTrigger: "off"
     buildCommand: corepack enable && corepack prepare pnpm@10.29.3 --activate && pnpm install --frozen-lockfile --prod=false && pnpm --filter @repopay/server build
-    startCommand: pnpm start:reviews:render
+    startCommand: node packages/server/dist/review-workflow.js
     envVars:
       - key: NODE_ENV
         value: production

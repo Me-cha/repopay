@@ -11,8 +11,8 @@ services:
     numInstances: 1
     autoDeployTrigger: "off"
     buildCommand: corepack enable && corepack prepare pnpm@10.29.3 --activate && pnpm install --frozen-lockfile --prod=false && pnpm build
-    preDeployCommand: pnpm db:migrate:hosted && pnpm db:check
-    startCommand: pnpm start:hosted
+    preDeployCommand: node --import tsx packages/server/scripts/migrate.ts && node --import tsx packages/server/scripts/check-migrations.ts
+    startCommand: node packages/server/dist/main.js
     healthCheckPath: /healthz
     maxShutdownDelaySeconds: 300
     envVars:
@@ -57,7 +57,7 @@ services:
     numInstances: 1
     autoDeployTrigger: "off"
     buildCommand: corepack enable && corepack prepare pnpm@10.29.3 --activate && pnpm install --frozen-lockfile --prod=false && pnpm build
-    startCommand: pnpm start:worker:hosted
+    startCommand: node packages/server/dist/worker.js
     maxShutdownDelaySeconds: 300
     envVars:
       - fromGroup: repopay-sandbox-runtime
