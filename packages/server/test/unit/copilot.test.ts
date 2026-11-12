@@ -1,7 +1,7 @@
 import { expect,it,vi } from 'vitest';
 import { existsSync } from 'node:fs';
 import { z } from 'zod';
-import { completeCopilot,listCopilotModels,type CopilotRuntime,type RuntimeFactory } from '../../src/models/copilot.js';
+import { completeCopilot,listCopilotModels,CopilotDiagnosticError,type CopilotRuntime,type RuntimeFactory } from '../../src/models/copilot.js';
 import { parseCopilotEnv } from '../../src/env.js';
 const input={COPILOT_GITHUB_TOKEN:'ghu_synthetic',COPILOT_BILLING_OWNER_ID:'4',COPILOT_AUTH_KIND:'user',COPILOT_MODEL:'test-model',COPILOT_TIMEOUT_MS:'1000',COPILOT_SHUTDOWN_TIMEOUT_MS:'100',COPILOT_MAX_INPUT_BYTES:'1000',PROVIDER_RESPONSE_MAX_BYTES:'1000'};
 const config=()=>parseCopilotEnv(input);
@@ -34,6 +34,13 @@ it('bounds output/input and redacts provider failures',async()=>{
  const f=fixture();await expect(completeCopilot(config(),'x'.repeat(1001),schema,f.factory)).rejects.toThrow(/input/);expect(f.factory).not.toHaveBeenCalled();
  f.session.send.mockRejectedValue(new Error('private-token-private-code'));await expect(completeCopilot(config(),'evidence',schema,f.factory)).rejects.toThrow('Copilot request failed');
  f.session.send.mockResolvedValue({verdict:'RESOLVES',extra:'x'.repeat(1001)});await expect(completeCopilot(config(),'evidence',schema,f.factory)).rejects.toThrow(/limit/);
+});
+it('preserves only a safe SDK stage and code for startup failures',async()=>{
+ const f=fixture();vi.mocked(f.client.start).mockRejectedValue(new Error('private runtime token'));
+ let failure:unknown;try{await completeCopilot(config(),'evidence',schema,f.factory);}catch(error){failure=error;}
+ expect(failure).toBeInstanceOf(CopilotDiagnosticError);
+ expect(failure).toMatchObject({diagnosticStage:'copilot_sdk_startup',diagnosticCode:'COPILOT_SDK_ERROR'});
+ expect((failure as Error).message).not.toContain('private runtime token');
 });
 it('deadline aborts the session and stops the runtime instead of merely stopping the wait',async()=>{
  const f=fixture();f.session.send.mockImplementation(()=>new Promise(()=>{}));

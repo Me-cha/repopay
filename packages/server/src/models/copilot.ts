@@ -29,6 +29,7 @@ export interface CopilotRuntime {
  createSession: (config: SessionConfig) => Promise<RuntimeSession>;
  forceStop: () => Promise<void>;
 }
+export type CopilotStage='copilot_input_validation'|'copilot_sdk_startup'|'copilot_model_catalog'|'copilot_session_create'|'copilot_model_confirmation'|'copilot_inference'|'copilot_response_validation'|'copilot_usage_metrics'|'copilot_runtime_shutdown'|'copilot_tempdir_cleanup';
 export type RuntimeFactory = (options: CopilotClientOptions) => CopilotRuntime;
 const runtimeFactory: RuntimeFactory = options => {
  const client = new CopilotClient({...options, connection: RuntimeConnection.forStdio()});
@@ -42,13 +43,28 @@ const runtimeFactory: RuntimeFactory = options => {
  };
 };
 export class CopilotCleanupError extends Error {}
+export class CopilotDiagnosticError extends ProbeError{
+ constructor(message:string,readonly diagnosticStage:CopilotStage,readonly diagnosticCode:string){super(message);}
+}
+function copilotDiagnosticCode(error:unknown){
+ if(!(error instanceof ProbeError))return 'COPILOT_SDK_ERROR';
+ if(error.message==='Copilot request timed out')return 'COPILOT_TIMEOUT';
+ if(error.message==='Copilot request stopped')return 'COPILOT_ABORTED';
+ if(error.message==='Copilot output exceeds limit')return 'COPILOT_OUTPUT_LIMIT';
+ if(error.message==='Copilot output failed schema validation')return 'COPILOT_OUTPUT_INVALID';
+ if(error.message==='Copilot model changed'||error.message==='Copilot model mismatch')return 'COPILOT_MODEL_MISMATCH';
+ if(error.message==='Copilot model provenance unavailable')return 'COPILOT_PROVENANCE_MISSING';
+ return 'COPILOT_REQUEST_REJECTED';
+}
 async function withRuntime<T>(env: CopilotEnv, factory: RuntimeFactory, operation: (scope: {
  client: CopilotRuntime; step: <V>(promise: Promise<V>) => Promise<V>;
- setSession: (session: RuntimeSession) => void; fail: (message: string) => void; directory: string;
-}) => Promise<T>, signal?:AbortSignal): Promise<T> {
+ setSession: (session: RuntimeSession) => void; fail: (message: string) => void; directory: string;setStage:(stage:CopilotStage)=>void;
+}) => Promise<T>, signal?:AbortSignal,onStage?:(stage:CopilotStage)=>void): Promise<T> {
  signal?.throwIfAborted();
  const directory = await mkdtemp(join(tmpdir(), 'repopay-copilot-'));
  let client: CopilotRuntime | undefined, session: RuntimeSession | undefined, ended = false;
+ let stage:CopilotStage='copilot_sdk_startup';
+ const setStage=(next:CopilotStage)=>{stage=next;onStage?.(next);};setStage(stage);
  let rejectDeadline: (error: Error) => void = () => {};
  const deadline = new Promise<never>((_, reject) => { rejectDeadline = reject; });
  // Observe rejection even when it arrives between SDK awaits.
@@ -70,19 +86,22 @@ async function withRuntime<T>(env: CopilotEnv, factory: RuntimeFactory, operatio
    env:{PATH:process.env.PATH ?? '',TMPDIR:directory,COPILOT_GITHUB_TELEMETRY_DISABLED:'true'}});
   const active = client;
   // A delayed start must also be stopped after the request's deadline.
+  setStage('copilot_sdk_startup');
   await step(active.start().then(async () => { if (ended) await active.forceStop(); }));
-  outcome = {value:await operation({client:active,step,setSession:value => { session = value; },fail,directory})};
+  outcome = {value:await operation({client:active,step,setSession:value => { session = value; },fail,directory,setStage})};
  } catch (error) {
-  outcome = {error:error instanceof ProbeError ? error : new ProbeError('Copilot request failed')};
+  const message=error instanceof ProbeError?error.message:'Copilot request failed';
+  outcome = {error:new CopilotDiagnosticError(message,stage,copilotDiagnosticCode(error))};
  } finally { ended = true; clearTimeout(timer); signal?.removeEventListener('abort',abort); }
  if (session) void session.abort().catch(() => {});
  let shutdownTimer: ReturnType<typeof setTimeout> | undefined;
  try {
+  setStage('copilot_runtime_shutdown');
   if (client) await Promise.race([client.forceStop(),new Promise<never>((_,reject) => {
    shutdownTimer=setTimeout(() => { reject(new Error('shutdown')); },env.COPILOT_SHUTDOWN_TIMEOUT_MS);
   })]);
  } catch { throw new CopilotCleanupError('Copilot runtime shutdown failed'); }
- finally { if (shutdownTimer) clearTimeout(shutdownTimer); await rm(directory,{recursive:true,force:true}); }
+ finally { if (shutdownTimer) clearTimeout(shutdownTimer);setStage('copilot_tempdir_cleanup');await rm(directory,{recursive:true,force:true}); }
  if ('error' in outcome) throw outcome.error;
  return outcome.value;
 }
@@ -102,25 +121,29 @@ function usageReport(raw:unknown):CopilotUsage {
   cacheReadTokens:sum(model=>model.usage.cacheReadTokens),cacheWriteTokens:sum(model=>model.usage.cacheWriteTokens)};
 }
 export async function listCopilotModels(env: CopilotEnv, factory: RuntimeFactory = runtimeFactory) {
- return withRuntime(env,factory,async ({client,step}) => {
+ return withRuntime(env,factory,async ({client,step,setStage}) => {
+  setStage('copilot_model_catalog');
   const models=catalog.parse(await step(client.listModels()));
   if (!models.length) throw new ProbeError('Copilot returned no accessible models; check sponsor access and model availability');
   return env.COPILOT_MODEL ? [{model:env.COPILOT_MODEL,listed:models.some(item=>item.id===env.COPILOT_MODEL)}] : models.map(item=>({model:item.id,listed:true}));
  });
 }
-export async function completeCopilot<T>(env: CopilotEnv, prompt: string, output: z.ZodType<T>, factory: RuntimeFactory = runtimeFactory, signal?:AbortSignal) {
+export async function completeCopilot<T>(env: CopilotEnv, prompt: string, output: z.ZodType<T>, factory: RuntimeFactory = runtimeFactory, signal?:AbortSignal,onStage?:(stage:CopilotStage)=>void) {
+ onStage?.('copilot_input_validation');
  if (!env.COPILOT_MODEL) throw new ProbeError('Copilot requires an explicit model or auto');
  if (Buffer.byteLength(prompt)>env.COPILOT_MAX_INPUT_BYTES) throw new ProbeError('Copilot input exceeds limit');
  // Auto has no listable model (Copilot Free returns an empty catalog) and the
  // session keeps reporting `auto`; the serving model arrives in usage events.
  const auto=env.COPILOT_MODEL==='auto',served=new Set<string>();
  const started=Date.now();
- return withRuntime(env,factory,async ({client,step,setSession,fail,directory}) => {
+ return withRuntime(env,factory,async ({client,step,setSession,fail,directory,setStage}) => {
   if (!auto) {
+   setStage('copilot_model_catalog');
    const models=catalog.parse(await step(client.listModels()));
    if (!models.some(item=>item.id===env.COPILOT_MODEL)) throw new ProbeError('Copilot configured model is not available');
   }
   let bytes=0;
+  setStage('copilot_session_create');
   const session=await step(client.createSession({model:env.COPILOT_MODEL,workingDirectory:directory,
    availableTools:[],excludedTools:['builtin:*','mcp:*','custom:*'],tools:[],mcpServers:{},customAgents:[],includedBuiltinSkills:[],
    enableSkills:false,enableConfigDiscovery:false,enableOnDemandInstructionDiscovery:false,enableFileHooks:false,
@@ -137,8 +160,11 @@ export async function completeCopilot<T>(env: CopilotEnv, prompt: string, output
    },
   }));
   setSession(session);
+  setStage('copilot_model_confirmation');
   if(!auto&&await step(session.getModel())!==env.COPILOT_MODEL) throw new ProbeError('Copilot model mismatch');
+  setStage('copilot_inference');
   const raw=await step(session.send(prompt,output,Math.max(1,env.COPILOT_TIMEOUT_MS-(Date.now()-started))));
+  setStage('copilot_response_validation');
   if(raw===undefined) throw new ProbeError('Copilot output failed schema validation');
   const serialized=JSON.stringify(raw);
   if(Buffer.byteLength(serialized)>env.PROVIDER_RESPONSE_MAX_BYTES) throw new ProbeError('Copilot output exceeds limit');
@@ -148,10 +174,11 @@ export async function completeCopilot<T>(env: CopilotEnv, prompt: string, output
   // An Auto result is usable only when exactly one concrete serving model is known.
   const actual=[...served];
   if(auto&&(actual.length!==1||!actual[0]||actual[0].toLowerCase()==='auto')) throw new ProbeError('Copilot model provenance unavailable');
+  setStage('copilot_usage_metrics');
   const usage=usageReport(await step(session.getUsage()));
   return {value:value.data,provider:'copilot' as const,requestedModel:env.COPILOT_MODEL,model:auto?actual[0]??'':env.COPILOT_MODEL,sdkVersion:COPILOT_SDK_VERSION,
    billingOwnerId:env.COPILOT_BILLING_OWNER_ID,elapsedMs:Date.now()-started,usage};
- },signal);
+ },signal,onStage);
 }
 export async function probeCopilotModels(env: CopilotEnv) {
  try {
