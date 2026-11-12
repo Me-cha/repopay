@@ -5,7 +5,7 @@ import type { Transaction } from '../db/transaction.js';
 import { bounties,submissions,submissionEvidence,verifications,verificationPublications,reviewDispatches,copilotSponsors,installations } from '../db/schema.js';
 import { isSponsoredTerms } from '../domain/funded-terms.js';
 import { REVIEW_UNAVAILABLE_REASON } from '../domain/types.js';
-import { parseCopilotEnv,type FundingEnv } from '../env.js';
+import { parseCopilotEnv,reviewRevisionLimit,type FundingEnv } from '../env.js';
 import type { GitHub } from '../github/app.js';
 import type { AuthService } from '../github/oauth.js';
 import { currentAccess } from '../github/permissions.js';
@@ -92,7 +92,7 @@ export function createReviewService(db:Database,github:GitHub,env:FundingEnv,aut
    const counts=or(isNull(verifications.errorCode),and(ne(verifications.errorCode,'INSUFFICIENT_EVIDENCE'),ne(verifications.errorCode,'VERIFIER_BUDGET_EXHAUSTED')));
    const [daily]=await tx.select({value:count()}).from(verifications).innerJoin(submissions,eq(submissions.id,verifications.submissionId)).leftJoin(reviewDispatches,eq(reviewDispatches.verificationId,verifications.id)).where(and(eq(submissions.repoId,owned.repoId),counts,or(gte(reviewDispatches.inferenceStartedAt,utcStart),and(isNull(reviewDispatches.verificationId),gte(verifications.createdAt,utcStart)))));
    const [revision]=await tx.select({value:count()}).from(verifications).where(and(eq(verifications.submissionId,sub.id),eq(verifications.headSha,owned.headSha),counts));
-   if((daily?.value??0)>=env.VERIFIER_DAILY_ATTEMPT_LIMIT||(revision?.value??0)>env.VERIFIER_MAX_ATTEMPTS_PER_SHA){
+   if((daily?.value??0)>=env.VERIFIER_DAILY_ATTEMPT_LIMIT||(revision?.value??0)>reviewRevisionLimit(env,{repoId:owned.repoId,submissionId:sub.id,headSha:owned.headSha},now)){
     await publish(tx,owned,{status:'ERROR',errorCode:'VERIFIER_BUDGET_EXHAUSTED'},'Review allowance exhausted. No model request was made.');await tx.update(reviewDispatches).set({status:'RESULT_SAVED',completedAt:now}).where(eq(reviewDispatches.id,id));return false;
    }
    await tx.update(reviewDispatches).set({status:'INFERENCE_STARTED',inferenceStartedAt:now,allowanceDate:utcStart.toISOString().slice(0,10),sponsorGeneration:sponsor.tokenGeneration}).where(eq(reviewDispatches.id,id));return true;

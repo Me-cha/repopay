@@ -105,6 +105,23 @@ describe('isolated review lifecycle',()=>{
    expect((await f.database.orm.select().from(verifications).where(eq(verifications.id,id)))[0]?.errorCode).toBe('VERIFIER_BUDGET_EXHAUSTED');
   }finally{await f.close();}
  });
+ it.each(['match','repo','submission','revision','expired','exhausted'] as const)('limits an explicit revision allowance: %s',async change=>{
+  const f=await fixture();try{
+   await f.service.prepare(f.dispatch.id,f.owner);
+   const {id,...prior}=required((await f.database.orm.select().from(verifications))[0]);expect(id).toBeTruthy();
+   await f.database.orm.insert(verifications).values({...prior,attempt:2,status:'ERROR',errorCode:'INFERENCE_OUTCOME_UNKNOWN'});
+   const override={repoId:f.submission.repoId,submissionId:f.submission.id,headSha:f.pr.head.sha,maxAttempts:2,expiresAt:new Date(Date.now()+60000).toISOString()};
+   if(change==='repo')override.repoId='999';
+   if(change==='submission')override.submissionId='999';
+   if(change==='revision')override.headSha='f'.repeat(40);
+   if(change==='expired')override.expiresAt=new Date(0).toISOString();
+   if(change==='exhausted')override.maxAttempts=1;
+   const service=createReviewService(f.database,f.api,{...f.env,VERIFIER_MAX_ATTEMPTS_PER_SHA:1,VERIFIER_REVISION_OVERRIDE:override},f.auth);
+   const result=await service.begin(f.dispatch.id,f.owner);
+   if(change==='match'){expect(result).not.toBeNull();await expect(service.begin(f.dispatch.id,f.owner)).rejects.toThrow();}
+   else expect(result).toBeNull();
+  }finally{await f.close();}
+ });
  it('charges the UTC day inference starts even when its record was prepared yesterday',async()=>{
   const f=await fixture();try{
    await f.service.prepare(f.dispatch.id,f.owner);await f.service.begin(f.dispatch.id,f.owner);

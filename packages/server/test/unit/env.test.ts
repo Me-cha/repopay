@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseEnv, parsePreflightEnv } from '../../src/env.js';
+import { parseEnv, parsePreflightEnv, parseFundingEnv } from '../../src/env.js';
 import { syntheticEnv } from '../helpers/env.js';
 describe('configuration boundary', () => {
   it('preserves large IDs and parses explicit flags', () => {
@@ -42,4 +42,11 @@ it.each([
 });
 it('full application still requires registered webhook identity', () => {
   expect(() => parseEnv({ ...syntheticEnv(), PP_WEBHOOK_ID: '' })).toThrow(/PP_WEBHOOK_ID/);
+});
+
+it.each(['not-json',JSON.stringify({repoId:'2',submissionId:'6',headSha:'a'.repeat(40),maxAttempts:11,expiresAt:'2026-11-12T23:59:00Z'}),JSON.stringify({repoId:'2',submissionId:'6',headSha:'a'.repeat(40),maxAttempts:5,expiresAt:'forever'})])('rejects malformed scoped review allowances',value=>{
+ expect(()=>parseFundingEnv({...syntheticEnv(),VERIFIER_REVISION_OVERRIDE:value})).toThrow(/VERIFIER_REVISION_OVERRIDE/);
+});
+it('does not configure a revision exception by default',()=>{
+ expect(parseFundingEnv(syntheticEnv()).VERIFIER_REVISION_OVERRIDE).toBeUndefined();
 });

@@ -113,6 +113,7 @@ export function parseAuthEnv(input:Record<string,string|undefined>):AuthEnv {
 }
 
 const settlementScope=z.object({bountyId:z.string().regex(/^[1-9]\d*$/),repoId:z.string().regex(/^[1-9]\d*$/),amountCents:z.number().int().positive().max(2147483647),termsHash:z.string().regex(/^[a-f0-9]{64}$/)}).strict();
+const reviewAttemptOverride=z.object({repoId:z.string().regex(/^[1-9]\d*$/),submissionId:z.string().regex(/^[1-9]\d*$/),headSha:z.string().regex(/^[a-f0-9]{40}$/),maxAttempts:z.number().int().min(1).max(10),expiresAt:z.iso.datetime()}).strict();
 const fundingSettings = z.object({
  ...reviewSettings.shape,
  FUNDED_CANCELLATION_ENABLED:flag.default(false),
@@ -136,6 +137,7 @@ const fundingSettings = z.object({
  PP_VERIFY_CONCURRENCY:integer(1,16).default(2),
  VERIFIER_DAILY_ATTEMPT_LIMIT:integer(1,1000).default(25),
  VERIFIER_MAX_ATTEMPTS_PER_SHA:integer(1,10).default(3),
+ VERIFIER_REVISION_OVERRIDE:z.string().optional().transform((value,ctx)=>{if(!value?.trim())return undefined;try{return JSON.parse(value) as unknown;}catch{ctx.addIssue({code:'custom',message:'Invalid revision allowance'});return z.NEVER;}}).pipe(reviewAttemptOverride.optional()),
 });
 export type FundingEnv=AuthEnv & z.infer<typeof fundingSettings>;
 export function parseFundingEnv(input:Record<string,string|undefined>):FundingEnv {
@@ -145,4 +147,10 @@ export function parseFundingEnv(input:Record<string,string|undefined>):FundingEn
  if(result.data.FUNDED_CANCELLATION_ENABLED&&(!result.data.CANCELLATION_OPERATOR_GH_IDS.length||!result.data.CANCELLATION_SANDBOX_REPO_ID))throw new Error('Cancellation requires operators and an isolated sandbox repository');
  if(auth.NODE_ENV==='production'&&new URL(auth.PUBLIC_URL).protocol!=='https:')throw new Error('Production PUBLIC_URL requires HTTPS');
  return {...auth,...result.data};
+}
+
+// A time-bounded operator allowance never changes the daily cap or other revisions.
+export function reviewRevisionLimit(env:Pick<FundingEnv,'VERIFIER_MAX_ATTEMPTS_PER_SHA'|'VERIFIER_REVISION_OVERRIDE'>,scope:{repoId:string;submissionId:string;headSha:string},now=new Date()):number {
+ const override=env.VERIFIER_REVISION_OVERRIDE;
+ return override&&override.repoId===scope.repoId&&override.submissionId===scope.submissionId&&override.headSha===scope.headSha&&Date.parse(override.expiresAt)>now.getTime()?override.maxAttempts:env.VERIFIER_MAX_ATTEMPTS_PER_SHA;
 }
