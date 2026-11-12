@@ -119,3 +119,13 @@ The `PUBLIC_URL` refactor passed 19 focused executor/broker tests, all 433 serve
 5. Choose and activate the backend after those results. The current free web service's sleep behavior must be resolved before any always-on reliability claim.
 
 Local implementation and tests do not mark the historical deferred phase exits or Render adoption passed.
+
+## November 12: PR32 executor repair
+
+Confirmed mismatch: web service had prompt v6 / diagnostic commit `f9cecdd`, but `RENDER_REVIEW_TASK` still selected November 9 prompt-v5 release `6345c3e`; workflow auto-deploy was off. Historical runs 40–42 have no stage diagnostics, so their exact original exception remains unknown. No counters, failed attempts or financial records were cleared.
+
+Deployed repair `028a60c`, workflow version `wfv-dbqmkgqfngtc7382v0qg`, task `tsk-dbqml2tdr6bs73ffvdo0`, broker deploy `dep-dbqmkm9kph1s73a0faa0`, generation 3. Authentication key and origin matched without exposing them. User approved up to two requests and a revision-only total cap of five; an expiring exact-repository/submission/head override retained the normal 25/day and 3/revision defaults.
+
+The first retry, dispatch `3b4a5457-6aad-4441-a86b-764bcb53eb86`, Render run `trn-0bd4gdbqmmh1du03g00cnh6r0`, verification 44, saved DONE / RESOLVES / 99%, model `gpt-6-luna`, on PR32 head `278027638684690eda9fb08909103853ea07f633`. Capacity released normally. One of two approved requests was used. GitHub's advisory Check remains neutral by design; its saved verdict is RESOLVES. The temporary override was removed from desired Render configuration after the success; the next broker release removes it from runtime.
+
+Local repair verification: 495 server tests and 32 web tests passed; typecheck, lint, server build and executor registration smoke passed. Separate scoped payment acceptance is recorded in ADR 0026; payment completion must be independently confirmed.

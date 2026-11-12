@@ -1,0 +1,32 @@
+{
+  "title": "Decode UTF-8 JSON Buffers with a leading BOM.",
+  "policy": {
+    "model": "auto",
+    "version": "repopay-v2-copilot",
+    "minShare": 0.05,
+    "provider": "copilot",
+    "ciContexts": [],
+    "ciRequired": false,
+    "sdkVersion": "1.0.28",
+    "noticeHours": 72,
+    "maxDiffChars": 160000,
+    "minConfidence": 0.75,
+    "selectionRule": "first-qualifying-merged:merged_at,pr_number,pr_id",
+    "maxCriteriaChars": 16000,
+    "fundedCancellationEnabled": false
+  },
+  "repoId": "1435468752",
+  "sponsor": {
+    "id": "96007304",
+    "kind": "user",
+    "login": "deepakA18"
+  },
+  "version": 4,
+  "criteria": "## Problem\n\nThe JSON decoder accepts a string with one leading Unicode BOM, but throws\nwhen the same JSON arrives as a UTF-8 Node.js Buffer.\n\n## Task\n\nUpdate `Json.decode` in `lib/paypalhttp/serializer/json.js` to decode UTF-8\nBuffers using the same single-leading-BOM handling already used for strings.\n\n## Acceptance criteria\n\n1. Decode valid UTF-8 Buffers with no BOM or exactly one leading U+FEFF.\n   Cover objects containing Unicode, arrays, strings, numbers, booleans and null.\n2. Preserve U+FEFF characters inside JSON string values.\n3. Empty input, malformed JSON, invalid prefixes, BOM-only input and two\n   leading BOM characters must still throw `SyntaxError`.\n4. Do not mutate input Buffers. Preserve existing string decoding, encode and\n   contentType behavior. General Uint8Array support is outside this task.\n5. Keep all existing tests. Add regression tests in\n   `demo-test/serializers.test.cjs` and pass\n   `node --test demo-test/serializers.test.cjs`.\n   Change only the JSON serializer and that test file.\n\n## Demo scope\n\nProposed reward: $50 USD PayPal sandbox in this isolated demo repository.\nFunding and payout remain subject to verified capture and the funded terms.\n",
+  "currency": "USD",
+  "merchantId": "2S6TVCMQD7SUW",
+  "amountCents": 5000,
+  "creatorGhId": "96007304",
+  "issueNumber": 31,
+  "issueUpdatedAt": "2026-11-12T05:52:33Z"
+}

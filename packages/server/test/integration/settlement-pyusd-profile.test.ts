@@ -25,3 +25,23 @@ it('v6 accepts only the approved devnet bounty and immutable terms with an expli
   expect(acceptsDemoProfile({...env,SETTLEMENT_DEMO_SCOPE:{bountyId:f.bounty.id,repoId:f.bounty.repoId,amountCents:f.bounty.amountCents,termsHash:termsHash(f.terms)}},{...f.bounty,fundedTerms:f.terms})).toBe(false);
  }finally{await f.close();}
 });
+
+it('v6 accepts the explicitly approved $50 PayPal case only with its frozen terms and merchant',async()=>{
+ const f=await intentFixture();try{
+  const terms=termsSchema.parse(JSON.parse(readFileSync(new URL('../fixtures/paypal-eight-terms.json',import.meta.url),'utf8')));
+  const bounty={...f.bounty,id:'8',repoId:'1435468752',issueNumber:31,amountCents:5000,currency:'USD',fundedTerms:terms};
+  const scope={bountyId:'8',repoId:bounty.repoId,amountCents:5000,termsHash:termsHash(terms)};
+  const env={...f.env,PP_MERCHANT_ID:terms.merchantId,SETTLEMENT_DEMO_SCOPE:scope};
+  expect(scope.termsHash).toBe('275328bdf43952565ad2926e46e41f1329fa080ebce0cbf6ef8f332d728cf900');
+  expect(acceptsDemoProfile(env,bounty)).toBe(true);
+  expect(acceptsDemoProfile({...env,SETTLEMENT_DEMO_SCOPE:null},bounty)).toBe(false);
+  expect(acceptsDemoProfile({...env,PP_MERCHANT_ID:'OTHER'},bounty)).toBe(false);
+  for(const change of [{id:'9'},{repoId:'99'},{amountCents:100},{issueNumber:32},{currency:'PYUSD'}]){
+   const changed={...bounty,...change};
+   expect(acceptsDemoProfile({...env,SETTLEMENT_DEMO_SCOPE:{...scope,bountyId:changed.id,repoId:changed.repoId,amountCents:changed.amountCents}},changed)).toBe(false);
+  }
+  for(const change of [{bountyId:'3'},{repoId:'99'},{amountCents:100},{termsHash:'0'.repeat(64)}])expect(acceptsDemoProfile({...env,SETTLEMENT_DEMO_SCOPE:{...scope,...change}},bounty)).toBe(false);
+  const changedTerms={...terms,criteria:terms.criteria+' changed'};
+  expect(acceptsDemoProfile({...env,SETTLEMENT_DEMO_SCOPE:{...scope,termsHash:termsHash(changedTerms)}},{...bounty,fundedTerms:changedTerms})).toBe(false);
+ }finally{await f.close();}
+});
