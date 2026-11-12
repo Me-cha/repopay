@@ -1,5 +1,5 @@
-# Optional review-only addition is in render-workflows.yaml; see docs/review-execution.md.
-# Prepared only; deploying provisions paid resources. See docs/deployment.md.
+# Optional isolated review execution is defined in render-workflows.yaml.
+# Deploying this Blueprint provisions Render resources and may incur usage costs.
 previews:
   generation: "off"
 services:
