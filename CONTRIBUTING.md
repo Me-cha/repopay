@@ -1,4 +1,4 @@
-> Current milestone: [foundation MVP](docs/decisions/0021-foundation-mvp-scope.md). Keep the normal local checks, but do not start the full live evaluation campaign as a prerequisite for the basic scoped sandbox flow. Automatic qualifying-merge payout remains required; its guards and bounded model allowances remain in force.
+> Current milestone: [foundation MVP](docs/decisions/0021-foundation-mvp-scope.md). Keep the normal local checks, but do not start the full live evaluation campaign as a prerequisite for the basic sandbox flow. Automatic qualifying-merge payout remains required; its guards and bounded model allowances remain in force.
 
 # Contributing to Repopay
 
@@ -46,7 +46,7 @@ Copilot tests inject a fake runtime; they do not spend credits. Live SDK generat
 
 Phase 6 local implementation is authorized; automatic selection remains gated by Phase 5 acceptance. Apply the new migrations with workers stopped as described in [setup](docs/setup.md#phase-6-local-awards-and-payouts). Award/payout tests cover concurrent reservation, immutable destinations/account identity, expired retries, delayed multi-author claims and returns after payment. Run the integration suites against an isolated `TEST_DATABASE_URL`; mocked results do not satisfy the live payout walkthrough.
 
-Phase 6 activation is default-off and scope-bound; see [scoped sandbox activation](docs/setup.md#scoped-phase-6-sandbox-activation). Changes to its boundaries need negative tests for wrong bounty/repository/amount/terms, revoked sponsorship and unaccepted serving models. Never activate a scope to silently waive a documented acceptance gate.
+Settlement uses deployment-level `SETTLEMENT_ENABLED` and each bounty's own frozen terms; see [automatic settlement activation](docs/setup.md#automatic-settlement-activation). There is no per-bounty allowlist. Keep negative tests for mismatched terms/merchant, revoked sponsorship, unavailable reviews, failed CI, concurrent award selection and duplicate delivery.
 
 Phase 7 review regression coverage is in `packages/server/test/integration/review-approve.test.ts` (preview, approval, rejection and HTTP boundaries), alongside award-selection and command tests. Migration 0013 is required for review history. See `docs/setup.md` for review commands; provider calls in the local tests are mocked.
 

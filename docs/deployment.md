@@ -1,4 +1,5 @@
-> Foundation milestone: follow [ADR 0021](decisions/0021-foundation-mvp-scope.md). The local v5 profile permits only an exact approved sandbox bounty scope; `SETTLEMENT_DEMO_SCOPE` remains blank by default. A deployment alone is not authorization to activate payouts or consume new model requests. Confirm current review/evidence and finish the hosted payout receipt check; the broad evaluation/recovery campaign is deferred.
+> November 12 settlement update: [ADR 0027](decisions/0027-automatic-bounty-settlement.md) supersedes historical exact-bounty demo restrictions below. `SETTLEMENT_ENABLED` enables automatic qualifying-bounty settlement without per-issue configuration; current provider boundaries and all payment guards remain.
+
 
 # Hosted sandbox deployment
 

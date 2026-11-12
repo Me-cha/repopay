@@ -7,13 +7,13 @@ import { createFunding } from '../../src/settlement/funding.js';
 import type { Orders,OrderSnapshot } from '../../src/paypal/orders.js';
 import { authFixture } from './auth.js';
 import { syntheticEnv } from './env.js';
-import { parseFundingEnv } from '../../src/env.js';
+import { parseFundingEnv,type FundingEnv } from '../../src/env.js';
 import { makeTerms } from '../../src/domain/funded-terms.js';
 import { authorizeAction } from '../../src/actions/guards.js';
 import { prepareFunding,confirmFunding } from '../../src/actions/fund.js';
 export const fundingEnv=()=>parseFundingEnv({...syntheticEnv(),PUBLIC_URL:'https://repopay.test',PP_MERCHANT_ID:'MERCHANT12345',POLICY_CI_CONTEXTS:JSON.stringify({'2':[{name:'test',appId:'15368'}]})});
-export async function intentFixture(payment:FundingPayment={method:'paypal'}) {
- const env=fundingEnv();env.PP_CRYPTO_ENABLED=payment.method==='crypto';const f=await authFixture(undefined,env);const session=await f.auth.requireSession(f.login.cookie);
+export async function intentFixture(payment:FundingPayment={method:'paypal'},settings:Partial<FundingEnv>={}) {
+ const env={...fundingEnv(),...settings};env.PP_CRYPTO_ENABLED=payment.method==='crypto';const f=await authFixture(undefined,env);const session=await f.auth.requireSession(f.login.cookie);
  const ctx=await authorizeAction(f.auth,f.api,session,f.bounty,'fund');
  const terms=makeTerms(env,f.bounty,{title:'Fix parser',body:'Must reject invalid input',updatedAt:'2026-10-28T00:00:00Z'},{sponsorGhId:'4',sponsorLogin:'maintainer',modelId:env.COPILOT_MODEL,revokedAt:null});
  const prepare=()=>prepareFunding(f.database,env,session,ctx,f.bounty,terms,()=>new Date(),payment);

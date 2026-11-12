@@ -1,3 +1,5 @@
+> November 12 settlement update: [ADR 0027](../decisions/0027-automatic-bounty-settlement.md) supersedes historical exact-bounty demo restrictions below. `SETTLEMENT_ENABLED` enables automatic qualifying-bounty settlement without per-issue configuration; current provider boundaries and all payment guards remain.
+
 **Active scope:** the user narrowed the current milestone to the basic sandbox journey, retaining automatic payout after a qualifying merge. Use the [foundation checklist](live-walkthroughs.md#active-foundation-mvp-checklist). Full phase-exit, model-evaluation and advanced live acceptance below remain historical/backlog scope, not current foundation blockers. See [ADR 0021](../decisions/0021-foundation-mvp-scope.md).
 
 **November 10 PYUSD extension:** Phases 3/6/8 have local devnet funding, wallet delivery and guarded original-wallet refund support. Defaults remain off; real Solflare 1-PYUSD funding passed locally for bounty 9 / issue 21. Wallet payout/refund and hosted acceptance remain unchecked. [Local evidence](../evidence/pyusd-devnet.md), [ADR 0024](../decisions/0024-pyusd-devnet-route.md).

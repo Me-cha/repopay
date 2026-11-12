@@ -1,3 +1,4 @@
+import type { FundingEnv } from '../../src/env.js';
 import { createHash } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { intentFixture } from './funding.js';
@@ -7,8 +8,8 @@ import { createSettlement } from '../../src/settlement/settle.js';
 import { candidateFingerprint,type CandidateScan } from '../../src/settlement/candidates.js';
 import { fixtureInput } from '../../src/verifier/evaluate.js';
 import { buildVerifierPrompt,PROMPT_VERSION } from '../../src/verifier/prompt.js';
-export async function awardFixture(twoAuthors=false){
- const f=await intentFixture();
+export async function awardFixture(twoAuthors=false,settings:Partial<FundingEnv>={}){
+ const f=await intentFixture({method:'paypal'},settings);
  await f.database.orm.update(bounties).set({status:'FUNDED',captureId:'CAPTURE',fundedAt:new Date(),fundedTerms:f.terms}).where(eq(bounties.id,f.bounty.id));
  await f.database.orm.update(copilotSponsors).set({accessExpiresAt:new Date(Date.now()+86400000),refreshExpiresAt:new Date(Date.now()+172800000)}).where(eq(copilotSponsors.repoId,'2'));
  const evidence=new Map<string,ReturnType<typeof fixtureInput>>();

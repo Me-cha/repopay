@@ -1,47 +1,21 @@
 import {readFileSync} from 'node:fs';
 import {expect,it} from 'vitest';
-import {acceptsDemoProfile} from '../../src/settlement/profile.js';
-import {termsSchema,termsHash} from '../../src/domain/funded-terms.js';
-import {PROMPT_VERSION} from '../../src/verifier/prompt.js';
+import {acceptsSettlementProfile} from '../../src/settlement/profile.js';
+import {termsSchema} from '../../src/domain/funded-terms.js';
 import {intentFixture} from '../helpers/funding.js';
-it('v6 accepts only the approved devnet bounty and immutable terms with an explicit matching scope',async()=>{
+it('accepts new PYUSD identities only with enabled devnet and matching valid frozen terms',async()=>{
  const f=await intentFixture();try{
-  expect(PROMPT_VERSION).toBe('repopay-verifier-v6');
-  const terms=termsSchema.parse(JSON.parse(readFileSync(new URL('../fixtures/pyusd-nine-terms.json',import.meta.url),'utf8')));
-  const bounty={...f.bounty,id:'9',repoId:'1435468752',issueNumber:21,amountCents:100,currency:'PYUSD',fundedTerms:terms};
-  const scope={bountyId:bounty.id,repoId:bounty.repoId,amountCents:100,termsHash:termsHash(terms)};
-  const env={...f.env,PYUSD_DEVNET_ENABLED:true,SETTLEMENT_DEMO_SCOPE:scope};
-  expect(scope.termsHash).toBe('d42965f0ace59e02d357e9db3c03ad845092f5e1e75f1b8627e7f40ffed48c78');
-  expect(acceptsDemoProfile(env,bounty)).toBe(true);
-  expect(acceptsDemoProfile({...env,SETTLEMENT_DEMO_SCOPE:null},bounty)).toBe(false);
-  expect(acceptsDemoProfile({...env,PYUSD_DEVNET_ENABLED:false},bounty)).toBe(false);
-  for(const change of [{id:'10'},{repoId:'99'},{amountCents:101},{issueNumber:22},{currency:'USD'}]){
-   const changed={...bounty,...change};
-   expect(acceptsDemoProfile({...env,SETTLEMENT_DEMO_SCOPE:{...scope,bountyId:changed.id,repoId:changed.repoId,amountCents:changed.amountCents}},changed)).toBe(false);
-  }
-  for(const change of [{bountyId:'10'},{repoId:'99'},{amountCents:101},{termsHash:'0'.repeat(64)}])expect(acceptsDemoProfile({...env,SETTLEMENT_DEMO_SCOPE:{...scope,...change}},bounty)).toBe(false);
-  const changedTerms={...terms,criteria:terms.criteria+' changed'};
-  expect(acceptsDemoProfile({...env,SETTLEMENT_DEMO_SCOPE:{...scope,termsHash:termsHash(changedTerms)}},{...bounty,fundedTerms:changedTerms})).toBe(false);
-  expect(acceptsDemoProfile({...env,SETTLEMENT_DEMO_SCOPE:{bountyId:f.bounty.id,repoId:f.bounty.repoId,amountCents:f.bounty.amountCents,termsHash:termsHash(f.terms)}},{...f.bounty,fundedTerms:f.terms})).toBe(false);
- }finally{await f.close();}
-});
-
-it('v6 accepts the explicitly approved $50 PayPal case only with its frozen terms and merchant',async()=>{
- const f=await intentFixture();try{
-  const terms=termsSchema.parse(JSON.parse(readFileSync(new URL('../fixtures/paypal-eight-terms.json',import.meta.url),'utf8')));
-  const bounty={...f.bounty,id:'8',repoId:'1435468752',issueNumber:31,amountCents:5000,currency:'USD',fundedTerms:terms};
-  const scope={bountyId:'8',repoId:bounty.repoId,amountCents:5000,termsHash:termsHash(terms)};
-  const env={...f.env,PP_MERCHANT_ID:terms.merchantId,SETTLEMENT_DEMO_SCOPE:scope};
-  expect(scope.termsHash).toBe('275328bdf43952565ad2926e46e41f1329fa080ebce0cbf6ef8f332d728cf900');
-  expect(acceptsDemoProfile(env,bounty)).toBe(true);
-  expect(acceptsDemoProfile({...env,SETTLEMENT_DEMO_SCOPE:null},bounty)).toBe(false);
-  expect(acceptsDemoProfile({...env,PP_MERCHANT_ID:'OTHER'},bounty)).toBe(false);
-  for(const change of [{id:'9'},{repoId:'99'},{amountCents:100},{issueNumber:32},{currency:'PYUSD'}]){
-   const changed={...bounty,...change};
-   expect(acceptsDemoProfile({...env,SETTLEMENT_DEMO_SCOPE:{...scope,bountyId:changed.id,repoId:changed.repoId,amountCents:changed.amountCents}},changed)).toBe(false);
-  }
-  for(const change of [{bountyId:'3'},{repoId:'99'},{amountCents:100},{termsHash:'0'.repeat(64)}])expect(acceptsDemoProfile({...env,SETTLEMENT_DEMO_SCOPE:{...scope,...change}},bounty)).toBe(false);
-  const changedTerms={...terms,criteria:terms.criteria+' changed'};
-  expect(acceptsDemoProfile({...env,SETTLEMENT_DEMO_SCOPE:{...scope,termsHash:termsHash(changedTerms)}},{...bounty,fundedTerms:changedTerms})).toBe(false);
+  const original=termsSchema.parse(JSON.parse(readFileSync(new URL('../fixtures/pyusd-nine-terms.json',import.meta.url),'utf8')));
+  if(original.version!==6)throw new Error('fixture');
+  const terms={...original,issueNumber:90,amountCents:200};
+  const bounty={...f.bounty,id:'999',repoId:terms.repoId,createdByGhId:terms.creatorGhId,issueNumber:90,amountCents:200,currency:'PYUSD',fundedTerms:terms};
+  const env={...f.env,SETTLEMENT_ENABLED:true,PYUSD_DEVNET_ENABLED:true};
+  expect(acceptsSettlementProfile(env,bounty)).toBe(true);
+  expect(acceptsSettlementProfile({...env,PYUSD_DEVNET_ENABLED:false},bounty)).toBe(false);
+  expect(acceptsSettlementProfile({...env,SETTLEMENT_ENABLED:false},bounty)).toBe(false);
+  expect(acceptsSettlementProfile(env,{...bounty,currency:'USD'})).toBe(false);
+  const invalid=JSON.parse(JSON.stringify(terms)) as typeof terms;
+  Object.assign(invalid.chain,{network:'solana-mainnet'});
+  expect(acceptsSettlementProfile(env,{...bounty,fundedTerms:invalid})).toBe(false);
  }finally{await f.close();}
 });

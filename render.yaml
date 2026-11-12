@@ -209,8 +209,8 @@ envVarGroups:
         value: "25"
       - key: VERIFIER_MAX_ATTEMPTS_PER_SHA
         value: "3"
-      - key: SETTLEMENT_DEMO_SCOPE
-        value: ""
+      - key: SETTLEMENT_ENABLED
+        value: "false"
       - key: NODE_VERSION
         value: "22.23.4"
       - key: COPILOT_MODEL

@@ -112,14 +112,13 @@ export function parseAuthEnv(input:Record<string,string|undefined>):AuthEnv {
  return result.data;
 }
 
-const settlementScope=z.object({bountyId:z.string().regex(/^[1-9]\d*$/),repoId:z.string().regex(/^[1-9]\d*$/),amountCents:z.number().int().positive().max(2147483647),termsHash:z.string().regex(/^[a-f0-9]{64}$/)}).strict();
 const reviewAttemptOverride=z.object({repoId:z.string().regex(/^[1-9]\d*$/),submissionId:z.string().regex(/^[1-9]\d*$/),headSha:z.string().regex(/^[a-f0-9]{40}$/),maxAttempts:z.number().int().min(1).max(10),expiresAt:z.iso.datetime()}).strict();
 const fundingSettings = z.object({
  ...reviewSettings.shape,
  FUNDED_CANCELLATION_ENABLED:flag.default(false),
  CANCELLATION_OPERATOR_GH_IDS:schema.shape.CANCELLATION_OPERATOR_GH_IDS.default([]),
  CANCELLATION_SANDBOX_REPO_ID:z.string().regex(/^[1-9]\d*$|^$/).default(''),
- SETTLEMENT_DEMO_SCOPE:z.string().default('').transform((value,ctx)=>{if(!value.trim())return null;try{return JSON.parse(value) as unknown;}catch{ctx.addIssue({code:'custom',message:'Invalid settlement scope'});return z.NEVER;}}).pipe(settlementScope.nullable()),
+ SETTLEMENT_ENABLED:flag.default(false),
  PP_BASE:preflightSchema.shape.PP_BASE,PP_CLIENT_ID:text,PP_SECRET:text,
  PP_CRYPTO_ENABLED:flag.default(false),
  PYUSD_DEVNET_ENABLED:flag.default(false),

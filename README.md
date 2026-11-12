@@ -1,3 +1,5 @@
+> November 12 settlement update: [ADR 0027](docs/decisions/0027-automatic-bounty-settlement.md) supersedes historical exact-bounty demo restrictions below. `SETTLEMENT_ENABLED` enables automatic qualifying-bounty settlement without per-issue configuration; current provider boundaries and all payment guards remain.
+
 # Repopay
 
 **PYUSD extension (November 10):** local, default-off Solana devnet funding → saved wallet payouts is implemented alongside PayPal USD. Wallet ownership, exact finalized receipts, immutable delivery and separately enabled original-wallet refunds are covered locally. Real devnet funding and the qualifying PR23 merge → automatic 1-PYUSD wallet payout passed on bounty 9 / issue 21, with recipient receipt confirmed. Refund and hosted chain acceptance remain pending. Mainnet is unsupported. Unsigned expired funding can recover on the same bounty under [ADR 0025](docs/decisions/0025-expired-pyusd-funding-recovery.md). See [crypto routes and setup](docs/crypto-payments.md) and [verification evidence](docs/evidence/pyusd-devnet.md).

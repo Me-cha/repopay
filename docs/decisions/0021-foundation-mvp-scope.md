@@ -1,3 +1,5 @@
+> Superseded in part on November 12: [ADR 0027](0027-automatic-bounty-settlement.md) removes per-bounty acceptance and environment scopes. Historical acceptance evidence below is preserved.
+
 # ADR 0021: Foundation MVP and scoped automatic sandbox payout
 
 Date: October 31, 2026. Status: user-directed scope reduction; implemented locally, deployment and hosted completion pending.

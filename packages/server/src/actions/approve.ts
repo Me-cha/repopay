@@ -40,7 +40,7 @@ export function createReviewService(db:Database,env:FundingEnv,deps:ReviewDepend
   const [review]=await tx.select().from(verifications).where(eq(verifications.submissionId,candidate.id)).orderBy(desc(verifications.id)).limit(1);
   if(!fresh||!evidence||!review||review.status==='PENDING'||evidence.version!==candidate.evidenceVersion||review.evidenceId!==evidence.id||review.headSha!==candidate.headSha||evidence.snapshotHash!==fresh.snapshotHash||fresh.headSha!==candidate.headSha||fresh.baseSha!==candidate.baseSha)throw new AuthError(409,'Current assessment required. Refresh evidence before deciding.');
   const eligible=fresh.eligibleAuthors.filter(a=>a.ghId!==bounty.createdByGhId);
-  if(requirePayable&&(!prepared.accepted||!bounty.fundedTerms||!fresh.sufficient||fresh.truncated||fresh.unverifiedAuthors.length||!eligible.length||fresh.ci.testedSha!==candidate.headSha||fresh.ci.status==='fail'||(bounty.fundedTerms.policy.ciRequired&&fresh.ci.status!=='pass')))throw new AuthError(409,'Current complete evidence, verified recipients, required CI and accepted settlement scope are required.');
+  if(requirePayable&&(!prepared.accepted||!bounty.fundedTerms||!fresh.sufficient||fresh.truncated||fresh.unverifiedAuthors.length||!eligible.length||fresh.ci.testedSha!==candidate.headSha||fresh.ci.status==='fail'||(bounty.fundedTerms.policy.ciRequired&&fresh.ci.status!=='pass')))throw new AuthError(409,'Current complete evidence, verified recipients, required CI and enabled settlement profile are required.');
   return {bounty,candidate,mergeSha:candidate.mergeSha,fresh,evidence,review,eligible};
  }
  async function preview(session:Session,id:string){const prepared=await prepare(session,id);return db.withTransaction(async tx=>{

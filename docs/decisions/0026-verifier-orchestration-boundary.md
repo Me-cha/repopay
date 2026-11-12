@@ -1,3 +1,5 @@
+> Superseded in part on November 12: [ADR 0027](0027-automatic-bounty-settlement.md) removes per-bounty acceptance and environment scopes. Historical acceptance evidence below is preserved.
+
 # ADR 0026: Separate implementation assessment from review lifecycle
 
 Date: November 10, 2026. Status: locally implemented; bounded live PR review passed. User accepted v6 only for the existing bounty 9 devnet case.

@@ -1,3 +1,5 @@
+> November 12 settlement update: [ADR 0027](docs/decisions/0027-automatic-bounty-settlement.md) supersedes historical exact-bounty demo restrictions below. `SETTLEMENT_ENABLED` enables automatic qualifying-bounty settlement without per-issue configuration; current provider boundaries and all payment guards remain.
+
 > Current foundation milestone: [ADR 0021](docs/decisions/0021-foundation-mvp-scope.md) narrows acceptance to basic sandbox flows and retains automatic qualifying-merge payouts. Full phase/evaluation and advanced live scenarios below remain the longer-term plan; they are not all blockers for this milestone. No financial or identity guard is waived.
 
 # Repopay: Implementation Plan (v4, Codex-first)

@@ -5,14 +5,14 @@ import type { FundingEnv } from '../env.js';
 import { createReviewService } from '../actions/approve.js';
 import { authorizeAction } from '../actions/guards.js';
 import { candidateScanner } from '../settlement/candidates.js';
-import { acceptsDemoProfile } from '../settlement/profile.js';
+import { acceptsSettlementProfile } from '../settlement/profile.js';
 import { verdictSchema } from '../verifier/schema.js';
 import { checkCsrf,csrfFor,requireSession } from './session.js';
 import { escapeHtml,htmlPage,pageSession,safeError,type AuthenticationDependencies } from './auth.js';
 function input<T extends z.ZodType>(schema:T,value:unknown):z.output<T>{const parsed=schema.safeParse(value);if(!parsed.success)throw new AuthError(400,'Invalid review parameters.');return parsed.data;}
 const choice=z.object({csrf:z.string(),reason:z.string().trim().min(1).max(2000),recipient:z.string().regex(/^([1-9]\d*)?$/)}).strict();
 export function mountReview(app:Express,deps:AuthenticationDependencies,env:FundingEnv){
- const service=createReviewService(deps.database,env,{scan:candidateScanner(deps.database,deps.github,env),authorize:(s,b)=>authorizeAction(deps.auth,deps.github,s,b,'review'),profileAccepted:b=>Promise.resolve(acceptsDemoProfile(env,b))});
+ const service=createReviewService(deps.database,env,{scan:candidateScanner(deps.database,deps.github,env),authorize:(s,b)=>authorizeAction(deps.auth,deps.github,s,b,'review'),profileAccepted:b=>Promise.resolve(acceptsSettlementProfile(env,b))});
  app.get('/bounties/:id/review',async(req,res)=>{try{
   const session=await pageSession(deps,req,res);if(!session)return;const p=await service.preview(session,req.params.id),path=req.path;
   const hidden=`<input type="hidden" name="csrf" value="${csrfFor(session,path)}">`;

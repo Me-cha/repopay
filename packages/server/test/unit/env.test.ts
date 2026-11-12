@@ -50,3 +50,10 @@ it.each(['not-json',JSON.stringify({repoId:'2',submissionId:'6',headSha:'a'.repe
 it('does not configure a revision exception by default',()=>{
  expect(parseFundingEnv(syntheticEnv()).VERIFIER_REVISION_OVERRIDE).toBeUndefined();
 });
+
+it('settlement requires explicit enablement and cannot enable production PayPal',()=>{
+ expect(parseFundingEnv(syntheticEnv()).SETTLEMENT_ENABLED).toBe(false);
+ expect(parseFundingEnv({...syntheticEnv(),SETTLEMENT_ENABLED:'true'}).SETTLEMENT_ENABLED).toBe(true);
+ expect(()=>parseFundingEnv({...syntheticEnv(),SETTLEMENT_ENABLED:'yes'})).toThrow(/SETTLEMENT_ENABLED/);
+ expect(()=>parseFundingEnv({...syntheticEnv(),SETTLEMENT_ENABLED:'true',PP_BASE:'https://api-m.paypal.com'})).toThrow(/PP_BASE/);
+});
